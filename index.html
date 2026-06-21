@@ -313,7 +313,7 @@ input[type="file"] { display: none; }
   text-decoration: underline;
 }
 
-/* Fejlesztői Modal / Ablak stílusok */
+/* Fejlesztői Modal */
 .dev-modal {
   display: none;
   position: fixed;
@@ -363,14 +363,13 @@ input[type="file"] { display: none; }
       <h2>Fejlesztői Panel - Felhasználók Kezelése</h2>
       <button class="dev-close" onclick="closeDevPanel()">✕</button>
     </div>
-    <div class="see-list-container" id="devUserList" style="max-height: 400px;">
-      </div>
+    <div class="see-list-container" id="devUserList" style="max-height: 400px;"></div>
   </div>
 </div>
 
 <div class="auth-wrapper" id="authSection">
   <div class="auth-card">
-    <div class="auth-title" id="authTitle"><span>Admin Duty</span> - Belépés</div>
+    <div class="auth-title" id="authTitle"><span>Admin Duty</span> - Regisztráció</div>
     
     <div class="auth-form-group">
       <label>Felhasználónév</label>
@@ -382,10 +381,10 @@ input[type="file"] { display: none; }
       <input type="password" id="authPass" placeholder="••••••••">
     </div>
     
-    <button class="see-btn" id="authBtn" onclick="handleAuth()">Bejelentkezés</button>
+    <button class="see-btn" id="authBtn" onclick="handleAuth()">Regisztráció</button>
     
     <div class="auth-switch" id="authSwitchRow">
-      Nincs még fiókod? <span onclick="toggleAuthMode(true)">Regisztráció</span>
+      Már van fiókod? <span onclick="toggleAuthMode(false)">Bejelentkezés</span>
     </div>
   </div>
 </div>
@@ -449,23 +448,24 @@ input[type="file"] { display: none; }
 </div>
 
 <script>
-// FIGYELEM: Ide írd be a SAJÁT felhasználónevedet csupa kisbetűvel!
-// Aki ezzel a névvel regisztrál / lép be, az automatikusan Fejlesztő (Admin) lesz a felületen.
 const DEVELOPER_USERNAME = "ibrawn"; 
 
-// Adatok betöltése (Most már felhasználónként csoportosítva)
 let globalData = JSON.parse(localStorage.getItem("adminDutyV3_Data")) || {};
 let usersDB = JSON.parse(localStorage.getItem("adminDutyV3_Users")) || {};
-
 let currentUser = sessionStorage.getItem("adminCurrentSessionUser") || "";
 let editType=null, editIndex=null;
-let isRegisterMode = false;
+let isRegisterMode = true; // Alapértelmezetten most már regisztráción indul!
 
 function initAuth() {
   if (currentUser) {
     showMainUcp();
   } else {
-    toggleAuthMode(false);
+    // Ha van már regisztrált felhasználó a rendszerben, akkor dobja csak be a Bejelentkezést
+    if (Object.keys(usersDB).length > 0) {
+      toggleAuthMode(false);
+    } else {
+      toggleAuthMode(true);
+    }
   }
 }
 
@@ -551,7 +551,6 @@ function logout() {
   toggleAuthMode(false);
 }
 
-/* Fejlesztői Funkciók */
 function openDevPanel() {
   document.getElementById("devModal").style.display = "flex";
   renderDevUsers();
@@ -602,7 +601,6 @@ function devDeleteUser(username) {
   }
 }
 
-/* Duty kalkulációk és kezelés */
 function saveGlobal() { localStorage.setItem("adminDutyV3_Data", JSON.stringify(globalData)); }
 function today() { return new Date().toISOString().substring(0,10); }
 
@@ -678,4 +676,33 @@ function render() {
 
   dutyStream.innerHTML = uData.duty.map((x, i) => {
     duty += x.perc;
-    return `<div class="see-list-item"><span class="see-item-date">${x.date}</span><span class="see-item-value" style="color:var(--see-gold)">${x.perc} perc</span>
+    return `<div class="see-list-item"><span class="see-item-date">${x.date}</span><span class="see-item-value" style="color:var(--see-gold)">${x.perc} perc</span><div class="see-item-actions"><button class="see-action-btn" onclick="editItem('duty',${i})">✏</button><button class="see-action-btn del" onclick="delItem('duty',${i})">✕</button></div></div>`;
+  }).join('');
+
+  offStream.innerHTML = uData.off.map((x, i) => {
+    off += x.perc;
+    return `<div class="see-list-item"><span class="see-item-date">${x.date}</span><span class="see-item-value" style="color:#fff">${x.perc} perc</span><div class="see-item-actions"><button class="see-action-btn" onclick="editItem('off',${i})">✏</button><button class="see-action-btn del" onclick="delItem('off',${i})">✕</button></div></div>`;
+  }).join('');
+
+  const sortedReportKeys = Object.keys(uData.reports).sort();
+  reportStream.innerHTML = sortedReportKeys.map(d => {
+    reports += uData.reports[d];
+    return `<div class="see-list-item"><span class="see-item-date">${d}</span><span class="see-item-value" style="color:var(--see-success)">${uData.reports[d]} db</span><div class="see-item-actions"><button class="see-action-btn" onclick="editReport('${d}')">✏</button><button class="see-action-btn del" onclick="delReport('${d}')">✕</button></div></div>`;
+  }).join('');
+
+  totalDuty.innerHTML = `${duty} <span>perc</span>`;
+  totalOff.innerHTML = `${off} <span>perc</span>`;
+  totalReports.innerHTML = `${reports} <span>db</span>`;
+
+  document.getElementById('dutyCount').textContent = uData.duty.length + " sor";
+  document.getElementById('offCount').textContent = uData.off.length + " sor";
+  document.getElementById('reportDaysCount').textContent = sortedReportKeys.length + " nap";
+}
+
+// Az indítást betöltés után futtatjuk le közvetlenül
+window.onload = function() {
+  initAuth();
+};
+</script>
+</body>
+</html>
