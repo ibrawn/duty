@@ -263,95 +263,20 @@ input[type="file"] { display: none; }
 .see-list-container::-webkit-scrollbar-track { background: transparent; }
 .see-list-container::-webkit-scrollbar-thumb { background: var(--see-border); border-radius: 10px; }
 
-/* Hitelesítési felület */
-.auth-wrapper {
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  min-height: 80vh;
-}
-.auth-card {
-  background: var(--see-card);
-  border: 1px solid var(--see-border);
-  border-radius: 12px;
-  padding: 35px;
-  width: 100%;
-  max-width: 400px;
-  box-shadow: 0 10px 30px rgba(0,0,0,0.5);
-}
-.auth-title {
-  font-size: 22px;
-  font-weight: 800;
-  text-transform: uppercase;
-  text-align: center;
-  margin-bottom: 25px;
-  letter-spacing: 1px;
-}
+.auth-wrapper { display: flex; justify-content: center; align-items: center; min-height: 80vh; }
+.auth-card { background: var(--see-card); border: 1px solid var(--see-border); border-radius: 12px; padding: 35px; width: 100%; max-width: 400px; box-shadow: 0 10px 30px rgba(0,0,0,0.5); }
+.auth-title { font-size: 22px; font-weight: 800; text-transform: uppercase; text-align: center; margin-bottom: 25px; letter-spacing: 1px; }
 .auth-title span { color: var(--see-gold); }
-.auth-form-group {
-  margin-bottom: 15px;
-}
-.auth-form-group label {
-  display: block;
-  font-size: 11px;
-  font-weight: 700;
-  text-transform: uppercase;
-  color: var(--see-text-muted);
-  margin-bottom: 6px;
-  letter-spacing: 0.5px;
-}
-.auth-switch {
-  text-align: center;
-  margin-top: 15px;
-  font-size: 13px;
-  color: var(--see-text-muted);
-}
-.auth-switch span {
-  color: var(--see-gold);
-  cursor: pointer;
-  font-weight: 600;
-  text-decoration: underline;
-}
+.auth-form-group { margin-bottom: 15px; }
+.auth-form-group label { display: block; font-size: 11px; font-weight: 700; text-transform: uppercase; color: var(--see-text-muted); margin-bottom: 6px; letter-spacing: 0.5px; }
+.auth-switch { text-align: center; margin-top: 15px; font-size: 13px; color: var(--see-text-muted); }
+.auth-switch span { color: var(--see-gold); cursor: pointer; font-weight: 600; text-decoration: underline; }
 
-/* Fejlesztői Modal */
-.dev-modal {
-  display: none;
-  position: fixed;
-  top: 0; left: 0; width: 100%; height: 100%;
-  background: rgba(0,0,0,0.75);
-  backdrop-filter: blur(4px);
-  z-index: 1000;
-  justify-content: center;
-  align-items: center;
-}
-.dev-modal-content {
-  background: var(--see-card);
-  border: 1px solid var(--see-border);
-  border-radius: 12px;
-  width: 90%;
-  max-width: 600px;
-  padding: 25px;
-}
-.dev-modal-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  border-bottom: 1px solid var(--see-border);
-  padding-bottom: 15px;
-  margin-bottom: 15px;
-}
-.dev-modal-header h2 {
-  font-size: 16px;
-  text-transform: uppercase;
-  color: var(--see-dev);
-}
-.dev-close {
-  background: transparent;
-  color: var(--see-text-muted);
-  font-size: 20px;
-  cursor: pointer;
-  border: none;
-}
+.dev-modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.75); backdrop-filter: blur(4px); z-index: 1000; justify-content: center; align-items: center; }
+.dev-modal-content { background: var(--see-card); border: 1px solid var(--see-border); border-radius: 12px; width: 90%; max-width: 600px; padding: 25px; }
+.dev-modal-header { display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--see-border); padding-bottom: 15px; margin-bottom: 15px; }
+.dev-modal-header h2 { font-size: 16px; text-transform: uppercase; color: var(--see-dev); }
+.dev-close { background: transparent; color: var(--see-text-muted); font-size: 20px; cursor: pointer; border: none; }
 .dev-close:hover { color: #fff; }
 </style>
 </head>
@@ -369,22 +294,18 @@ input[type="file"] { display: none; }
 
 <div class="auth-wrapper" id="authSection">
   <div class="auth-card">
-    <div class="auth-title" id="authTitle"><span>Admin Duty</span> - Regisztráció</div>
-    
+    <div class="auth-title" id="authTitle"><span>SeeRPG</span> - Belépés</div>
     <div class="auth-form-group">
       <label>Felhasználónév</label>
       <input type="text" id="authUser" placeholder="Karakter / Felhasználónév">
     </div>
-    
     <div class="auth-form-group">
       <label>Jelszó</label>
       <input type="password" id="authPass" placeholder="••••••••">
     </div>
-    
-    <button class="see-btn" id="authBtn" onclick="handleAuth()">Regisztráció</button>
-    
+    <button class="see-btn" id="authBtn" onclick="handleAuth()">Bejelentkezés</button>
     <div class="auth-switch" id="authSwitchRow">
-      Már van fiókod? <span onclick="toggleAuthMode(false)">Bejelentkezés</span>
+      Nincs még fiókod? <span onclick="toggleAuthMode(true)">Regisztráció</span>
     </div>
   </div>
 </div>
@@ -448,24 +369,36 @@ input[type="file"] { display: none; }
 </div>
 
 <script>
-const DEVELOPER_USERNAME = "ibrawn"; 
+// --- FIREBASE ADATBÁZIS BEÁLLÍTÁSA ---
+const FIREBASE_DB_URL = "https://adminduty-1fafd-default-rtdb.firebaseio.com";
+const DEVELOPER_USERNAME = "ibrawn"; // A te neved, aki látja a fejlesztői panelt
 
-let globalData = JSON.parse(localStorage.getItem("adminDutyV3_Data")) || {};
-let usersDB = JSON.parse(localStorage.getItem("adminDutyV3_Users")) || {};
+let usersDB = {};
+let globalData = {};
 let currentUser = sessionStorage.getItem("adminCurrentSessionUser") || "";
-let editType=null, editIndex=null;
-let isRegisterMode = true; // Alapértelmezetten most már regisztráción indul!
+let editType = null, editIndex = null;
+let isRegisterMode = false;
 
-function initAuth() {
-  if (currentUser) {
+async function fbFetch(path) {
+  try {
+    const res = await fetch(`${FIREBASE_DB_URL}/${path}.json`);
+    return await res.json();
+  } catch(e) { console.error(e); return null; }
+}
+
+async function fbSave(path, data) {
+  try {
+    await fetch(`${FIREBASE_DB_URL}/${path}.json`, { method: 'PUT', body: JSON.stringify(data) });
+  } catch(e) { console.error(e); }
+}
+
+async function initAuth() {
+  usersDB = await fbFetch("users") || {};
+  
+  if (currentUser && usersDB[currentUser]) {
     showMainUcp();
   } else {
-    // Ha van már regisztrált felhasználó a rendszerben, akkor dobja csak be a Bejelentkezést
-    if (Object.keys(usersDB).length > 0) {
-      toggleAuthMode(false);
-    } else {
-      toggleAuthMode(true);
-    }
+    toggleAuthMode(Object.keys(usersDB).length === 0);
   }
 }
 
@@ -476,34 +409,35 @@ function toggleAuthMode(toRegister) {
   const switchRow = document.getElementById("authSwitchRow");
   
   if (toRegister) {
-    title.innerHTML = "<span>Admin Duty</span> - Regisztráció";
+    title.innerHTML = "<span>SeeRPG</span> - Regisztráció";
     btn.textContent = "Regisztráció";
     switchRow.innerHTML = 'Már van fiókod? <span onclick="toggleAuthMode(false)">Bejelentkezés</span>';
   } else {
-    title.innerHTML = "<span>Admin Duty</span> - Belépés";
+    title.innerHTML = "<span>SeeRPG</span> - Belépés";
     btn.textContent = "Bejelentkezés";
     switchRow.innerHTML = 'Nincs még fiókod? <span onclick="toggleAuthMode(true)">Regisztráció</span>';
   }
 }
 
-function handleAuth() {
+async function handleAuth() {
   const user = document.getElementById("authUser").value.trim();
   const lowerUser = user.toLowerCase();
   const pass = document.getElementById("authPass").value;
   
-  if (!user || !pass) {
-    alert("Kérlek töltsd ki az összes mezőt!");
-    return;
-  }
+  if (!user || !pass) { alert("Kérlek töltsd ki az összes mezőt!"); return; }
+  
+  usersDB = await fbFetch("users") || {};
   
   if (isRegisterMode) {
-    if (usersDB[lowerUser]) {
-      alert("Ez a felhasználónév már foglalt!");
-      return;
-    }
-    usersDB[lowerUser] = { display: user, pass: pass, role: (lowerUser === DEVELOPER_USERNAME ? "dev" : "user") };
-    localStorage.setItem("adminDutyV3_Users", JSON.stringify(usersDB));
-    alert("Sikeres regisztráció! Most már bejelentkezhetsz.");
+    if (usersDB[lowerUser]) { alert("Ez a felhasználónév már foglalt!"); return; }
+    
+    usersDB[lowerUser] = { 
+      display: user, 
+      pass: pass, 
+      role: (lowerUser === DEVELOPER_USERNAME ? "dev" : "user") 
+    };
+    await fbSave("users", usersDB);
+    alert("Sikeres online regisztráció! Most már bejelentkezhetsz.");
     document.getElementById("authPass").value = "";
     toggleAuthMode(false);
   } else {
@@ -511,13 +445,13 @@ function handleAuth() {
       sessionStorage.setItem("adminCurrentSessionUser", lowerUser);
       currentUser = lowerUser;
       showMainUcp();
-    } else {
-      alert("Hibás felhasználónév vagy jelszó!");
+    } else { 
+      alert("Hibás felhasználónév vagy jelszó!"); 
     }
   }
 }
 
-function showMainUcp() {
+async function showMainUcp() {
   document.getElementById("authSection").style.display = "none";
   document.getElementById("mainUcpSection").style.display = "block";
   
@@ -534,175 +468,8 @@ function showMainUcp() {
     document.getElementById("devPanelBtn").style.display = "none";
   }
   
+  globalData = await fbFetch("data") || {};
   if (!globalData[currentUser]) {
-    globalData[currentUser] = { duty: [], off: [], reports: {} };
+    globalData[currentUser] = { duty: [], off: [], reports: {} }; 
   }
-  
-  render();
-}
-
-function logout() {
-  sessionStorage.removeItem("adminCurrentSessionUser");
-  currentUser = "";
-  document.getElementById("mainUcpSection").style.display = "none";
-  document.getElementById("authSection").style.display = "flex";
-  document.getElementById("authUser").value = "";
-  document.getElementById("authPass").value = "";
-  toggleAuthMode(false);
-}
-
-function openDevPanel() {
-  document.getElementById("devModal").style.display = "flex";
-  renderDevUsers();
-}
-
-function closeDevPanel() {
-  document.getElementById("devModal").style.display = "none";
-}
-
-function renderDevUsers() {
-  const container = document.getElementById("devUserList");
-  container.innerHTML = Object.keys(usersDB).map(username => {
-    const u = usersDB[username];
-    const isDev = u.role === "dev";
-    return `
-      <div class="see-list-item">
-        <div>
-          <span class="see-item-date" style="color:${isDev ? 'var(--see-dev)' : '#fff'}; font-weight:700;">${u.display}</span>
-          <span style="font-size:11px; color:var(--see-text-muted); margin-left:10px;">Rang: ${isDev ? 'Fejlesztő' : 'Admin'}</span>
-        </div>
-        <div class="see-item-actions">
-          <button class="see-action-btn" onclick="devEditUser('${username}')" title="Jelszó módosítása">✏</button>
-          ${isDev ? '' : `<button class="see-action-btn del" onclick="devDeleteUser('${username}')" title="Felhasználó törlése">✕</button>`}
-        </div>
-      </div>
-    `;
-  }).join('');
-}
-
-function devEditUser(username) {
-  const newPass = prompt(`Adj meg egy új jelszót a következő felhasználónak: ${usersDB[username].display}`);
-  if (newPass && newPass.trim() !== "") {
-    usersDB[username].pass = newPass;
-    localStorage.setItem("adminDutyV3_Users", JSON.stringify(usersDB));
-    alert("Jelszó sikeresen megváltoztatva!");
-    renderDevUsers();
-  }
-}
-
-function devDeleteUser(username) {
-  if (confirm(`Biztosan törölni akarod ${usersDB[username].display} fiókját és az ÖSSZES duty adatát?`)) {
-    delete usersDB[username];
-    delete globalData[username];
-    localStorage.setItem("adminDutyV3_Users", JSON.stringify(usersDB));
-    localStorage.setItem("adminDutyV3_Data", JSON.stringify(globalData));
-    alert("Felhasználó sikeresen törölve.");
-    renderDevUsers();
-  }
-}
-
-function saveGlobal() { localStorage.setItem("adminDutyV3_Data", JSON.stringify(globalData)); }
-function today() { return new Date().toISOString().substring(0,10); }
-
-function updateFileLabel() {
-  const files = document.getElementById('logFiles').files;
-  const label = document.getElementById('fileLabel');
-  label.textContent = files.length > 0 ? `Kiválasztva: ${files.length} db log` : 'Tallózás a gépedről (nem töltődik fel)';
-}
-
-function saveDuty() {
-  const on = +dutyOn.value, off = +dutyOff.value;
-  if (isNaN(on) || isNaN(off) || dutyOn.value === '' || dutyOff.value === '') return;
-  const item = { date: today(), on, off, perc: off - on };
-  if (editType === 'duty') globalData[currentUser].duty[editIndex] = item; else globalData[currentUser].duty.push(item);
-  editType = null; dutyOn.value = ''; dutyOff.value = ''; saveGlobal(); render();
-}
-
-function saveOff() {
-  const on = +offOn.value, off = +offOff.value;
-  if (isNaN(on) || isNaN(off) || offOn.value === '' || offOff.value === '') return;
-  const item = { date: today(), on, off, perc: off - on };
-  if (editType === 'off') globalData[currentUser].off[editIndex] = item; else globalData[currentUser].off.push(item);
-  editType = null; offOn.value = ''; offOff.value = ''; saveGlobal(); render();
-}
-
-function editItem(type, i) {
-  const x = globalData[currentUser][type][i];
-  if (type === 'duty') { dutyOn.value = x.on; dutyOff.value = x.off; }
-  else { offOn.value = x.on; offOff.value = x.off; }
-  editType = type; editIndex = i;
-}
-
-function delItem(type, i) {
-  if (confirm('Biztosan törlöd ezt az adatot?')) { globalData[currentUser][type].splice(i, 1); saveGlobal(); render(); }
-}
-
-function editReport(date) {
-  const currentCount = globalData[currentUser].reports[date];
-  const newCount = prompt(`Módosítás (${date}):`, currentCount);
-  if (newCount !== null && !isNaN(newCount) && newCount.trim() !== "") {
-    globalData[currentUser].reports[date] = parseInt(newCount, 10);
-    saveGlobal(); render();
-  }
-}
-
-function delReport(date) {
-  if (confirm(`Törlöd a(z) ${date} napi report adatokat?`)) { delete globalData[currentUser].reports[date]; saveGlobal(); render(); }
-}
-
-async function processLogs() {
-  const files = document.getElementById('logFiles').files;
-  if (files.length === 0) { alert('Válassz ki legalább egy fájlt!'); return; }
-  for (const file of files) {
-    const text = await file.text();
-    const lines = text.split(/\r?\n/);
-    for (const line of lines) {
-      if (line.includes('Egy elvállalt reportod lezárásra került')) {
-        const m = line.match(/\[(\d{4}-\d{2}-\d{2})/);
-        const date = m ? m[1] : 'Ismeretlen';
-        globalData[currentUser].reports[date] = (globalData[currentUser].reports[date] || 0) + 1;
-      }
-    }
-  }
-  saveGlobal(); render();
-  alert('Log fájlok sikeresen beolvasva.');
-  document.getElementById('logFiles').value = '';
-  updateFileLabel();
-}
-
-function render() {
-  let duty = 0, off = 0, reports = 0;
-  const uData = globalData[currentUser];
-
-  dutyStream.innerHTML = uData.duty.map((x, i) => {
-    duty += x.perc;
-    return `<div class="see-list-item"><span class="see-item-date">${x.date}</span><span class="see-item-value" style="color:var(--see-gold)">${x.perc} perc</span><div class="see-item-actions"><button class="see-action-btn" onclick="editItem('duty',${i})">✏</button><button class="see-action-btn del" onclick="delItem('duty',${i})">✕</button></div></div>`;
-  }).join('');
-
-  offStream.innerHTML = uData.off.map((x, i) => {
-    off += x.perc;
-    return `<div class="see-list-item"><span class="see-item-date">${x.date}</span><span class="see-item-value" style="color:#fff">${x.perc} perc</span><div class="see-item-actions"><button class="see-action-btn" onclick="editItem('off',${i})">✏</button><button class="see-action-btn del" onclick="delItem('off',${i})">✕</button></div></div>`;
-  }).join('');
-
-  const sortedReportKeys = Object.keys(uData.reports).sort();
-  reportStream.innerHTML = sortedReportKeys.map(d => {
-    reports += uData.reports[d];
-    return `<div class="see-list-item"><span class="see-item-date">${d}</span><span class="see-item-value" style="color:var(--see-success)">${uData.reports[d]} db</span><div class="see-item-actions"><button class="see-action-btn" onclick="editReport('${d}')">✏</button><button class="see-action-btn del" onclick="delReport('${d}')">✕</button></div></div>`;
-  }).join('');
-
-  totalDuty.innerHTML = `${duty} <span>perc</span>`;
-  totalOff.innerHTML = `${off} <span>perc</span>`;
-  totalReports.innerHTML = `${reports} <span>db</span>`;
-
-  document.getElementById('dutyCount').textContent = uData.duty.length + " sor";
-  document.getElementById('offCount').textContent = uData.off.length + " sor";
-  document.getElementById('reportDaysCount').textContent = sortedReportKeys.length + " nap";
-}
-
-// Az indítást betöltés után futtatjuk le közvetlenül
-window.onload = function() {
-  initAuth();
-};
-</script>
-</body>
-</html>
+  if (!globalData[currentUser].duty) globalData[currentUser].duty = [];
