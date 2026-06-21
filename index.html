@@ -21,6 +21,7 @@
   --see-danger-hover: #d93838;
   --see-success: #2ecc71;
   --see-dev: #00bcd4;
+  --see-stats-view: #9c27b0;
 }
 
 * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Montserrat', sans-serif; }
@@ -106,6 +107,22 @@ header h1 span { color: var(--see-gold); }
 }
 .dev-panel-btn:hover {
   background: var(--see-dev);
+  color: #fff;
+}
+
+.dev-stats-btn {
+  background: transparent;
+  border: 1px solid var(--see-stats-view);
+  color: var(--see-stats-view);
+  padding: 6px 12px;
+  border-radius: 6px;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+.dev-stats-btn:hover {
+  background: var(--see-stats-view);
   color: #fff;
 }
 
@@ -224,7 +241,7 @@ header h1 span { color: var(--see-gold); }
 }
 
 .see-input-row { display: flex; gap: 10px; margin-bottom: 12px; }
-input[type="number"], input[type="text"], input[type="password"] { 
+input[type="number"], input[type="text"], input[type="password"], select { 
   flex: 1; 
   background: var(--see-card-inner); 
   border: 1px solid var(--see-border); 
@@ -235,7 +252,7 @@ input[type="number"], input[type="text"], input[type="password"] {
   font-weight: 500; 
   transition: border-color 0.2s; 
 }
-input[type="number"]:focus, input[type="text"]:focus, input[type="password"]:focus { outline: none; border-color: var(--see-gold); }
+input[type="number"]:focus, input[type="text"]:focus, input[type="password"]:focus, select:focus { outline: none; border-color: var(--see-gold); }
 input[type="number"]::placeholder, input[type="text"]::placeholder, input[type="password"]::placeholder { color: #5a5f70; }
 
 .see-file-wrapper { position: relative; margin-bottom: 12px; }
@@ -341,8 +358,14 @@ input[type="file"] { display: none; }
 .dev-modal-content { background: var(--see-card); border: 1px solid var(--see-border); border-radius: 12px; width: 90%; max-width: 600px; padding: 25px; }
 .dev-modal-header { display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--see-border); padding-bottom: 15px; margin-bottom: 15px; }
 .dev-modal-header h2 { font-size: 16px; text-transform: uppercase; color: var(--see-dev); }
+.dev-modal-header.stats h2 { color: var(--see-stats-view); }
 .dev-close { background: transparent; color: var(--see-text-muted); font-size: 20px; cursor: pointer; border: none; }
 .dev-close:hover { color: #fff; }
+
+.stats-grid-mini { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin: 15px 0; }
+.stats-card-mini { background: var(--see-card-inner); border: 1px solid var(--see-border); border-radius: 8px; padding: 12px; text-align: center; }
+.stats-card-mini .label { font-size: 10px; text-transform: uppercase; color: var(--see-text-muted); font-weight: 600; }
+.stats-card-mini .val { font-size: 16px; font-weight: 700; margin-top: 4px; font-family: 'Roboto Mono', monospace; }
 </style>
 </head>
 <body>
@@ -354,6 +377,54 @@ input[type="file"] { display: none; }
       <button class="dev-close" onclick="closeDevPanel()">✕</button>
     </div>
     <div class="see-list-container" id="devUserList" style="max-height: 400px;"></div>
+  </div>
+</div>
+
+<div class="dev-modal" id="devStatsModal">
+  <div class="dev-modal-content" style="max-width: 800px;">
+    <div class="dev-modal-header stats">
+      <h2>📊 Admin Statisztikák Áttekintése</h2>
+      <button class="dev-close" onclick="closeDevStatsPanel()">✕</button>
+    </div>
+    
+    <div style="margin-bottom: 15px;">
+      <label style="display:block; font-size:11px; font-weight:700; text-transform:uppercase; color:var(--see-text-muted); margin-bottom:6px;">Admin kiválasztása:</label>
+      <select id="devStatsUserSelect" onchange="loadSelectedUserStats()">
+        <option value="">-- Válassz egy felhasználót --</option>
+      </select>
+    </div>
+
+    <div id="devStatsDashboard" style="display: none;">
+      <div class="stats-grid-mini">
+        <div class="stats-card-mini">
+          <div class="label">Duty Idő</div>
+          <div class="val" id="miniDuty" style="color: var(--see-gold);">0 p</div>
+        </div>
+        <div class="stats-card-mini">
+          <div class="label">Off Duty Idő</div>
+          <div class="val" id="miniOff" style="color: #fff;">0 p</div>
+        </div>
+        <div class="stats-card-mini">
+          <div class="label">Feldolgozott Reportok</div>
+          <div class="val" id="miniReports" style="color: var(--see-success);">0 db</div>
+        </div>
+      </div>
+
+      <div class="see-workspace" style="grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 15px; margin-top: 15px;">
+        <div>
+          <div style="font-size:12px; font-weight:700; text-transform:uppercase; margin-bottom:5px; color:var(--see-gold);">Duty Sorok</div>
+          <div class="see-list-container" id="miniDutyStream" style="max-height: 200px;"></div>
+        </div>
+        <div>
+          <div style="font-size:12px; font-weight:700; text-transform:uppercase; margin-bottom:5px; color:#fff;">Off Duty Sorok</div>
+          <div class="see-list-container" id="miniOffStream" style="max-height: 200px;"></div>
+        </div>
+        <div>
+          <div style="font-size:12px; font-weight:700; text-transform:uppercase; margin-bottom:5px; color:var(--see-success);">Reportok</div>
+          <div class="see-list-container" id="miniReportsStream" style="max-height: 200px;"></div>
+        </div>
+      </div>
+    </div>
   </div>
 </div>
 
@@ -384,6 +455,7 @@ input[type="file"] { display: none; }
       </div>
     </div>
     <div class="header-right">
+      <button class="dev-stats-btn" id="devStatsBtn" style="display:none;" onclick="openDevStatsPanel()">📊 Admin Statisztikák</button>
       <button class="dev-panel-btn" id="devPanelBtn" style="display:none;" onclick="openDevPanel()">⚙ Fejlesztői Panel</button>
       <div class="ucp-logo-badge" id="welcomeUser">v4 UCP</div>
       <button class="logout-btn" onclick="logout()">Kijelentkezés</button>
@@ -548,9 +620,11 @@ async function showMainUcp() {
     badge.classList.add("dev");
     badge.textContent = uData.display + " [FEJLESZTŐ]";
     document.getElementById("devPanelBtn").style.display = "inline-block";
+    document.getElementById("devStatsBtn").style.display = "inline-block";
   } else {
     badge.classList.remove("dev");
     document.getElementById("devPanelBtn").style.display = "none";
+    document.getElementById("devStatsBtn").style.display = "none";
   }
 
   globalData = await fbFetch("data") || {};
@@ -583,6 +657,69 @@ async function openDevPanel() {
 }
 
 function closeDevPanel() { document.getElementById("devModal").style.display = "none"; }
+
+/* ÚJ FEJLESZTŐI STATISZTIKA FUNKCIÓK */
+async function openDevStatsPanel() {
+  document.getElementById("devStatsModal").style.display = "flex";
+  document.getElementById("devStatsDashboard").style.display = "none";
+  
+  usersDB = await fbFetch("users") || {};
+  globalData = await fbFetch("data") || {};
+  
+  const select = document.getElementById("devStatsUserSelect");
+  select.innerHTML = '<option value="">-- Válassz egy felhasználót --</option>';
+  
+  Object.keys(usersDB).forEach(username => {
+    const option = document.createElement("option");
+    option.value = username;
+    option.textContent = usersDB[username].display + (usersDB[username].role === 'dev' ? ' [Dev]' : ' [Admin]');
+    select.appendChild(option);
+  });
+}
+
+function closeDevStatsPanel() { 
+  document.getElementById("devStatsModal").style.display = "none"; 
+}
+
+function loadSelectedUserStats() {
+  const targetUser = document.getElementById("devStatsUserSelect").value;
+  if (!targetUser) {
+    document.getElementById("devStatsDashboard").style.display = "none";
+    return;
+  }
+  
+  document.getElementById("devStatsDashboard").style.display = "block";
+  
+  const uData = globalData[targetUser] || { duty: [], off: [], reports: {} };
+  const dList = uData.duty || [];
+  const oList = uData.off || [];
+  const reps = uData.reports || {};
+  
+  let totalDutyMin = 0;
+  let totalOffMin = 0;
+  let totalRepCount = 0;
+  
+  // Részletes listák feltöltése
+  document.getElementById("miniDutyStream").innerHTML = dList.map(x => {
+    totalDutyMin += x.perc;
+    return `<div class="see-list-item" style="padding: 8px 10px;"><span class="see-item-date">${x.date}</span><span class="see-item-value" style="color:var(--see-gold)">${x.perc} p</span></div>`;
+  }).join('') || '<div style="font-size:11px;color:var(--see-text-muted);">Nincs adat</div>';
+  
+  document.getElementById("miniOffStream").innerHTML = oList.map(x => {
+    totalOffMin += x.perc;
+    return `<div class="see-list-item" style="padding: 8px 10px;"><span class="see-item-date">${x.date}</span><span class="see-item-value" style="color:#fff">${x.perc} p</span></div>`;
+  }).join('') || '<div style="font-size:11px;color:var(--see-text-muted);">Nincs adat</div>';
+  
+  document.getElementById("miniReportsStream").innerHTML = Object.keys(reps).sort().map(d => {
+    totalRepCount += reps[d];
+    return `<div class="see-list-item" style="padding: 8px 10px;"><span class="see-item-date">${d}</span><span class="see-item-value" style="color:var(--see-success)">${reps[d]} db</span></div>`;
+  }).join('') || '<div style="font-size:11px;color:var(--see-text-muted);">Nincs adat</div>';
+  
+  // Összegző kártyák beírása
+  document.getElementById("miniDuty").textContent = totalDutyMin + " p";
+  document.getElementById("miniOff").textContent = totalOffMin + " p";
+  document.getElementById("miniReports").textContent = totalRepCount + " db";
+}
 
 function renderDevUsers() {
   const container = document.getElementById("devUserList");
