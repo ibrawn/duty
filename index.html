@@ -9,197 +9,232 @@
 <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700;800&family=Roboto+Mono:wght@400;700&display=swap" rel="stylesheet">
 <style>
 :root {
-  --see-bg: #121318;
-  --see-card: #1a1c23;
-  --see-card-inner: #22252f;
-  --see-border: #2d313f;
-  --see-gold: #ffc107;
-  --see-gold-hover: #e0a800;
-  --see-text: #ffffff;
-  --see-text-muted: #8a8f9e;
-  --see-danger: #ff4a4a;
-  --see-success: #2ecc71;
-  --see-dev: #00bcd4;
+--see-bg: #121318;
+--see-card: #1a1c23;
+--see-card-inner: #22252f;
+--see-border: #2d313f;
+--see-gold: #ffc107;
+--see-gold-hover: #e0a800;
+--see-text: #ffffff;
+--see-text-muted: #8a8f9e;
+--see-danger: #ff4a4a;
+  --see-danger-hover: #d93838;
+--see-success: #2ecc71;
+--see-dev: #00bcd4;
 }
 
 * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Montserrat', sans-serif; }
 body { 
-  background-color: var(--see-bg); 
-  color: var(--see-text); 
-  padding: 30px 20px; 
-  min-height: 100vh;
-  background-image: radial-gradient(circle at 50% 0%, #1c1e26 0%, #121318 70%);
+background-color: var(--see-bg); 
+color: var(--see-text); 
+padding: 30px 20px; 
+min-height: 100vh;
+background-image: radial-gradient(circle at 50% 0%, #1c1e26 0%, #121318 70%);
 }
 
 .ucp-container { max-width: 1400px; margin: 0 auto; display: none; }
 
 header { 
-  background: var(--see-card); 
-  border: 1px solid var(--see-border);
-  border-radius: 12px;
-  padding: 18px 24px;
-  margin-bottom: 25px;
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
+background: var(--see-card); 
+border: 1px solid var(--see-border);
+border-radius: 12px;
+padding: 18px 24px;
+margin-bottom: 25px;
+display: flex;
+justify-content: space-between;
+align-items: center;
 }
 .header-left {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
+display: flex;
+flex-direction: column;
+gap: 4px;
 }
 header h1 { 
-  font-size: 20px; 
-  font-weight: 700; 
-  letter-spacing: 0.5px; 
-  text-transform: uppercase;
-  display: flex;
-  align-items: center;
-  gap: 10px;
+font-size: 20px; 
+font-weight: 700; 
+letter-spacing: 0.5px; 
+text-transform: uppercase;
+display: flex;
+align-items: center;
+gap: 10px;
 }
 header h1 span { color: var(--see-gold); }
 
 .header-summary-stats {
-  font-size: 11px;
-  font-weight: 600;
-  color: var(--see-text-muted);
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
-  display: flex;
-  gap: 12px;
+font-size: 11px;
+font-weight: 600;
+color: var(--see-text-muted);
+text-transform: uppercase;
+letter-spacing: 0.5px;
+display: flex;
+gap: 12px;
 }
 .header-summary-stats span strong {
-  font-family: 'Roboto Mono', monospace;
+font-family: 'Roboto Mono', monospace;
 }
 .header-summary-stats .duty-s { color: var(--see-gold); }
 .header-summary-stats .off-s { color: #fff; }
 
 .header-right {
-  display: flex;
-  align-items: center;
-  gap: 15px;
+display: flex;
+align-items: center;
+gap: 15px;
 }
 
 .ucp-logo-badge {
-  background: var(--see-gold);
-  color: #000;
-  padding: 4px 10px;
-  border-radius: 6px;
-  font-weight: 800;
-  font-size: 12px;
+background: var(--see-gold);
+color: #000;
+padding: 4px 10px;
+border-radius: 6px;
+font-weight: 800;
+font-size: 12px;
 }
 .ucp-logo-badge.dev {
-  background: var(--see-dev);
-  color: #fff;
+background: var(--see-dev);
+color: #fff;
 }
 
 .dev-panel-btn {
-  background: transparent;
-  border: 1px solid var(--see-dev);
-  color: var(--see-dev);
-  padding: 6px 12px;
-  border-radius: 6px;
-  font-size: 12px;
-  font-weight: 600;
-  cursor: pointer;
-  transition: all 0.2s;
+background: transparent;
+border: 1px solid var(--see-dev);
+color: var(--see-dev);
+padding: 6px 12px;
+border-radius: 6px;
+font-size: 12px;
+font-weight: 600;
+cursor: pointer;
+transition: all 0.2s;
 }
 .dev-panel-btn:hover {
-  background: var(--see-dev);
-  color: #fff;
+background: var(--see-dev);
+color: #fff;
 }
 
 .logout-btn {
-  background: transparent;
-  border: 1px solid var(--see-danger);
-  color: var(--see-danger);
-  padding: 6px 12px;
-  border-radius: 6px;
-  font-size: 12px;
-  font-weight: 600;
-  cursor: pointer;
-  transition: all 0.2s;
+background: transparent;
+border: 1px solid var(--see-danger);
+color: var(--see-danger);
+padding: 6px 12px;
+border-radius: 6px;
+font-size: 12px;
+font-weight: 600;
+cursor: pointer;
+transition: all 0.2s;
 }
 .logout-btn:hover {
-  background: var(--see-danger);
-  color: #fff;
+background: var(--see-danger);
+color: #fff;
 }
 
 .see-grid-stats { 
-  display: grid; 
-  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); 
-  gap: 20px; 
-  margin-bottom: 25px; 
+display: grid; 
+grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); 
+gap: 20px; 
+margin-bottom: 25px; 
 }
 .see-stat-card { 
-  background: var(--see-card); 
-  border: 1px solid var(--see-border); 
-  border-radius: 12px; 
-  padding: 22px; 
+background: var(--see-card); 
+border: 1px solid var(--see-border); 
+border-radius: 12px; 
+padding: 22px; 
 }
 .see-stat-label { 
-  font-size: 12px; 
-  font-weight: 600; 
-  color: var(--see-text-muted); 
-  text-transform: uppercase; 
-  letter-spacing: 0.5px; 
+font-size: 12px; 
+font-weight: 600; 
+color: var(--see-text-muted); 
+text-transform: uppercase; 
+letter-spacing: 0.5px; 
 }
 .see-stat-value { 
-  font-size: 30px; 
-  font-weight: 700; 
-  margin-top: 10px; 
-  color: #fff;
-  display: flex;
-  align-items: baseline;
-  gap: 6px;
+font-size: 30px; 
+font-weight: 700; 
+margin-top: 10px; 
+color: #fff;
+display: flex;
+align-items: baseline;
+gap: 6px;
 }
 .see-stat-value span { font-size: 16px; color: var(--see-text-muted); font-weight: 500; }
 
 .see-workspace { 
-  display: grid; 
-  grid-template-columns: repeat(auto-fit, minmax(380px, 1fr)); 
-  gap: 25px; 
+display: grid; 
+grid-template-columns: repeat(auto-fit, minmax(380px, 1fr)); 
+gap: 25px; 
 }
 .see-panel { 
-  background: var(--see-card); 
-  border: 1px solid var(--see-border); 
-  border-radius: 12px; 
-  padding: 24px; 
-  display: flex; 
-  flex-direction: column; 
+background: var(--see-card); 
+border: 1px solid var(--see-border); 
+border-radius: 12px; 
+padding: 24px; 
+display: flex; 
+flex-direction: column; 
 }
 .see-panel-title { 
-  font-size: 15px; 
-  font-weight: 700; 
-  text-transform: uppercase;
-  color: #fff; 
-  margin-bottom: 18px; 
-  display: flex; 
-  align-items: center; 
-  justify-content: space-between; 
-  border-bottom: 1px solid var(--see-border);
-  padding-bottom: 12px;
+font-size: 15px; 
+font-weight: 700; 
+text-transform: uppercase;
+color: #fff; 
+margin-bottom: 18px; 
+display: flex; 
+align-items: center; 
+justify-content: space-between; 
+border-bottom: 1px solid var(--see-border);
+padding-bottom: 12px;
 }
 .see-panel-title span { 
-  font-size: 11px; 
-  font-weight: 600; 
-  background: var(--see-card-inner); 
-  padding: 4px 10px; 
-  border-radius: 6px; 
-  color: var(--see-gold); 
+font-size: 11px; 
+font-weight: 600; 
+background: var(--see-card-inner); 
+padding: 4px 10px; 
+border-radius: 6px; 
+color: var(--see-gold); 
+}
+
+.panel-bulk-actions {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 12px;
+  gap: 10px;
+}
+
+.bulk-btn {
+  background: transparent;
+  border: 1px solid var(--see-border);
+  color: var(--see-text-muted);
+  font-size: 11px;
+  font-weight: 600;
+  padding: 5px 10px;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.2s;
+  text-transform: uppercase;
+}
+.bulk-btn:hover {
+  border-color: var(--see-gold);
+  color: #fff;
+}
+.bulk-btn.danger-bulk {
+  background: var(--see-danger);
+  border-color: var(--see-danger);
+  color: #fff;
+  display: none; /* Csak akkor jelenik meg, ha van kijelölés */
+}
+.bulk-btn.danger-bulk:hover {
+  background: var(--see-danger-hover);
 }
 
 .see-input-row { display: flex; gap: 10px; margin-bottom: 12px; }
 input[type="number"], input[type="text"], input[type="password"] { 
-  flex: 1; 
-  background: var(--see-card-inner); 
-  border: 1px solid var(--see-border); 
-  border-radius: 8px; 
-  padding: 12px 14px; 
-  color: #fff; 
-  font-size: 13px; 
-  font-weight: 500; 
-  transition: border-color 0.2s; 
+flex: 1; 
+background: var(--see-card-inner); 
+border: 1px solid var(--see-border); 
+border-radius: 8px; 
+padding: 12px 14px; 
+color: #fff; 
+font-size: 13px; 
+font-weight: 500; 
+transition: border-color 0.2s; 
 }
 input[type="number"]:focus, input[type="text"]:focus, input[type="password"]:focus { outline: none; border-color: var(--see-gold); }
 input[type="number"]::placeholder, input[type="text"]::placeholder, input[type="password"]::placeholder { color: #5a5f70; }
@@ -207,34 +242,34 @@ input[type="number"]::placeholder, input[type="text"]::placeholder, input[type="
 .see-file-wrapper { position: relative; margin-bottom: 12px; }
 input[type="file"] { display: none; }
 .see-file-label { 
-  display: flex; 
-  align-items: center; 
-  justify-content: center; 
-  background: var(--see-card-inner); 
-  border: 1px dashed var(--see-border); 
-  border-radius: 8px; 
-  padding: 12px; 
-  font-size: 13px; 
-  color: var(--see-text-muted); 
-  cursor: pointer; 
-  font-weight: 500; 
-  transition: all 0.2s; 
+display: flex; 
+align-items: center; 
+justify-content: center; 
+background: var(--see-card-inner); 
+border: 1px dashed var(--see-border); 
+border-radius: 8px; 
+padding: 12px; 
+font-size: 13px; 
+color: var(--see-text-muted); 
+cursor: pointer; 
+font-weight: 500; 
+transition: all 0.2s; 
 }
 .see-file-label:hover { border-color: var(--see-gold); color: #fff; }
 
 .see-btn { 
-  background: var(--see-gold); 
-  color: #000; 
-  border: none; 
-  padding: 12px; 
-  border-radius: 8px; 
-  font-size: 13px; 
-  font-weight: 700; 
-  cursor: pointer; 
-  transition: background 0.2s; 
-  width: 100%; 
-  text-transform: uppercase;
-  letter-spacing: 0.3px;
+background: var(--see-gold); 
+color: #000; 
+border: none; 
+padding: 12px; 
+border-radius: 8px; 
+font-size: 13px; 
+font-weight: 700; 
+cursor: pointer; 
+transition: background 0.2s; 
+width: 100%; 
+text-transform: uppercase;
+letter-spacing: 0.3px;
 }
 .see-btn:hover { background: var(--see-gold-hover); }
 .see-panel.report-type .see-btn { background: #242734; color: #fff; border: 1px solid var(--see-border); }
@@ -242,39 +277,51 @@ input[type="file"] { display: none; }
 
 .see-list-container { 
   margin-top: 20px; 
-  overflow-y: auto; 
-  max-height: 300px; 
-  padding-right: 4px; 
-  display: flex; 
-  flex-direction: column; 
-  gap: 8px; 
+  margin-top: 10px; 
+overflow-y: auto; 
+max-height: 300px; 
+padding-right: 4px; 
+display: flex; 
+flex-direction: column; 
+gap: 8px; 
 }
 .see-list-item { 
-  background: var(--see-card-inner); 
-  border: 1px solid var(--see-border); 
-  border-radius: 8px; 
-  padding: 12px 14px; 
-  display: flex; 
-  align-items: center; 
-  justify-content: space-between; 
+background: var(--see-card-inner); 
+border: 1px solid var(--see-border); 
+border-radius: 8px; 
+padding: 12px 14px; 
+display: flex; 
+align-items: center; 
+justify-content: space-between; 
+}
+.see-item-left {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+.see-checkbox {
+  width: 16px;
+  height: 16px;
+  accent-color: var(--see-gold);
+  cursor: pointer;
 }
 .see-item-date { font-size: 12px; color: var(--see-text-muted); font-weight: 500; }
 .see-item-value { font-size: 13px; font-weight: 600; font-family: 'Roboto Mono', monospace; }
 
 .see-item-actions { display: flex; gap: 4px; }
 .see-action-btn { 
-  background: #1a1c23; 
-  border: 1px solid var(--see-border); 
-  color: var(--see-text-muted); 
-  width: 28px; 
-  height: 28px; 
-  border-radius: 6px; 
-  display: flex; 
-  align-items: center; 
-  justify-content: center; 
-  cursor: pointer; 
-  transition: all 0.2s; 
-  font-size: 11px; 
+background: #1a1c23; 
+border: 1px solid var(--see-border); 
+color: var(--see-text-muted); 
+width: 28px; 
+height: 28px; 
+border-radius: 6px; 
+display: flex; 
+align-items: center; 
+justify-content: center; 
+cursor: pointer; 
+transition: all 0.2s; 
+font-size: 11px; 
 }
 .see-action-btn:hover { border-color: var(--see-gold); color: var(--see-gold); }
 .see-action-btn.del:hover { border-color: var(--see-danger); color: var(--see-danger); }
@@ -303,102 +350,117 @@ input[type="file"] { display: none; }
 <body>
 
 <div class="dev-modal" id="devModal">
-  <div class="dev-modal-content">
-    <div class="dev-modal-header">
-      <h2>Fejlesztői Panel - Felhasználók Kezelése</h2>
-      <button class="dev-close" onclick="closeDevPanel()">✕</button>
-    </div>
-    <div class="see-list-container" id="devUserList" style="max-height: 400px;"></div>
-  </div>
+<div class="dev-modal-content">
+<div class="dev-modal-header">
+<h2>Fejlesztői Panel - Felhasználók Kezelése</h2>
+<button class="dev-close" onclick="closeDevPanel()">✕</button>
+</div>
+<div class="see-list-container" id="devUserList" style="max-height: 400px;"></div>
+</div>
 </div>
 
 <div class="auth-wrapper" id="authSection">
-  <div class="auth-card">
-    <div class="auth-title" id="authTitle"><span>SeeRPG</span> - Belépés</div>
-    <div class="auth-form-group">
-      <label>Felhasználónév</label>
-      <input type="text" id="authUser" placeholder="Karakter / Felhasználónév">
-    </div>
-    <div class="auth-form-group">
-      <label>Jelszó</label>
-      <input type="password" id="authPass" placeholder="••••••••">
-    </div>
-    <button class="see-btn" id="authBtn" onclick="handleAuth()">Bejelentkezés</button>
-    <div class="auth-switch" id="authSwitchRow">
-      Nincs még fiókod? <span onclick="toggleAuthMode(true)">Regisztráció</span>
-    </div>
-  </div>
+<div class="auth-card">
+<div class="auth-title" id="authTitle"><span>SeeRPG</span> - Belépés</div>
+<div class="auth-form-group">
+<label>Felhasználónév</label>
+<input type="text" id="authUser" placeholder="Karakter / Felhasználónév">
+</div>
+<div class="auth-form-group">
+<label>Jelszó</label>
+<input type="password" id="authPass" placeholder="••••••••">
+</div>
+<button class="see-btn" id="authBtn" onclick="handleAuth()">Bejelentkezés</button>
+<div class="auth-switch" id="authSwitchRow">
+Nincs még fiókod? <span onclick="toggleAuthMode(true)">Regisztráció</span>
+</div>
+</div>
 </div>
 
 <div class="ucp-container" id="mainUcpSection">
-  <header>
-    <div class="header-left">
-      <h1><span>SeeRPG</span> - Admin Duty</h1>
-      <div class="header-summary-stats">
-        <span>Összes Duty: <strong id="headTotalDuty" class="duty-s">0 p</strong></span>
-        <span>•</span>
-        <span>Összes Off: <strong id="headTotalOff" class="off-s">0 p</strong></span>
-      </div>
-    </div>
-    <div class="header-right">
-      <button class="dev-panel-btn" id="devPanelBtn" style="display:none;" onclick="openDevPanel()">⚙ Fejlesztői Panel</button>
-      <div class="ucp-logo-badge" id="welcomeUser">v4 UCP</div>
-      <button class="logout-btn" onclick="logout()">Kijelentkezés</button>
-    </div>
-  </header>
+<header>
+<div class="header-left">
+<h1><span>SeeRPG</span> - Admin Duty</h1>
+<div class="header-summary-stats">
+<span>Összes Duty: <strong id="headTotalDuty" class="duty-s">0 p</strong></span>
+<span>•</span>
+<span>Összes Off: <strong id="headTotalOff" class="off-s">0 p</strong></span>
+</div>
+</div>
+<div class="header-right">
+<button class="dev-panel-btn" id="devPanelBtn" style="display:none;" onclick="openDevPanel()">⚙ Fejlesztői Panel</button>
+<div class="ucp-logo-badge" id="welcomeUser">v4 UCP</div>
+<button class="logout-btn" onclick="logout()">Kijelentkezés</button>
+</div>
+</header>
 
-  <div class="see-grid-stats">
-    <div class="see-stat-card">
-      <div class="see-stat-label">Összes Duty Idő</div>
-      <div id="totalDuty" class="see-value-wrapper see-stat-value">0<span>perc</span></div>
-    </div>
-    <div class="see-stat-card">
-      <div class="see-stat-label">Összes Off Duty Idő</div>
-      <div id="totalOff" class="see-value-wrapper see-stat-value">0<span>perc</span></div>
-    </div>
-    <div class="see-stat-card">
-      <div class="see-stat-label">Feldolgozott Reportok</div>
-      <div id="totalReports" class="see-value-wrapper see-stat-value">0<span>db</span></div>
-    </div>
-  </div>
+<div class="see-grid-stats">
+<div class="see-stat-card">
+<div class="see-stat-label">Összes Duty Idő</div>
+<div id="totalDuty" class="see-value-wrapper see-stat-value">0<span>perc</span></div>
+</div>
+<div class="see-stat-card">
+<div class="see-stat-label">Összes Off Duty Idő</div>
+<div id="totalOff" class="see-value-wrapper see-stat-value">0<span>perc</span></div>
+</div>
+<div class="see-stat-card">
+<div class="see-stat-label">Feldolgozott Reportok</div>
+<div id="totalReports" class="see-value-wrapper see-stat-value">0<span>db</span></div>
+</div>
+</div>
 
-  <div class="see-workspace">
-    <div class="see-panel">
-      <div class="see-panel-title">Duty Rögzítés <span id="dutyCount">0 sor</span></div>
-      <div class="see-input-row">
-        <input id="dutyOn" type="number" placeholder="Kezdő perc">
-        <input id="dutyOff" type="number" placeholder="Vég perc">
+<div class="see-workspace">
+<div class="see-panel">
+<div class="see-panel-title">Duty Rögzítés <span id="dutyCount">0 sor</span></div>
+<div class="see-input-row">
+<input id="dutyOn" type="number" placeholder="Kezdő perc">
+<input id="dutyOff" type="number" placeholder="Vég perc">
+</div>
+<button class="see-btn" onclick="saveDuty()">Mentés</button>
+      
+      <div class="panel-bulk-actions">
+        <button class="bulk-btn" onclick="toggleSelectAll('duty')">Összes kijelölése</button>
+        <button class="bulk-btn danger-bulk" id="bulkDelBtn-duty" onclick="deleteSelected('duty')">Kijelöltek törlése</button>
       </div>
-      <button class="see-btn" onclick="saveDuty()">Mentés</button>
-      <div class="see-list-container" id="dutyStream"></div>
-    </div>
+<div class="see-list-container" id="dutyStream"></div>
+</div>
 
-    <div class="see-panel">
-      <div class="see-panel-title">Off Duty Rögzítés <span id="offCount">0 sor</span></div>
-      <div class="see-input-row">
-        <input id="offOn" type="number" placeholder="Kezdő perc">
-        <input id="offOff" type="number" placeholder="Vég perc">
+<div class="see-panel">
+<div class="see-panel-title">Off Duty Rögzítés <span id="offCount">0 sor</span></div>
+<div class="see-input-row">
+<input id="offOn" type="number" placeholder="Kezdő perc">
+<input id="offOff" type="number" placeholder="Vég perc">
+</div>
+<button class="see-btn" onclick="saveOff()">Mentés</button>
+      
+      <div class="panel-bulk-actions">
+        <button class="bulk-btn" onclick="toggleSelectAll('off')">Összes kijelölése</button>
+        <button class="bulk-btn danger-bulk" id="bulkDelBtn-off" onclick="deleteSelected('off')">Kijelöltek törlése</button>
       </div>
-      <button class="see-btn" onclick="saveOff()">Mentés</button>
-      <div class="see-list-container" id="offStream"></div>
-    </div>
+<div class="see-list-container" id="offStream"></div>
+</div>
 
-    <div class="see-panel report-type">
-      <div class="see-panel-title">Logok Beolvasása <span id="reportDaysCount">0 nap</span></div>
-      <div class="see-file-wrapper">
-        <label for="logFiles" class="see-file-label" id="fileLabel">Tallózás a gépedről (nem töltődik fel)</label>
-        <input type="file" id="logFiles" multiple accept=".txt,.log" onchange="updateFileLabel()">
+<div class="see-panel report-type">
+<div class="see-panel-title">Logok Beolvasása <span id="reportDaysCount">0 nap</span></div>
+<div class="see-file-wrapper">
+<label for="logFiles" class="see-file-label" id="fileLabel">Tallózás a gépedről (nem töltődik fel)</label>
+<input type="file" id="logFiles" multiple accept=".txt,.log" onchange="updateFileLabel()">
+</div>
+<button class="see-btn" onclick="processLogs()">Betöltés és elemzés</button>
+      
+      <div class="panel-bulk-actions">
+        <button class="bulk-btn" onclick="toggleSelectAll('reports')">Összes kijelölése</button>
+        <button class="bulk-btn danger-bulk" id="bulkDelBtn-reports" onclick="deleteSelected('reports')">Kijelöltek törlése</button>
       </div>
-      <button class="see-btn" onclick="processLogs()">Betöltés és elemzés</button>
-      <div class="see-list-container" id="reportStream"></div>
-    </div>
-  </div>
+<div class="see-list-container" id="reportStream"></div>
+</div>
+</div>
 </div>
 
 <script>
 // --- FIREBASE ADATBÁZIS BEÁLLÍTÁSA ---
 const FIREBASE_DB_URL = "https://adminduty-1fafd-default-rtdb.firebaseio.com";
-const DEVELOPER_USERNAME = "ibrawn"; // A te neved, aki látja a fejlesztői panelt
+const DEVELOPER_USERNAME = "ibrawn"; 
 
 let usersDB = {};
 let globalData = {};
@@ -406,290 +468,434 @@ let currentUser = sessionStorage.getItem("adminCurrentSessionUser") || "";
 let editType = null, editIndex = null;
 let isRegisterMode = false;
 
+// Kijelölési állapotok tárolása ideiglenesen a felületen
+let selectedItems = { duty: {}, off: {}, reports: {} };
+
 async function fbFetch(path) {
-  try {
-    const res = await fetch(`${FIREBASE_DB_URL}/${path}.json`);
-    return await res.json();
-  } catch(e) { console.error(e); return null; }
+try {
+const res = await fetch(`${FIREBASE_DB_URL}/${path}.json`);
+return await res.json();
+} catch(e) { console.error(e); return null; }
 }
 
 async function fbSave(path, data) {
-  try {
-    await fetch(`${FIREBASE_DB_URL}/${path}.json`, { method: 'PUT', body: JSON.stringify(data) });
-  } catch(e) { console.error(e); }
+try {
+await fetch(`${FIREBASE_DB_URL}/${path}.json`, { method: 'PUT', body: JSON.stringify(data) });
+} catch(e) { console.error(e); }
 }
 
 async function initAuth() {
-  usersDB = await fbFetch("users") || {};
-  
-  if (currentUser && usersDB[currentUser]) {
-    showMainUcp();
-  } else {
-    toggleAuthMode(Object.keys(usersDB).length === 0);
-  }
+usersDB = await fbFetch("users") || {};
+if (currentUser && usersDB[currentUser]) {
+showMainUcp();
+} else {
+toggleAuthMode(Object.keys(usersDB).length === 0);
+}
 }
 
 function toggleAuthMode(toRegister) {
-  isRegisterMode = toRegister;
-  const title = document.getElementById("authTitle");
-  const btn = document.getElementById("authBtn");
-  const switchRow = document.getElementById("authSwitchRow");
-  
-  if (toRegister) {
-    title.innerHTML = "<span>SeeRPG</span> - Regisztráció";
-    btn.textContent = "Regisztráció";
-    switchRow.innerHTML = 'Már van fiókod? <span onclick="toggleAuthMode(false)">Bejelentkezés</span>';
-  } else {
-    title.innerHTML = "<span>SeeRPG</span> - Belépés";
-    btn.textContent = "Bejelentkezés";
-    switchRow.innerHTML = 'Nincs még fiókod? <span onclick="toggleAuthMode(true)">Regisztráció</span>';
-  }
+isRegisterMode = toRegister;
+const title = document.getElementById("authTitle");
+const btn = document.getElementById("authBtn");
+const switchRow = document.getElementById("authSwitchRow");
+
+if (toRegister) {
+title.innerHTML = "<span>SeeRPG</span> - Regisztráció";
+btn.textContent = "Regisztráció";
+switchRow.innerHTML = 'Már van fiókod? <span onclick="toggleAuthMode(false)">Bejelentkezés</span>';
+} else {
+title.innerHTML = "<span>SeeRPG</span> - Belépés";
+btn.textContent = "Bejelentkezés";
+switchRow.innerHTML = 'Nincs még fiókod? <span onclick="toggleAuthMode(true)">Regisztráció</span>';
+}
 }
 
 async function handleAuth() {
-  const user = document.getElementById("authUser").value.trim();
-  const lowerUser = user.toLowerCase();
-  const pass = document.getElementById("authPass").value;
-  
-  if (!user || !pass) { alert("Kérlek töltsd ki az összes mezőt!"); return; }
-  
-  usersDB = await fbFetch("users") || {};
-  
-  if (isRegisterMode) {
-    if (usersDB[lowerUser]) { alert("Ez a felhasználónév már foglalt!"); return; }
-    
-    usersDB[lowerUser] = { 
-      display: user, 
-      pass: pass, 
-      role: (lowerUser === DEVELOPER_USERNAME ? "dev" : "user") 
-    };
-    await fbSave("users", usersDB);
-    alert("Sikeres online regisztráció! Most már bejelentkezhetsz.");
-    document.getElementById("authPass").value = "";
-    toggleAuthMode(false);
-  } else {
-    if (usersDB[lowerUser] && usersDB[lowerUser].pass === pass) {
-      sessionStorage.setItem("adminCurrentSessionUser", lowerUser);
-      currentUser = lowerUser;
-      showMainUcp();
-    } else { 
-      alert("Hibás felhasználónév vagy jelszó!"); 
-    }
-  }
+const user = document.getElementById("authUser").value.trim();
+const lowerUser = user.toLowerCase();
+const pass = document.getElementById("authPass").value;
+
+if (!user || !pass) { alert("Kérlek töltsd ki az összes mezőt!"); return; }
+
+usersDB = await fbFetch("users") || {};
+
+if (isRegisterMode) {
+if (usersDB[lowerUser]) { alert("Ez a felhasználónév már foglalt!"); return; }
+
+usersDB[lowerUser] = { 
+display: user, 
+pass: pass, 
+role: (lowerUser === DEVELOPER_USERNAME ? "dev" : "user") 
+};
+await fbSave("users", usersDB);
+alert("Sikeres online regisztráció! Most már bejelentkezhetsz.");
+document.getElementById("authPass").value = "";
+toggleAuthMode(false);
+} else {
+if (usersDB[lowerUser] && usersDB[lowerUser].pass === pass) {
+sessionStorage.setItem("adminCurrentSessionUser", lowerUser);
+currentUser = lowerUser;
+showMainUcp();
+} else { 
+alert("Hibás felhasználónév vagy jelszó!"); 
+}
+}
 }
 
 async function showMainUcp() {
-  document.getElementById("authSection").style.display = "none";
-  document.getElementById("mainUcpSection").style.display = "block";
+document.getElementById("authSection").style.display = "none";
+document.getElementById("mainUcpSection").style.display = "block";
+
+const uData = usersDB[currentUser];
+const badge = document.getElementById("welcomeUser");
+badge.textContent = uData.display;
+
+if (uData.role === "dev") {
+badge.classList.add("dev");
+badge.textContent = uData.display + " [FEJLESZTŐ]";
+document.getElementById("devPanelBtn").style.display = "inline-block";
+} else {
+badge.classList.remove("dev");
+document.getElementById("devPanelBtn").style.display = "none";
+}
+
+globalData = await fbFetch("data") || {};
+if (!globalData[currentUser]) {
+globalData[currentUser] = { duty: [], off: [], reports: {} }; 
+}
+if (!globalData[currentUser].duty) globalData[currentUser].duty = [];
+if (!globalData[currentUser].off) globalData[currentUser].off = [];
+if (!globalData[currentUser].reports) globalData[currentUser].reports = {};
+
+  // Kijelölések alaphelyzetbe állítása belépéskor
+  selectedItems = { duty: {}, off: {}, reports: {} };
   
-  const uData = usersDB[currentUser];
-  const badge = document.getElementById("welcomeUser");
-  badge.textContent = uData.display;
-  
-  if (uData.role === "dev") {
-    badge.classList.add("dev");
-    badge.textContent = uData.display + " [FEJLESZTŐ]";
-    document.getElementById("devPanelBtn").style.display = "inline-block";
-  } else {
-    badge.classList.remove("dev");
-    document.getElementById("devPanelBtn").style.display = "none";
-  }
-  
-  globalData = await fbFetch("data") || {};
-  if (!globalData[currentUser]) {
-    globalData[currentUser] = { duty: [], off: [], reports: {} }; 
-  }
-  if (!globalData[currentUser].duty) globalData[currentUser].duty = [];
-  if (!globalData[currentUser].off) globalData[currentUser].off = [];
-  if (!globalData[currentUser].reports) globalData[currentUser].reports = {};
-  
-  render();
+render();
 }
 
 function logout() {
-  sessionStorage.removeItem("adminCurrentSessionUser");
-  currentUser = "";
-  document.getElementById("mainUcpSection").style.display = "none";
-  document.getElementById("authSection").style.display = "flex";
-  document.getElementById("authUser").value = "";
-  document.getElementById("authPass").value = "";
-  toggleAuthMode(false);
+sessionStorage.removeItem("adminCurrentSessionUser");
+currentUser = "";
+document.getElementById("mainUcpSection").style.display = "none";
+document.getElementById("authSection").style.display = "flex";
+document.getElementById("authUser").value = "";
+document.getElementById("authPass").value = "";
+toggleAuthMode(false);
 }
 
 async function openDevPanel() {
-  document.getElementById("devModal").style.display = "flex";
-  usersDB = await fbFetch("users") || {};
-  renderDevUsers();
+document.getElementById("devModal").style.display = "flex";
+usersDB = await fbFetch("users") || {};
+renderDevUsers();
 }
 
 function closeDevPanel() { document.getElementById("devModal").style.display = "none"; }
 
 function renderDevUsers() {
-  const container = document.getElementById("devUserList");
-  container.innerHTML = Object.keys(usersDB).map(username => {
-    const u = usersDB[username];
-    const isDev = u.role === "dev";
-    return `
-      <div class="see-list-item">
-        <div>
-          <span class="see-item-date" style="color:${isDev ? 'var(--see-dev)' : '#fff'}; font-weight:700;">${u.display}</span>
-          <span style="font-size:11px; color:var(--see-text-muted); margin-left:10px;">Rang: ${isDev ? 'Fejlesztő' : 'Admin'}</span>
-        </div>
-        <div class="see-item-actions">
-          <button class="see-action-btn" onclick="devEditUser('${username}')" title="Jelszó módosítása">✏</button>
-          ${isDev ? '' : `<button class="see-action-btn del" onclick="devDeleteUser('${username}')" title="Felhasználó törlése">✕</button>`}
-        </div>
-      </div>
-    `;
-  }).join('');
+const container = document.getElementById("devUserList");
+container.innerHTML = Object.keys(usersDB).map(username => {
+const u = usersDB[username];
+const isDev = u.role === "dev";
+return `
+     <div class="see-list-item">
+       <div>
+         <span class="see-item-date" style="color:${isDev ? 'var(--see-dev)' : '#fff'}; font-weight:700;">${u.display}</span>
+         <span style="font-size:11px; color:var(--see-text-muted); margin-left:10px;">Rang: ${isDev ? 'Fejlesztő' : 'Admin'}</span>
+       </div>
+       <div class="see-item-actions">
+         <button class="see-action-btn" onclick="devEditUser('${username}')" title="Jelszó módosítása">✏</button>
+         ${isDev ? '' : `<button class="see-action-btn del" onclick="devDeleteUser('${username}')" title="Felhasználó törlése">✕</button>`}
+       </div>
+     </div>
+   `;
+}).join('');
 }
 
 async function devEditUser(username) {
-  const newPass = prompt(`Adj meg egy új jelszót neki: ${usersDB[username].display}`);
-  if (newPass && newPass.trim() !== "") {
-    usersDB[username].pass = newPass;
-    await fbSave(`users/${username}`, usersDB[username]);
-    alert("Jelszó módosítva a felhőben!");
-    renderDevUsers();
-  }
+const newPass = prompt(`Adj meg egy új jelszót neki: ${usersDB[username].display}`);
+if (newPass && newPass.trim() !== "") {
+usersDB[username].pass = newPass;
+await fbSave(`users/${username}`, usersDB[username]);
+alert("Jelszó módosítva a felhőben!");
+renderDevUsers();
+}
 }
 
 async function devDeleteUser(username) {
-  if (confirm(`Biztosan törlöd ${usersDB[username].display} fiókját és összes online adatát?`)) {
-    await fetch(`${FIREBASE_DB_URL}/users/${username}.json`, { method: 'DELETE' });
-    await fetch(`${FIREBASE_DB_URL}/data/${username}.json`, { method: 'DELETE' });
-    delete usersDB[username];
-    alert("Felhasználó teljesen törölve az adatbázisból.");
-    renderDevUsers();
-  }
+if (confirm(`Biztosan törlöd ${usersDB[username].display} fiókját és összes online adatát?`)) {
+await fetch(`${FIREBASE_DB_URL}/users/${username}.json`, { method: 'DELETE' });
+await fetch(`${FIREBASE_DB_URL}/data/${username}.json`, { method: 'DELETE' });
+delete usersDB[username];
+alert("Felhasználó teljesen törölve az adatbázisból.");
+renderDevUsers();
+}
 }
 
 async function saveGlobal() { 
-  await fbSave(`data/${currentUser}`, globalData[currentUser]); 
+await fbSave(`data/${currentUser}`, globalData[currentUser]); 
 }
 
 function today() { return new Date().toISOString().substring(0,10); }
 
 function updateFileLabel() {
-  const files = document.getElementById('logFiles').files;
-  document.getElementById('fileLabel').textContent = files.length > 0 ? `Kiválasztva: ${files.length} db log` : 'Tallózás a gépedről (nem töltődik fel)';
+const files = document.getElementById('logFiles').files;
+document.getElementById('fileLabel').textContent = files.length > 0 ? `Kiválasztva: ${files.length} db log` : 'Tallózás a gépedről (nem töltődik fel)';
 }
 
 async function saveDuty() {
-  const on = +dutyOn.value, off = +dutyOff.value;
-  if (isNaN(on) || isNaN(off) || dutyOn.value === '' || dutyOff.value === '') return;
-  const item = { date: today(), on, off, perc: off - on };
-  
-  if (editType === 'duty') {
-    globalData[currentUser].duty[editIndex] = item;
-  } else {
-    globalData[currentUser].duty.push(item);
-  }
-  editType = null; dutyOn.value = ''; dutyOff.value = ''; 
-  await saveGlobal(); render();
+const on = +dutyOn.value, off = +dutyOff.value;
+if (isNaN(on) || isNaN(off) || dutyOn.value === '' || dutyOff.value === '') return;
+const item = { date: today(), on, off, perc: off - on };
+
+if (editType === 'duty') {
+globalData[currentUser].duty[editIndex] = item;
+} else {
+globalData[currentUser].duty.push(item);
+}
+editType = null; dutyOn.value = ''; dutyOff.value = ''; 
+await saveGlobal(); render();
 }
 
 async function saveOff() {
-  const on = +offOn.value, off = +offOff.value;
-  if (isNaN(on) || isNaN(off) || offOn.value === '' || offOff.value === '') return;
-  const item = { date: today(), on, off, perc: off - on };
-  
-  if (editType === 'off') {
-    globalData[currentUser].off[editIndex] = item;
-  } else {
-    globalData[currentUser].off.push(item);
-  }
-  editType = null; offOn.value = ''; offOff.value = ''; 
-  await saveGlobal(); render();
+const on = +offOn.value, off = +offOff.value;
+if (isNaN(on) || isNaN(off) || offOn.value === '' || offOff.value === '') return;
+const item = { date: today(), on, off, perc: off - on };
+
+if (editType === 'off') {
+globalData[currentUser].off[editIndex] = item;
+} else {
+globalData[currentUser].off.push(item);
+}
+editType = null; offOn.value = ''; offOff.value = ''; 
+await saveGlobal(); render();
 }
 
 function editItem(type, i) {
-  const list = globalData[currentUser][type];
-  const x = list[i];
-  if (type === 'duty') { dutyOn.value = x.on; dutyOff.value = x.off; }
-  else { offOn.value = x.on; offOff.value = x.off; }
-  editType = type; editIndex = i;
+const list = globalData[currentUser][type];
+const x = list[i];
+if (type === 'duty') { dutyOn.value = x.on; dutyOff.value = x.off; }
+else { offOn.value = x.on; offOff.value = x.off; }
+editType = type; editIndex = i;
 }
 
 async function delItem(type, i) {
-  if (confirm('Biztosan törlöd ezt az adatot?')) {
-    globalData[currentUser][type].splice(i, 1);
-    await saveGlobal(); render();
-  }
+if (confirm('Biztosan törlöd ezt az adatot?')) {
+globalData[currentUser][type].splice(i, 1);
+    delete selectedItems[type][i]; // Tisztítás a kijelöltek közül is
+await saveGlobal(); render();
+}
 }
 
 async function editReport(date) {
-  const currentCount = globalData[currentUser].reports[date] || 0;
-  const newCount = prompt(`Módosítás (${date}):`, currentCount);
-  if (newCount !== null && !isNaN(newCount) && newCount.trim() !== "") {
-    globalData[currentUser].reports[date] = parseInt(newCount, 10);
-    await saveGlobal(); render();
-  }
+const currentCount = globalData[currentUser].reports[date] || 0;
+const newCount = prompt(`Módosítás (${date}):`, currentCount);
+if (newCount !== null && !isNaN(newCount) && newCount.trim() !== "") {
+globalData[currentUser].reports[date] = parseInt(newCount, 10);
+await saveGlobal(); render();
+}
 }
 
 async function delReport(date) {
-  if (confirm(`Törlöd a(z) ${date} napi report adatokat?`)) {
-    delete globalData[currentUser].reports[date];
-    await saveGlobal(); render();
+if (confirm(`Törlöd a(z) ${date} napi report adatokat?`)) {
+delete globalData[currentUser].reports[date];
+    delete selectedItems.reports[date];
+await saveGlobal(); render();
+}
+}
+
+// --- TÖMEGES KIJELÖLÉS ÉS TÖRLÉS FUNKCIÓK ---
+function handleCheckboxChange(type, key) {
+  const cb = document.getElementById(`cb-${type}-${key}`);
+  if (cb.checked) {
+    selectedItems[type][key] = true;
+  } else {
+    delete selectedItems[type][key];
+  }
+  updateBulkDeleteButtonVisibility(type);
+}
+
+function toggleSelectAll(type) {
+  let anyUnchecked = false;
+  
+  if (type === 'duty' || type === 'off') {
+    const list = globalData[currentUser][type] || [];
+    list.forEach((_, i) => {
+      const cb = document.getElementById(`cb-${type}-${i}`);
+      if (cb && !cb.checked) anyUnchecked = true;
+    });
+    
+    list.forEach((_, i) => {
+      const cb = document.getElementById(`cb-${type}-${i}`);
+      if (cb) {
+        cb.checked = anyUnchecked;
+        if (anyUnchecked) selectedItems[type][i] = true;
+        else delete selectedItems[type][i];
+      }
+    });
+  } else if (type === 'reports') {
+    const keys = Object.keys(globalData[currentUser].reports || {});
+    keys.forEach(d => {
+      const cb = document.getElementById(`cb-${type}-${d}`);
+      if (cb && !cb.checked) anyUnchecked = true;
+    });
+    
+    keys.forEach(d => {
+      const cb = document.getElementById(`cb-${type}-${d}`);
+      if (cb) {
+        cb.checked = anyUnchecked;
+        if (anyUnchecked) selectedItems[type][d] = true;
+        else delete selectedItems[type][d];
+      }
+    });
+  }
+  
+  updateBulkDeleteButtonVisibility(type);
+}
+
+function updateBulkDeleteButtonVisibility(type) {
+  const btn = document.getElementById(`bulkDelBtn-${type}`);
+  const count = Object.keys(selectedItems[type]).length;
+  if (count > 0) {
+    btn.style.display = 'inline-block';
+    btn.textContent = `Kijelöltek törlése (${count})`;
+  } else {
+    btn.style.display = 'none';
+  }
+}
+
+async function deleteSelected(type) {
+  const keysToDelete = Object.keys(selectedItems[type]);
+  if (keysToDelete.length === 0) return;
+  
+  if (confirm(`Biztosan törölni szeretnél ${keysToDelete.length} db kijelölt elemet a(z) ${type.toUpperCase()} listából?`)) {
+    if (type === 'duty' || type === 'off') {
+      // Az indexeket csökkenő sorrendbe kell rakni, hogy a splice ne rontsa el a soron következő indexeket törlés közben
+      const sortedIndices = keysToDelete.map(Number).sort((a, b) => b - a);
+      sortedIndices.forEach(i => {
+        globalData[currentUser][type].splice(i, 1);
+      });
+    } else if (type === 'reports') {
+      keysToDelete.forEach(d => {
+        delete globalData[currentUser].reports[d];
+      });
+    }
+    
+    selectedItems[type] = {}; // Kijelölések ürítése
+    await saveGlobal();
+    render();
   }
 }
 
 async function processLogs() {
-  const files = document.getElementById('logFiles').files;
-  if (files.length === 0) { alert('Válassz ki legalább egy fájlt!'); return; }
-  
-  for (const file of files) {
-    const text = await file.text();
-    const lines = text.split(/\r?\n/);
-    for (const line of lines) {
-      if (line.includes('Egy elvállalt reportod lezárásra került')) {
-        // Kikeressük a sor elejéről a pontos dátumot, ami a log bejegyzés pillanatában volt [ÉÉÉÉ-MM-DD]
-        const m = line.match(/\[(\d{4}-\d{2}-\d{2})/);
-        const logLineDate = m ? m[1] : 'Ismeretlen';
-        
-        globalData[currentUser].reports[logLineDate] = (globalData[currentUser].reports[logLineDate] || 0) + 1;
-      }
-    }
-  }
-  await saveGlobal(); render();
-  alert('Log fájlok sikeresen beolvasva és feltöltve az adatbázisba.');
-  document.getElementById('logFiles').value = ''; updateFileLabel();
+const files = document.getElementById('logFiles').files;
+if (files.length === 0) { alert('Válassz ki legalább egy fájlt!'); return; }
+
+for (const file of files) {
+const text = await file.text();
+const lines = text.split(/\r?\n/);
+for (const line of lines) {
+if (line.includes('Egy elvállalt reportod lezárásra került')) {
+        // Időbélyeg kinyerése: m[1] a dátum (ÉÉÉÉ-MM-DD), m[2] az óra (ÓÓ)
+const m = line.match(/\[(\d{4}-\d{2}-\d{2})\s(\d{2}):/);
+if (m) {
+let logDate = m[1];
+let logHour = parseInt(m[2], 10);
+
+          // HA a report hajnali 00 és 05 óra között zárult le, akkor az előző naphoz adjuk
+if (logHour >= 0 && logHour < 5) {
+let d = new Date(logDate);
+d.setDate(d.getDate() - 1);
+logDate = d.toISOString().substring(0, 10);
+}
+
+globalData[currentUser].reports[logDate] = (globalData[currentUser].reports[logDate] || 0) + 1;
+}
+}
+}
+}
+await saveGlobal(); render();
+alert('Log fájlok sikeresen beolvasva és összevonva.');
+document.getElementById('logFiles').value = ''; updateFileLabel();
 }
 
 function render() {
-  let duty = 0, off = 0, reports = 0;
-  
-  const dList = globalData[currentUser].duty || [];
-  dutyStream.innerHTML = dList.map((x, i) => {
-    duty += x.perc;
+  // CRITICAL FIX: Minden rendereléskor le kell nullázni az összegeket, különben halmozódnak!
+let duty = 0, off = 0, reports = 0;
+
+const dList = globalData[currentUser].duty || [];
+dutyStream.innerHTML = dList.map((x, i) => {
+duty += x.perc;
     return `<div class="see-list-item"><span class="see-item-date">${x.date}</span><span class="see-item-value" style="color:var(--see-gold)">${x.perc} perc</span><div class="see-item-actions"><button class="see-action-btn" onclick="editItem('duty',${i})">✏</button><button class="see-action-btn del" onclick="delItem('duty',${i})">✕</button></div></div>`;
-  }).join('');
+    const isChecked = selectedItems.duty[i] ? 'checked' : '';
+    return `
+      <div class="see-list-item">
+        <div class="see-item-left">
+          <input type="checkbox" id="cb-duty-${i}" class="see-checkbox" onchange="handleCheckboxChange('duty', ${i})" ${isChecked}>
+          <span class="see-item-date">${x.date}</span>
+        </div>
+        <span class="see-item-value" style="color:var(--see-gold)">${x.perc} perc</span>
+        <div class="see-item-actions">
+          <button class="see-action-btn" onclick="editItem('duty',${i})">✏</button>
+          <button class="see-action-btn del" onclick="delItem('duty',${i})">✕</button>
+        </div>
+      </div>`;
+}).join('');
 
-  const oList = globalData[currentUser].off || [];
-  offStream.innerHTML = oList.map((x, i) => {
-    off += x.perc;
+const oList = globalData[currentUser].off || [];
+offStream.innerHTML = oList.map((x, i) => {
+off += x.perc;
     return `<div class="see-list-item"><span class="see-item-date">${x.date}</span><span class="see-item-value" style="color:#fff">${x.perc} perc</span><div class="see-item-actions"><button class="see-action-btn" onclick="editItem('off',${i})">✏</button><button class="see-action-btn del" onclick="delItem('off',${i})">✕</button></div></div>`;
-  }).join('');
+    const isChecked = selectedItems.off[i] ? 'checked' : '';
+    return `
+      <div class="see-list-item">
+        <div class="see-item-left">
+          <input type="checkbox" id="cb-off-${i}" class="see-checkbox" onchange="handleCheckboxChange('off', ${i})" ${isChecked}>
+          <span class="see-item-date">${x.date}</span>
+        </div>
+        <span class="see-item-value" style="color:#fff">${x.perc} perc</span>
+        <div class="see-item-actions">
+          <button class="see-action-btn" onclick="editItem('off',${i})">✏</button>
+          <button class="see-action-btn del" onclick="delItem('off',${i})">✕</button>
+        </div>
+      </div>`;
+}).join('');
 
-  const reps = globalData[currentUser].reports || {};
-  const sortedReportKeys = Object.keys(reps).sort();
-  reportStream.innerHTML = sortedReportKeys.map(d => {
-    reports += reps[d];
+const reps = globalData[currentUser].reports || {};
+const sortedReportKeys = Object.keys(reps).sort();
+reportStream.innerHTML = sortedReportKeys.map(d => {
+reports += reps[d];
     return `<div class="see-list-item"><span class="see-item-date">${d}</span><span class="see-item-value" style="color:var(--see-success)">${reps[d]} db</span><div class="see-item-actions"><button class="see-action-btn" onclick="editReport('${d}')">✏</button><button class="see-action-btn del" onclick="delReport('${d}')">✕</button></div></div>`;
-  }).join('');
+    const isChecked = selectedItems.reports[d] ? 'checked' : '';
+    return `
+      <div class="see-list-item">
+        <div class="see-item-left">
+          <input type="checkbox" id="cb-reports-${d}" class="see-checkbox" onchange="handleCheckboxChange('reports', '${d}')" ${isChecked}>
+          <span class="see-item-date">${d}</span>
+        </div>
+        <span class="see-item-value" style="color:var(--see-success)">${reps[d]} db</span>
+        <div class="see-item-actions">
+          <button class="see-action-btn" onclick="editReport('${d}')">✏</button>
+          <button class="see-action-btn del" onclick="delReport('${d}')">✕</button>
+        </div>
+      </div>`;
+}).join('');
 
-  // Nagy statisztikai kártyák frissítése
-  totalDuty.innerHTML = `${duty} <span>perc</span>`;
-  totalOff.innerHTML = `${off} <span>perc</span>`;
-  totalReports.innerHTML = `${reports} <span>db</span>`;
-  
-  // Új funkció: Bal felső sarok (Header) kis összesített idők frissítése
-  document.getElementById('headTotalDuty').textContent = `${duty} p`;
-  document.getElementById('headTotalOff').textContent = `${off} p`;
-  
-  document.getElementById('dutyCount').textContent = dList.length + " sor";
-  document.getElementById('offCount').textContent = oList.length + " sor";
-  document.getElementById('reportDaysCount').textContent = sortedReportKeys.length + " nap";
+  // Statisztikák kiküldése a felületre a pontos összegekkel
+totalDuty.innerHTML = `${duty} <span>perc</span>`;
+totalOff.innerHTML = `${off} <span>perc</span>`;
+totalReports.innerHTML = `${reports} <span>db</span>`;
+
+document.getElementById('headTotalDuty').textContent = `${duty} p`;
+document.getElementById('headTotalOff').textContent = `${off} p`;
+
+document.getElementById('dutyCount').textContent = dList.length + " sor";
+document.getElementById('offCount').textContent = oList.length + " sor";
+document.getElementById('reportDaysCount').textContent = sortedReportKeys.length + " nap";
+
+  // Gombok státuszának frissítése renderelés után
+  updateBulkDeleteButtonVisibility('duty');
+  updateBulkDeleteButtonVisibility('off');
+  updateBulkDeleteButtonVisibility('reports');
 }
 
 window.onload = function() { initAuth(); };
