@@ -398,7 +398,7 @@ input[type="file"] { display: none; }
 <script>
 // --- FIREBASE ADATBÁZIS BEÁLLÍTÁSA ---
 const FIREBASE_DB_URL = "https://adminduty-1fafd-default-rtdb.firebaseio.com";
-const DEVELOPER_USERNAME = "ibrawn"; // A te neved, aki látja a fejlesztői panelt
+const DEVELOPER_USERNAME = "ibrawn"; 
 
 let usersDB = {};
 let globalData = {};
@@ -421,7 +421,6 @@ async function fbSave(path, data) {
 
 async function initAuth() {
   usersDB = await fbFetch("users") || {};
-  
   if (currentUser && usersDB[currentUser]) {
     showMainUcp();
   } else {
@@ -643,20 +642,31 @@ async function processLogs() {
     const lines = text.split(/\r?\n/);
     for (const line of lines) {
       if (line.includes('Egy elvállalt reportod lezárásra került')) {
-        // Kikeressük a sor elejéről a pontos dátumot, ami a log bejegyzés pillanatában volt [ÉÉÉÉ-MM-DD]
-        const m = line.match(/\[(\d{4}-\d{2}-\d{2})/);
-        const logLineDate = m ? m[1] : 'Ismeretlen';
-        
-        globalData[currentUser].reports[logLineDate] = (globalData[currentUser].reports[logLineDate] || 0) + 1;
+        // Időbélyeg kinyerése: m[1] a dátum (ÉÉÉÉ-MM-DD), m[2] az óra (ÓÓ)
+        const m = line.match(/\[(\d{4}-\d{2}-\d{2})\s(\d{2}):/);
+        if (m) {
+          let logDate = m[1];
+          let logHour = parseInt(m[2], 10);
+          
+          // HA a report hajnali 00 és 05 óra között zárult le, akkor az előző naphoz adjuk
+          if (logHour >= 0 && logHour < 5) {
+            let d = new Date(logDate);
+            d.setDate(d.getDate() - 1);
+            logDate = d.toISOString().substring(0, 10);
+          }
+          
+          globalData[currentUser].reports[logDate] = (globalData[currentUser].reports[logDate] || 0) + 1;
+        }
       }
     }
   }
   await saveGlobal(); render();
-  alert('Log fájlok sikeresen beolvasva és feltöltve az adatbázisba.');
+  alert('Log fájlok sikeresen beolvasva és összevonva.');
   document.getElementById('logFiles').value = ''; updateFileLabel();
 }
 
 function render() {
+  // CRITICAL FIX: Minden rendereléskor le kell nullázni az összegeket, különben halmozódnak!
   let duty = 0, off = 0, reports = 0;
   
   const dList = globalData[currentUser].duty || [];
@@ -678,12 +688,11 @@ function render() {
     return `<div class="see-list-item"><span class="see-item-date">${d}</span><span class="see-item-value" style="color:var(--see-success)">${reps[d]} db</span><div class="see-item-actions"><button class="see-action-btn" onclick="editReport('${d}')">✏</button><button class="see-action-btn del" onclick="delReport('${d}')">✕</button></div></div>`;
   }).join('');
 
-  // Nagy statisztikai kártyák frissítése
+  // Statisztikák kiküldése a felületre a pontos összegekkel
   totalDuty.innerHTML = `${duty} <span>perc</span>`;
   totalOff.innerHTML = `${off} <span>perc</span>`;
   totalReports.innerHTML = `${reports} <span>db</span>`;
   
-  // Új funkció: Bal felső sarok (Header) kis összesített idők frissítése
   document.getElementById('headTotalDuty').textContent = `${duty} p`;
   document.getElementById('headTotalOff').textContent = `${off} p`;
   
