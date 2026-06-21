@@ -473,3 +473,192 @@ async function showMainUcp() {
     globalData[currentUser] = { duty: [], off: [], reports: {} }; 
   }
   if (!globalData[currentUser].duty) globalData[currentUser].duty = [];
+  if (!globalData[currentUser].off) globalData[currentUser].off = [];
+  if (!globalData[currentUser].reports) globalData[currentUser].reports = {};
+  
+  render();
+}
+
+function logout() {
+  sessionStorage.removeItem("adminCurrentSessionUser");
+  currentUser = "";
+  document.getElementById("mainUcpSection").style.display = "none";
+  document.getElementById("authSection").style.display = "flex";
+  document.getElementById("authUser").value = "";
+  document.getElementById("authPass").value = "";
+  toggleAuthMode(false);
+}
+
+async function openDevPanel() {
+  document.getElementById("devModal").style.display = "flex";
+  usersDB = await fbFetch("users") || {};
+  renderDevUsers();
+}
+
+function closeDevPanel() { document.getElementById("devModal").style.display = "none"; }
+
+function renderDevUsers() {
+  const container = document.getElementById("devUserList");
+  container.innerHTML = Object.keys(usersDB).map(username => {
+    const u = usersDB[username];
+    const isDev = u.role === "dev";
+    return `
+      <div class="see-list-item">
+        <div>
+          <span class="see-item-date" style="color:${isDev ? 'var(--see-dev)' : '#fff'}; font-weight:700;">${u.display}</span>
+          <span style="font-size:11px; color:var(--see-text-muted); margin-left:10px;">Rang: ${isDev ? 'Fejlesztő' : 'Admin'}</span>
+        </div>
+        <div class="see-item-actions">
+          <button class="see-action-btn" onclick="devEditUser('${username}')" title="Jelszó módosítása">✏</button>
+          ${isDev ? '' : `<button class="see-action-btn del" onclick="devDeleteUser('${username}')" title="Felhasználó törlése">✕</button>`}
+        </div>
+      </div>
+    `;
+  }).join('');
+}
+
+async function devEditUser(username) {
+  const newPass = prompt(`Adj meg egy új jelszót neki: ${usersDB[username].display}`);
+  if (newPass && newPass.trim() !== "") {
+    usersDB[username].pass = newPass;
+    await fbSave(`users/${username}`, usersDB[username]);
+    alert("Jelszó módosítva a felhőben!");
+    renderDevUsers();
+  }
+}
+
+async function devDeleteUser(username) {
+  if (confirm(`Biztosan törlöd ${usersDB[username].display} fiókját és összes online adatát?`)) {
+    await fetch(`${FIREBASE_DB_URL}/users/${username}.json`, { method: 'DELETE' });
+    await fetch(`${FIREBASE_DB_URL}/data/${username}.json`, { method: 'DELETE' });
+    delete usersDB[username];
+    alert("Felhasználó teljesen törölve az adatbázisból.");
+    renderDevUsers();
+  }
+}
+
+async function saveGlobal() { 
+  await fbSave(`data/${currentUser}`, globalData[currentUser]); 
+}
+
+function today() { return new Date().toISOString().substring(0,10); }
+
+function updateFileLabel() {
+  const files = document.getElementById('logFiles').files;
+  document.getElementById('fileLabel').textContent = files.length > 0 ? `Kiválasztva: ${files.length} db log` : 'Tallózás a gépedről (nem töltődik fel)';
+}
+
+async function saveDuty() {
+  const on = +dutyOn.value, off = +dutyOff.value;
+  if (isNaN(on) || isNaN(off) || dutyOn.value === '' || dutyOff.value === '') return;
+  const item = { date: today(), on, off, perc: off - on };
+  
+  if (editType === 'duty') {
+    globalData[currentUser].duty[editIndex] = item;
+  } else {
+    globalData[currentUser].duty.push(item);
+  }
+  editType = null; dutyOn.value = ''; dutyOff.value = ''; 
+  await saveGlobal(); render();
+}
+
+async function saveOff() {
+  const on = +offOn.value, off = +offOff.value;
+  if (isNaN(on) || isNaN(off) || offOn.value === '' || offOff.value === '') return;
+  const item = { date: today(), on, off, perc: off - on };
+  
+  if (editType === 'off') {
+    globalData[currentUser].off[editIndex] = item;
+  } else {
+    globalData[currentUser].off.push(item);
+  }
+  editType = null; offOn.value = ''; offOff.value = ''; 
+  await saveGlobal(); render();
+}
+
+function editItem(type, i) {
+  const list = globalData[currentUser][type];
+  const x = list[i];
+  if (type === 'duty') { dutyOn.value = x.on; dutyOff.value = x.off; }
+  else { offOn.value = x.on; offOff.value = x.off; }
+  editType = type; editIndex = i;
+}
+
+async function delItem(type, i) {
+  if (confirm('Biztosan törlöd ezt az adatot?')) {
+    globalData[currentUser][type].splice(i, 1);
+    await saveGlobal(); render();
+  }
+}
+
+async function editReport(date) {
+  const currentCount = globalData[currentUser].reports[date] || 0;
+  const newCount = prompt(`Módosítás (${date}):`, currentCount);
+  if (newCount !== null && !isNaN(newCount) && newCount.trim() !== "") {
+    globalData[currentUser].reports[date] = parseInt(newCount, 10);
+    await saveGlobal(); render();
+  }
+}
+
+async function delReport(date) {
+  if (confirm(`Törlöd a(z) ${date} napi report adatokat?`)) {
+    delete globalData[currentUser].reports[date];
+    await saveGlobal(); render();
+  }
+}
+
+async function processLogs() {
+  const files = document.getElementById('logFiles').files;
+  if (files.length === 0) { alert('Válassz ki legalább egy fájlt!'); return; }
+  
+  for (const file of files) {
+    const text = await file.text();
+    const lines = text.split(/\r?\n/);
+    for (const line of lines) {
+      if (line.includes('Egy elvállalt reportod lezárásra került')) {
+        const m = line.match(/\[(\d{4}-\d{2}-\d{2})/);
+        const date = m ? m[1] : 'Ismeretlen';
+        globalData[currentUser].reports[date] = (globalData[currentUser].reports[date] || 0) + 1;
+      }
+    }
+  }
+  await saveGlobal(); render();
+  alert('Log fájlok sikeresen beolvasva és feltöltve az adatbázisba.');
+  document.getElementById('logFiles').value = ''; updateFileLabel();
+}
+
+function render() {
+  let duty = 0, off = 0, reports = 0;
+  
+  const dList = globalData[currentUser].duty || [];
+  dutyStream.innerHTML = dList.map((x, i) => {
+    duty += x.perc;
+    return `<div class="see-list-item"><span class="see-item-date">${x.date}</span><span class="see-item-value" style="color:var(--see-gold)">${x.perc} perc</span><div class="see-item-actions"><button class="see-action-btn" onclick="editItem('duty',${i})">✏</button><button class="see-action-btn del" onclick="delItem('duty',${i})">✕</button></div></div>`;
+  }).join('');
+
+  const oList = globalData[currentUser].off || [];
+  offStream.innerHTML = oList.map((x, i) => {
+    off += x.perc;
+    return `<div class="see-list-item"><span class="see-item-date">${x.date}</span><span class="see-item-value" style="color:#fff">${x.perc} perc</span><div class="see-item-actions"><button class="see-action-btn" onclick="editItem('off',${i})">✏</button><button class="see-action-btn del" onclick="delItem('off',${i})">✕</button></div></div>`;
+  }).join('');
+
+  const reps = globalData[currentUser].reports || {};
+  const sortedReportKeys = Object.keys(reps).sort();
+  reportStream.innerHTML = sortedReportKeys.map(d => {
+    reports += reps[d];
+    return `<div class="see-list-item"><span class="see-item-date">${d}</span><span class="see-item-value" style="color:var(--see-success)">${reps[d]} db</span><div class="see-item-actions"><button class="see-action-btn" onclick="editReport('${d}')">✏</button><button class="see-action-btn del" onclick="delReport('${d}')">✕</button></div></div>`;
+  }).join('');
+
+  totalDuty.innerHTML = `${duty} <span>perc</span>`;
+  totalOff.innerHTML = `${off} <span>perc</span>`;
+  totalReports.innerHTML = `${reports} <span>db</span>`;
+  
+  document.getElementById('dutyCount').textContent = dList.length + " sor";
+  document.getElementById('offCount').textContent = oList.length + " sor";
+  document.getElementById('reportDaysCount').textContent = sortedReportKeys.length + " nap";
+}
+
+window.onload = function() { initAuth(); };
+</script>
+</body>
+</html>
