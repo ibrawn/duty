@@ -18,6 +18,7 @@
   --see-text: #ffffff;
   --see-text-muted: #8a8f9e;
   --see-danger: #ff4a4a;
+  --see-danger-hover: #d93838;
   --see-success: #2ecc71;
   --see-dev: #00bcd4;
 }
@@ -189,6 +190,40 @@ header h1 span { color: var(--see-gold); }
   color: var(--see-gold); 
 }
 
+.panel-bulk-actions {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 12px;
+  gap: 10px;
+}
+
+.bulk-btn {
+  background: transparent;
+  border: 1px solid var(--see-border);
+  color: var(--see-text-muted);
+  font-size: 11px;
+  font-weight: 600;
+  padding: 5px 10px;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.2s;
+  text-transform: uppercase;
+}
+.bulk-btn:hover {
+  border-color: var(--see-gold);
+  color: #fff;
+}
+.bulk-btn.danger-bulk {
+  background: var(--see-danger);
+  border-color: var(--see-danger);
+  color: #fff;
+  display: none; /* Csak akkor jelenik meg, ha van kijelölés */
+}
+.bulk-btn.danger-bulk:hover {
+  background: var(--see-danger-hover);
+}
+
 .see-input-row { display: flex; gap: 10px; margin-bottom: 12px; }
 input[type="number"], input[type="text"], input[type="password"] { 
   flex: 1; 
@@ -241,7 +276,7 @@ input[type="file"] { display: none; }
 .see-panel.report-type .see-btn:hover { background: #2d3142; }
 
 .see-list-container { 
-  margin-top: 20px; 
+  margin-top: 10px; 
   overflow-y: auto; 
   max-height: 300px; 
   padding-right: 4px; 
@@ -257,6 +292,17 @@ input[type="file"] { display: none; }
   display: flex; 
   align-items: center; 
   justify-content: space-between; 
+}
+.see-item-left {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+.see-checkbox {
+  width: 16px;
+  height: 16px;
+  accent-color: var(--see-gold);
+  cursor: pointer;
 }
 .see-item-date { font-size: 12px; color: var(--see-text-muted); font-weight: 500; }
 .see-item-value { font-size: 13px; font-weight: 600; font-family: 'Roboto Mono', monospace; }
@@ -370,6 +416,11 @@ input[type="file"] { display: none; }
         <input id="dutyOff" type="number" placeholder="Vég perc">
       </div>
       <button class="see-btn" onclick="saveDuty()">Mentés</button>
+      
+      <div class="panel-bulk-actions">
+        <button class="bulk-btn" onclick="toggleSelectAll('duty')">Összes kijelölése</button>
+        <button class="bulk-btn danger-bulk" id="bulkDelBtn-duty" onclick="deleteSelected('duty')">Kijelöltek törlése</button>
+      </div>
       <div class="see-list-container" id="dutyStream"></div>
     </div>
 
@@ -380,6 +431,11 @@ input[type="file"] { display: none; }
         <input id="offOff" type="number" placeholder="Vég perc">
       </div>
       <button class="see-btn" onclick="saveOff()">Mentés</button>
+      
+      <div class="panel-bulk-actions">
+        <button class="bulk-btn" onclick="toggleSelectAll('off')">Összes kijelölése</button>
+        <button class="bulk-btn danger-bulk" id="bulkDelBtn-off" onclick="deleteSelected('off')">Kijelöltek törlése</button>
+      </div>
       <div class="see-list-container" id="offStream"></div>
     </div>
 
@@ -390,13 +446,17 @@ input[type="file"] { display: none; }
         <input type="file" id="logFiles" multiple accept=".txt,.log" onchange="updateFileLabel()">
       </div>
       <button class="see-btn" onclick="processLogs()">Betöltés és elemzés</button>
+      
+      <div class="panel-bulk-actions">
+        <button class="bulk-btn" onclick="toggleSelectAll('reports')">Összes kijelölése</button>
+        <button class="bulk-btn danger-bulk" id="bulkDelBtn-reports" onclick="deleteSelected('reports')">Kijelöltek törlése</button>
+      </div>
       <div class="see-list-container" id="reportStream"></div>
     </div>
   </div>
 </div>
 
 <script>
-// --- FIREBASE ADATBÁZIS BEÁLLÍTÁSA ---
 const FIREBASE_DB_URL = "https://adminduty-1fafd-default-rtdb.firebaseio.com";
 const DEVELOPER_USERNAME = "ibrawn"; 
 
@@ -405,6 +465,9 @@ let globalData = {};
 let currentUser = sessionStorage.getItem("adminCurrentSessionUser") || "";
 let editType = null, editIndex = null;
 let isRegisterMode = false;
+
+// Kijelölési állapotok tárolása ideiglenesen a felületen
+let selectedItems = { duty: {}, off: {}, reports: {} };
 
 async function fbFetch(path) {
   try {
@@ -501,6 +564,9 @@ async function showMainUcp() {
   if (!globalData[currentUser].duty) globalData[currentUser].duty = [];
   if (!globalData[currentUser].off) globalData[currentUser].off = [];
   if (!globalData[currentUser].reports) globalData[currentUser].reports = {};
+  
+  // Kijelölések alaphelyzetbe állítása belépéskor
+  selectedItems = { duty: {}, off: {}, reports: {} };
   
   render();
 }
@@ -613,6 +679,7 @@ function editItem(type, i) {
 async function delItem(type, i) {
   if (confirm('Biztosan törlöd ezt az adatot?')) {
     globalData[currentUser][type].splice(i, 1);
+    delete selectedItems[type][i]; // Tisztítás a kijelöltek közül is
     await saveGlobal(); render();
   }
 }
@@ -629,7 +696,91 @@ async function editReport(date) {
 async function delReport(date) {
   if (confirm(`Törlöd a(z) ${date} napi report adatokat?`)) {
     delete globalData[currentUser].reports[date];
+    delete selectedItems.reports[date];
     await saveGlobal(); render();
+  }
+}
+
+// --- TÖMEGES KIJELÖLÉS ÉS TÖRLÉS FUNKCIÓK ---
+function handleCheckboxChange(type, key) {
+  const cb = document.getElementById(`cb-${type}-${key}`);
+  if (cb.checked) {
+    selectedItems[type][key] = true;
+  } else {
+    delete selectedItems[type][key];
+  }
+  updateBulkDeleteButtonVisibility(type);
+}
+
+function toggleSelectAll(type) {
+  let anyUnchecked = false;
+  
+  if (type === 'duty' || type === 'off') {
+    const list = globalData[currentUser][type] || [];
+    list.forEach((_, i) => {
+      const cb = document.getElementById(`cb-${type}-${i}`);
+      if (cb && !cb.checked) anyUnchecked = true;
+    });
+    
+    list.forEach((_, i) => {
+      const cb = document.getElementById(`cb-${type}-${i}`);
+      if (cb) {
+        cb.checked = anyUnchecked;
+        if (anyUnchecked) selectedItems[type][i] = true;
+        else delete selectedItems[type][i];
+      }
+    });
+  } else if (type === 'reports') {
+    const keys = Object.keys(globalData[currentUser].reports || {});
+    keys.forEach(d => {
+      const cb = document.getElementById(`cb-${type}-${d}`);
+      if (cb && !cb.checked) anyUnchecked = true;
+    });
+    
+    keys.forEach(d => {
+      const cb = document.getElementById(`cb-${type}-${d}`);
+      if (cb) {
+        cb.checked = anyUnchecked;
+        if (anyUnchecked) selectedItems[type][d] = true;
+        else delete selectedItems[type][d];
+      }
+    });
+  }
+  
+  updateBulkDeleteButtonVisibility(type);
+}
+
+function updateBulkDeleteButtonVisibility(type) {
+  const btn = document.getElementById(`bulkDelBtn-${type}`);
+  const count = Object.keys(selectedItems[type]).length;
+  if (count > 0) {
+    btn.style.display = 'inline-block';
+    btn.textContent = `Kijelöltek törlése (${count})`;
+  } else {
+    btn.style.display = 'none';
+  }
+}
+
+async function deleteSelected(type) {
+  const keysToDelete = Object.keys(selectedItems[type]);
+  if (keysToDelete.length === 0) return;
+  
+  if (confirm(`Biztosan törölni szeretnél ${keysToDelete.length} db kijelölt elemet a(z) ${type.toUpperCase()} listából?`)) {
+    if (type === 'duty' || type === 'off') {
+      // Az indexeket csökkenő sorrendbe kell rakni, hogy a splice ne rontsa el a soron következő indexeket törlés közben
+      const sortedIndices = keysToDelete.map(Number).sort((a, b) => b - a);
+      sortedIndices.forEach(i => {
+        globalData[currentUser][type].splice(i, 1);
+      });
+    } else if (type === 'reports') {
+      keysToDelete.forEach(d => {
+        delete globalData[currentUser].reports[d];
+      });
+    }
+    
+    selectedItems[type] = {}; // Kijelölések ürítése
+    await saveGlobal();
+    render();
   }
 }
 
@@ -642,13 +793,11 @@ async function processLogs() {
     const lines = text.split(/\r?\n/);
     for (const line of lines) {
       if (line.includes('Egy elvállalt reportod lezárásra került')) {
-        // Időbélyeg kinyerése: m[1] a dátum (ÉÉÉÉ-MM-DD), m[2] az óra (ÓÓ)
         const m = line.match(/\[(\d{4}-\d{2}-\d{2})\s(\d{2}):/);
         if (m) {
           let logDate = m[1];
           let logHour = parseInt(m[2], 10);
           
-          // HA a report hajnali 00 és 05 óra között zárult le, akkor az előző naphoz adjuk
           if (logHour >= 0 && logHour < 5) {
             let d = new Date(logDate);
             d.setDate(d.getDate() - 1);
@@ -666,29 +815,63 @@ async function processLogs() {
 }
 
 function render() {
-  // CRITICAL FIX: Minden rendereléskor le kell nullázni az összegeket, különben halmozódnak!
   let duty = 0, off = 0, reports = 0;
   
   const dList = globalData[currentUser].duty || [];
   dutyStream.innerHTML = dList.map((x, i) => {
     duty += x.perc;
-    return `<div class="see-list-item"><span class="see-item-date">${x.date}</span><span class="see-item-value" style="color:var(--see-gold)">${x.perc} perc</span><div class="see-item-actions"><button class="see-action-btn" onclick="editItem('duty',${i})">✏</button><button class="see-action-btn del" onclick="delItem('duty',${i})">✕</button></div></div>`;
+    const isChecked = selectedItems.duty[i] ? 'checked' : '';
+    return `
+      <div class="see-list-item">
+        <div class="see-item-left">
+          <input type="checkbox" id="cb-duty-${i}" class="see-checkbox" onchange="handleCheckboxChange('duty', ${i})" ${isChecked}>
+          <span class="see-item-date">${x.date}</span>
+        </div>
+        <span class="see-item-value" style="color:var(--see-gold)">${x.perc} perc</span>
+        <div class="see-item-actions">
+          <button class="see-action-btn" onclick="editItem('duty',${i})">✏</button>
+          <button class="see-action-btn del" onclick="delItem('duty',${i})">✕</button>
+        </div>
+      </div>`;
   }).join('');
 
   const oList = globalData[currentUser].off || [];
   offStream.innerHTML = oList.map((x, i) => {
     off += x.perc;
-    return `<div class="see-list-item"><span class="see-item-date">${x.date}</span><span class="see-item-value" style="color:#fff">${x.perc} perc</span><div class="see-item-actions"><button class="see-action-btn" onclick="editItem('off',${i})">✏</button><button class="see-action-btn del" onclick="delItem('off',${i})">✕</button></div></div>`;
+    const isChecked = selectedItems.off[i] ? 'checked' : '';
+    return `
+      <div class="see-list-item">
+        <div class="see-item-left">
+          <input type="checkbox" id="cb-off-${i}" class="see-checkbox" onchange="handleCheckboxChange('off', ${i})" ${isChecked}>
+          <span class="see-item-date">${x.date}</span>
+        </div>
+        <span class="see-item-value" style="color:#fff">${x.perc} perc</span>
+        <div class="see-item-actions">
+          <button class="see-action-btn" onclick="editItem('off',${i})">✏</button>
+          <button class="see-action-btn del" onclick="delItem('off',${i})">✕</button>
+        </div>
+      </div>`;
   }).join('');
 
   const reps = globalData[currentUser].reports || {};
   const sortedReportKeys = Object.keys(reps).sort();
   reportStream.innerHTML = sortedReportKeys.map(d => {
     reports += reps[d];
-    return `<div class="see-list-item"><span class="see-item-date">${d}</span><span class="see-item-value" style="color:var(--see-success)">${reps[d]} db</span><div class="see-item-actions"><button class="see-action-btn" onclick="editReport('${d}')">✏</button><button class="see-action-btn del" onclick="delReport('${d}')">✕</button></div></div>`;
+    const isChecked = selectedItems.reports[d] ? 'checked' : '';
+    return `
+      <div class="see-list-item">
+        <div class="see-item-left">
+          <input type="checkbox" id="cb-reports-${d}" class="see-checkbox" onchange="handleCheckboxChange('reports', '${d}')" ${isChecked}>
+          <span class="see-item-date">${d}</span>
+        </div>
+        <span class="see-item-value" style="color:var(--see-success)">${reps[d]} db</span>
+        <div class="see-item-actions">
+          <button class="see-action-btn" onclick="editReport('${d}')">✏</button>
+          <button class="see-action-btn del" onclick="delReport('${d}')">✕</button>
+        </div>
+      </div>`;
   }).join('');
 
-  // Statisztikák kiküldése a felületre a pontos összegekkel
   totalDuty.innerHTML = `${duty} <span>perc</span>`;
   totalOff.innerHTML = `${off} <span>perc</span>`;
   totalReports.innerHTML = `${reports} <span>db</span>`;
@@ -699,6 +882,11 @@ function render() {
   document.getElementById('dutyCount').textContent = dList.length + " sor";
   document.getElementById('offCount').textContent = oList.length + " sor";
   document.getElementById('reportDaysCount').textContent = sortedReportKeys.length + " nap";
+
+  // Gombok státuszának frissítése renderelés után
+  updateBulkDeleteButtonVisibility('duty');
+  updateBulkDeleteButtonVisibility('off');
+  updateBulkDeleteButtonVisibility('reports');
 }
 
 window.onload = function() { initAuth(); };
