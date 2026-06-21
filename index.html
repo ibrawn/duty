@@ -30,7 +30,7 @@ body {
   background-image: radial-gradient(circle at 50% 0%, #1c1e26 0%, #121318 70%);
 }
 
-.ucp-container { max-width: 1400px; margin: 0 auto; }
+.ucp-container { max-width: 1400px; margin: 0 auto; display: none; }
 
 /* See UCP Fejléc stílus */
 header { 
@@ -54,6 +54,12 @@ header h1 {
 }
 header h1 span { color: var(--see-gold); }
 
+.header-right {
+  display: flex;
+  align-items: center;
+  gap: 15px;
+}
+
 .ucp-logo-badge {
   background: var(--see-gold);
   color: #000;
@@ -61,6 +67,22 @@ header h1 span { color: var(--see-gold); }
   border-radius: 6px;
   font-weight: 800;
   font-size: 12px;
+}
+
+.logout-btn {
+  background: transparent;
+  border: 1px solid var(--see-danger);
+  color: var(--see-danger);
+  padding: 6px 12px;
+  border-radius: 6px;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+.logout-btn:hover {
+  background: var(--see-danger);
+  color: #fff;
 }
 
 /* Felső statisztikai widgetek */
@@ -131,7 +153,7 @@ header h1 span { color: var(--see-gold); }
 
 /* Inputok és gombok */
 .see-input-row { display: flex; gap: 10px; margin-bottom: 12px; }
-input[type="number"] { 
+input[type="number"], input[type="text"], input[type="password"] { 
   flex: 1; 
   background: var(--see-card-inner); 
   border: 1px solid var(--see-border); 
@@ -142,8 +164,8 @@ input[type="number"] {
   font-weight: 500; 
   transition: border-color 0.2s; 
 }
-input[type="number"]:focus { outline: none; border-color: var(--see-gold); }
-input[type="number"]::placeholder { color: #5a5f70; }
+input[type="number"]:focus, input[type="text"]:focus, input[type="password"]:focus { outline: none; border-color: var(--see-gold); }
+input[type="number"]::placeholder, input[type="text"]::placeholder, input[type="password"]::placeholder { color: #5a5f70; }
 
 /* Custom Fájlfeltöltő sáv */
 .see-file-wrapper { position: relative; margin-bottom: 12px; }
@@ -228,14 +250,91 @@ input[type="file"] { display: none; }
 .see-list-container::-webkit-scrollbar { width: 4px; }
 .see-list-container::-webkit-scrollbar-track { background: transparent; }
 .see-list-container::-webkit-scrollbar-thumb { background: var(--see-border); border-radius: 10px; }
+
+/* Hitelesítési (Auth) felület stílusai */
+.auth-wrapper {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  min-height: 80vh;
+}
+.auth-card {
+  background: var(--see-card);
+  border: 1px solid var(--see-border);
+  border-radius: 12px;
+  padding: 35px;
+  width: 100%;
+  max-width: 400px;
+  box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+}
+.auth-title {
+  font-size: 22px;
+  font-weight: 800;
+  text-transform: uppercase;
+  text-align: center;
+  margin-bottom: 25px;
+  letter-spacing: 1px;
+}
+.auth-title span { color: var(--see-gold); }
+.auth-form-group {
+  margin-bottom: 15px;
+}
+.auth-form-group label {
+  display: block;
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  color: var(--see-text-muted);
+  margin-bottom: 6px;
+  letter-spacing: 0.5px;
+}
+.auth-switch {
+  text-align: center;
+  margin-top: 15px;
+  font-size: 13px;
+  color: var(--see-text-muted);
+}
+.auth-switch span {
+  color: var(--see-gold);
+  cursor: pointer;
+  font-weight: 600;
+  text-decoration: underline;
+}
 </style>
 </head>
 <body>
 
-<div class="ucp-container">
+<!-- Hitelesítési panel -->
+<div class="auth-wrapper" id="authSection">
+  <div class="auth-card">
+    <div class="auth-title" id="authTitle"><span>SeeRPG</span> - Belépés</div>
+    
+    <div class="auth-form-group">
+      <label>Felhasználónév</label>
+      <input type="text" id="authUser" placeholder="Karakter / Felhasználónév">
+    </div>
+    
+    <div class="auth-form-group">
+      <label>Jelszó</label>
+      <input type="password" id="authPass" placeholder="••••••••">
+    </div>
+    
+    <button class="see-btn" id="authBtn" onclick="handleAuth()">Bejelentkezés</button>
+    
+    <div class="auth-switch" id="authSwitchRow">
+      Nincs még fiókod? <span onclick="toggleAuthMode(true)">Regisztráció</span>
+    </div>
+  </div>
+</div>
+
+<!-- Fő UCP Felület (Alapból rejtett) -->
+<div class="ucp-container" id="mainUcpSection">
   <header>
     <h1><span>SeeRPG</span> - Admin Duty</h1>
-    <div class="ucp-logo-badge">v4 UCP</div>
+    <div class="header-right">
+      <div class="ucp-logo-badge" id="welcomeUser">v4 UCP</div>
+      <button class="logout-btn" onclick="logout()">Kijelentkezés</button>
+    </div>
   </header>
 
   <div class="see-grid-stats">
@@ -289,8 +388,85 @@ input[type="file"] { display: none; }
 </div>
 
 <script>
+// Adatstruktúra betöltése + Auth változók
 let data=JSON.parse(localStorage.getItem("adminDutyV2"))||{duty:[],off:[],reports:{}};
+let authConfig=JSON.parse(localStorage.getItem("adminDutyAuth"))||{username:"",password:""};
+let sessionActive=sessionStorage.getItem("adminSession") === "true";
+
 let editType=null,editIndex=null;
+let isRegisterMode = false;
+
+// Indításkor ellenőrizzük a fiók és a session állapotát
+function initAuth() {
+  if (!authConfig.username) {
+    // Ha még egyáltalán nincs regisztrált fiók, egyből regisztrációra váltunk
+    toggleAuthMode(true);
+  } else if (sessionActive) {
+    // Ha már be van jelentkezve, egyből a főoldal jön be
+    showMainUcp();
+  }
+}
+
+function toggleAuthMode(toRegister) {
+  isRegisterMode = toRegister;
+  const title = document.getElementById("authTitle");
+  const btn = document.getElementById("authBtn");
+  const switchRow = document.getElementById("authSwitchRow");
+  
+  if (toRegister) {
+    title.innerHTML = "<span>SeeRPG</span> - Regisztráció";
+    btn.textContent = "Regisztráció";
+    switchRow.innerHTML = 'Már van fiókod? <span onclick="toggleAuthMode(false)">Bejelentkezés</span>';
+  } else {
+    title.innerHTML = "<span>SeeRPG</span> - Belépés";
+    btn.textContent = "Bejelentkezés";
+    switchRow.innerHTML = 'Nincs még fiókod? <span onclick="toggleAuthMode(true)">Regisztráció</span>';
+  }
+}
+
+function handleAuth() {
+  const user = document.getElementById("authUser").value.trim();
+  const pass = document.getElementById("authPass").value;
+  
+  if (!user || !pass) {
+    alert("Kérlek töltsd ki az összes mezőt!");
+    return;
+  }
+  
+  if (isRegisterMode) {
+    // Regisztráció kezelése
+    authConfig.username = user;
+    authConfig.password = pass;
+    localStorage.setItem("adminDutyAuth", JSON.stringify(authConfig));
+    alert("Sikeres regisztráció! Most már bejelentkezhetsz.");
+    document.getElementById("authPass").value = "";
+    toggleAuthMode(false);
+  } else {
+    // Bejelentkezés ellenőrzése
+    if (user === authConfig.username && pass === authConfig.password) {
+      sessionStorage.setItem("adminSession", "true");
+      showMainUcp();
+    } else {
+      alert("Hibás felhasználónév vagy jelszó!");
+    }
+  }
+}
+
+function showMainUcp() {
+  document.getElementById("authSection").style.display = "none";
+  document.getElementById("mainUcpSection").style.display = "block";
+  document.getElementById("welcomeUser").textContent = JSON.parse(localStorage.getItem("adminDutyAuth")).username;
+  render();
+}
+
+function logout() {
+  sessionStorage.removeItem("adminSession");
+  document.getElementById("mainUcpSection").style.display = "none";
+  document.getElementById("authSection").style.display = "flex";
+  document.getElementById("authUser").value = "";
+  document.getElementById("authPass").value = "";
+  toggleAuthMode(false);
+}
 
 function save(){localStorage.setItem("adminDutyV2",JSON.stringify(data));}
 function today(){return new Date().toISOString().substring(0,10);}
@@ -388,7 +564,9 @@ function render(){
  document.getElementById('offCount').textContent = data.off.length + " sor";
  document.getElementById('reportDaysCount').textContent = sortedReportKeys.length + " nap";
 }
-render();
+
+// Az oldal betöltésekor fut le
+initAuth();
 </script>
 </body>
 </html>
