@@ -43,6 +43,11 @@ header {
   justify-content: space-between;
   align-items: center;
 }
+.header-left {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
 header h1 { 
   font-size: 20px; 
   font-weight: 700; 
@@ -53,6 +58,21 @@ header h1 {
   gap: 10px;
 }
 header h1 span { color: var(--see-gold); }
+
+.header-summary-stats {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--see-text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  display: flex;
+  gap: 12px;
+}
+.header-summary-stats span strong {
+  font-family: 'Roboto Mono', monospace;
+}
+.header-summary-stats .duty-s { color: var(--see-gold); }
+.header-summary-stats .off-s { color: #fff; }
 
 .header-right {
   display: flex;
@@ -312,7 +332,14 @@ input[type="file"] { display: none; }
 
 <div class="ucp-container" id="mainUcpSection">
   <header>
-    <h1><span>SeeRPG</span> - Admin Duty</h1>
+    <div class="header-left">
+      <h1><span>SeeRPG</span> - Admin Duty</h1>
+      <div class="header-summary-stats">
+        <span>Összes Duty: <strong id="headTotalDuty" class="duty-s">0 p</strong></span>
+        <span>•</span>
+        <span>Összes Off: <strong id="headTotalOff" class="off-s">0 p</strong></span>
+      </div>
+    </div>
     <div class="header-right">
       <button class="dev-panel-btn" id="devPanelBtn" style="display:none;" onclick="openDevPanel()">⚙ Fejlesztői Panel</button>
       <div class="ucp-logo-badge" id="welcomeUser">v4 UCP</div>
@@ -616,9 +643,11 @@ async function processLogs() {
     const lines = text.split(/\r?\n/);
     for (const line of lines) {
       if (line.includes('Egy elvállalt reportod lezárásra került')) {
+        // Kikeressük a sor elejéről a pontos dátumot, ami a log bejegyzés pillanatában volt [ÉÉÉÉ-MM-DD]
         const m = line.match(/\[(\d{4}-\d{2}-\d{2})/);
-        const date = m ? m[1] : 'Ismeretlen';
-        globalData[currentUser].reports[date] = (globalData[currentUser].reports[date] || 0) + 1;
+        const logLineDate = m ? m[1] : 'Ismeretlen';
+        
+        globalData[currentUser].reports[logLineDate] = (globalData[currentUser].reports[logLineDate] || 0) + 1;
       }
     }
   }
@@ -649,9 +678,14 @@ function render() {
     return `<div class="see-list-item"><span class="see-item-date">${d}</span><span class="see-item-value" style="color:var(--see-success)">${reps[d]} db</span><div class="see-item-actions"><button class="see-action-btn" onclick="editReport('${d}')">✏</button><button class="see-action-btn del" onclick="delReport('${d}')">✕</button></div></div>`;
   }).join('');
 
+  // Nagy statisztikai kártyák frissítése
   totalDuty.innerHTML = `${duty} <span>perc</span>`;
   totalOff.innerHTML = `${off} <span>perc</span>`;
   totalReports.innerHTML = `${reports} <span>db</span>`;
+  
+  // Új funkció: Bal felső sarok (Header) kis összesített idők frissítése
+  document.getElementById('headTotalDuty').textContent = `${duty} p`;
+  document.getElementById('headTotalOff').textContent = `${off} p`;
   
   document.getElementById('dutyCount').textContent = dList.length + " sor";
   document.getElementById('offCount').textContent = oList.length + " sor";
@@ -662,5 +696,3 @@ window.onload = function() { initAuth(); };
 </script>
 </body>
 </html>
-
-
