@@ -81,6 +81,60 @@ header h1 span { color: var(--see-gold); }
   gap: 15px;
 }
 
+/* ÚJ LENYÍLÓ MENÜ (DROPDOWN) STÍLUSOK */
+.see-dropdown {
+  position: relative;
+  display: inline-block;
+}
+.see-dropdown-btn {
+  background: transparent;
+  border: 1px solid var(--see-border);
+  color: #fff;
+  padding: 6px 14px;
+  border-radius: 6px;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.see-dropdown-btn:hover {
+  border-color: var(--see-gold);
+  color: var(--see-gold);
+}
+.see-dropdown-content {
+  display: none;
+  position: absolute;
+  right: 0;
+  background-color: var(--see-card-inner);
+  min-width: 160px;
+  box-shadow: 0px 8px 24px rgba(0,0,0,0.6);
+  border: 1px solid var(--see-border);
+  border-radius: 8px;
+  z-index: 100;
+  margin-top: 5px;
+  overflow: hidden;
+}
+.see-dropdown-content a {
+  color: var(--see-text-muted);
+  padding: 10px 14px;
+  text-decoration: none;
+  display: block;
+  font-size: 12px;
+  font-weight: 600;
+  transition: all 0.2s;
+}
+.see-dropdown-content a:hover {
+  background-color: var(--see-card);
+  color: var(--see-gold);
+  padding-left: 18px;
+}
+.see-dropdown.open .see-dropdown-content {
+  display: block;
+}
+
 .ucp-logo-badge {
   background: var(--see-gold);
   color: #000;
@@ -458,6 +512,15 @@ input[type="file"] { display: none; }
       </div>
     </div>
     <div class="header-right">
+      <div class="see-dropdown" id="linksDropdown">
+        <button class="see-dropdown-btn" onclick="toggleDropdown()">🔗 Gyors Linkek ▾</button>
+        <div class="see-dropdown-content">
+          <a href="https://forum.see-rpg.com/" target="_blank">Fórum</a>
+          <a href="https://ucp.see-rpg.com/seerpg" target="_blank">UCP</a>
+          <a href="https://rules.see-rpg.com/rpg/" target="_blank">Szabályzat</a>
+        </div>
+      </div>
+
       <button class="dev-stats-btn" id="devStatsBtn" style="display:none;" onclick="openDevStatsPanel()">📊 Admin Statisztikák</button>
       <button class="dev-panel-btn" id="devPanelBtn" style="display:none;" onclick="openDevPanel()">⚙ Fejlesztői Panel</button>
       <div class="ucp-logo-badge" id="welcomeUser">v4 UCP</div>
@@ -559,18 +622,35 @@ async function fbSave(path, data) {
 async function initAuth() {
   usersDB = await fbFetch("users") || {};
   
-  // Enter gombos figyelők hozzáadása az auth mezőkhöz
   const enterHandler = (e) => { if (e.key === "Enter") handleAuth(); };
   document.getElementById("authUser").addEventListener("keydown", enterHandler);
   document.getElementById("authPass").addEventListener("keydown", enterHandler);
 
   setupDragAndDrop();
+  setupDropdownCloseListener();
 
   if (currentUser && usersDB[currentUser]) {
     showMainUcp();
   } else {
     toggleAuthMode(Object.keys(usersDB).length === 0);
   }
+}
+
+/* LENYÍLÓ MENÜ LOGIKA */
+function toggleDropdown() {
+  document.getElementById("linksDropdown").classList.toggle("open");
+}
+
+// Ha a menün kívülre kattint az admin, automatikusan csukódjon be
+function setupDropdownCloseListener() {
+  window.addEventListener("click", function(event) {
+    if (!event.target.matches('.see-dropdown-btn')) {
+      const dropdown = document.getElementById("linksDropdown");
+      if (dropdown && dropdown.classList.contains("open")) {
+        dropdown.classList.remove("open");
+      }
+    }
+  });
 }
 
 function toggleAuthMode(toRegister) {
@@ -775,7 +855,6 @@ async function saveGlobal() {
 
 function today() { return new Date().toISOString().substring(0,10); }
 
-/* DRAG & DROP ÉS AUTOMATIKUS LOG ANALÍZIS */
 function setupDragAndDrop() {
   const dropZone = document.getElementById('fileLabel');
 
@@ -805,7 +884,6 @@ function setupDragAndDrop() {
 function handleFileSelect(files) {
   temporaryFilesList = files;
   if (files.length > 0) {
-    // Kijelölés után azonnal futtatjuk is a feldolgozást, nem kell külön gomb!
     processLogsDirectly();
   }
 }
@@ -839,7 +917,6 @@ async function processLogsDirectly() {
   render();
   alert('Log fájlok sikeresen beolvasva és elemezve!');
   
-  // Reseteljük a mezőket
   document.getElementById('logFiles').value = '';
   temporaryFilesList = null;
 }
