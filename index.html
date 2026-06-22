@@ -448,6 +448,8 @@ input[type="file"] { display: none; }
   gap: 20px;
   margin-top: 15px;
 }
+.month-card-clickable { cursor: pointer; transition: all 0.2s; }
+.month-card-clickable:hover { border-color: var(--see-gold); transform: translateY(-2px); box-shadow: 0 6px 18px rgba(0,0,0,0.3); }
 
 .auth-wrapper { display: flex; justify-content: center; align-items: center; min-height: 80vh; }
 .auth-card { background: var(--see-card); border: 1px solid var(--see-border); border-radius: 12px; padding: 35px; width: 100%; max-width: 400px; box-shadow: 0 10px 30px rgba(0,0,0,0.5); }
@@ -475,6 +477,29 @@ input[type="file"] { display: none; }
 </style>
 </head>
 <body>
+
+<div class="dev-modal" id="monthEditModal">
+  <div class="dev-modal-content" style="max-width: 760px;">
+    <div class="dev-modal-header">
+      <h2 id="monthEditTitle">📅 Hónap szerkesztése</h2>
+      <button class="dev-close" onclick="closeMonthEdit()">✕</button>
+    </div>
+    <div class="see-workspace" style="grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px;">
+      <div>
+        <div style="font-size:12px; font-weight:700; text-transform:uppercase; margin-bottom:8px; color:var(--see-gold);">Duty</div>
+        <div class="see-list-container" id="monthEditDuty" style="max-height: 260px;"></div>
+      </div>
+      <div>
+        <div style="font-size:12px; font-weight:700; text-transform:uppercase; margin-bottom:8px; color:#fff;">Off Duty</div>
+        <div class="see-list-container" id="monthEditOff" style="max-height: 260px;"></div>
+      </div>
+      <div>
+        <div style="font-size:12px; font-weight:700; text-transform:uppercase; margin-bottom:8px; color:var(--see-success);">Reportok</div>
+        <div class="see-list-container" id="monthEditReports" style="max-height: 260px;"></div>
+      </div>
+    </div>
+  </div>
+</div>
 
 <div class="auth-wrapper" id="authSection">
   <div class="auth-card">
@@ -953,6 +978,111 @@ async function devDeleteUser(username) {
 async function saveGlobal() { await fbSave(`data/${currentUser}`, globalData[currentUser]); }
 function today() { return new Date().toISOString().substring(0,10); }
 
+let currentEditMonth = null;
+
+function openMonthEdit(monthKey) {
+  currentEditMonth = monthKey;
+  document.getElementById('monthEditTitle').textContent = `📅 ${monthKey} szerkesztése`;
+  document.getElementById('monthEditModal').style.display = 'flex';
+  renderMonthEdit();
+}
+function closeMonthEdit() {
+  document.getElementById('monthEditModal').style.display = 'none';
+  currentEditMonth = null;
+}
+
+function renderMonthEdit() {
+  if (!currentEditMonth) return;
+  const monthKey = currentEditMonth;
+  const dList = globalData[currentUser].duty || [];
+  const oList = globalData[currentUser].off || [];
+  const reps = globalData[currentUser].reports || {};
+
+  document.getElementById('monthEditDuty').innerHTML = dList.map((x, i) => {
+    if (x.date.substring(0, 7) !== monthKey) return '';
+    return `
+      <div class="see-list-item">
+        <span class="see-item-date">${x.date}</span>
+        <span class="see-item-value" style="color:var(--see-gold)">${x.perc} perc</span>
+        <div class="see-item-actions">
+          <button class="see-action-btn" onclick="editMonthDutyItem(${i})">✏</button>
+          <button class="see-action-btn del" onclick="delMonthDutyItem(${i})">✕</button>
+        </div>
+      </div>`;
+  }).join('').trim() || '<div style="font-size:11px;color:var(--see-text-muted);">Nincs adat erre a hónapra</div>';
+
+  document.getElementById('monthEditOff').innerHTML = oList.map((x, i) => {
+    if (x.date.substring(0, 7) !== monthKey) return '';
+    return `
+      <div class="see-list-item">
+        <span class="see-item-date">${x.date}</span>
+        <span class="see-item-value" style="color:#fff">${x.perc} perc</span>
+        <div class="see-item-actions">
+          <button class="see-action-btn" onclick="editMonthOffItem(${i})">✏</button>
+          <button class="see-action-btn del" onclick="delMonthOffItem(${i})">✕</button>
+        </div>
+      </div>`;
+  }).join('').trim() || '<div style="font-size:11px;color:var(--see-text-muted);">Nincs adat erre a hónapra</div>';
+
+  document.getElementById('monthEditReports').innerHTML = Object.keys(reps).sort().map(d => {
+    if (d.substring(0, 7) !== monthKey) return '';
+    return `
+      <div class="see-list-item">
+        <span class="see-item-date">${d}</span>
+        <span class="see-item-value" style="color:var(--see-success)">${reps[d]} db</span>
+        <div class="see-item-actions">
+          <button class="see-action-btn" onclick="editMonthReport('${d}')">✏</button>
+          <button class="see-action-btn del" onclick="delMonthReport('${d}')">✕</button>
+        </div>
+      </div>`;
+  }).join('').trim() || '<div style="font-size:11px;color:var(--see-text-muted);">Nincs adat erre a hónapra</div>';
+}
+
+async function editMonthDutyItem(i) {
+  const item = globalData[currentUser].duty[i];
+  const newVal = prompt(`Percek száma (${item.date}):`, item.perc);
+  if (newVal !== null && newVal.trim() !== '' && !isNaN(newVal)) {
+    const v = parseInt(newVal, 10);
+    item.off = item.on + v; item.perc = v;
+    await saveGlobal(); render(); renderMonthEdit();
+  }
+}
+async function delMonthDutyItem(i) {
+  if (confirm('Biztosan törlöd?')) {
+    globalData[currentUser].duty.splice(i, 1);
+    await saveGlobal(); render(); renderMonthEdit();
+  }
+}
+async function editMonthOffItem(i) {
+  const item = globalData[currentUser].off[i];
+  const newVal = prompt(`Percek száma (${item.date}):`, item.perc);
+  if (newVal !== null && newVal.trim() !== '' && !isNaN(newVal)) {
+    const v = parseInt(newVal, 10);
+    item.off = item.on + v; item.perc = v;
+    await saveGlobal(); render(); renderMonthEdit();
+  }
+}
+async function delMonthOffItem(i) {
+  if (confirm('Biztosan törlöd?')) {
+    globalData[currentUser].off.splice(i, 1);
+    await saveGlobal(); render(); renderMonthEdit();
+  }
+}
+async function editMonthReport(date) {
+  const currentCount = globalData[currentUser].reports[date] || 0;
+  const newCount = prompt(`Módosítás (${date}):`, currentCount);
+  if (newCount !== null && !isNaN(newCount) && newCount.trim() !== '') {
+    globalData[currentUser].reports[date] = parseInt(newCount, 10);
+    await saveGlobal(); render(); renderMonthEdit();
+  }
+}
+async function delMonthReport(date) {
+  if (confirm('Törlöd?')) {
+    delete globalData[currentUser].reports[date];
+    await saveGlobal(); render(); renderMonthEdit();
+  }
+}
+
 function updateFileLabel() {
   const files = document.getElementById('logFiles').files;
   document.getElementById('fileLabelText').innerHTML = files.length > 0 ? `Kiválasztva: ${files.length} db log` : 'Tallózás, vagy húzd ide a log fájlokat<small>(nem töltődik fel)</small>';
@@ -1057,6 +1187,7 @@ async function handleLogDrop(e) {
 }
 
 async function processFileList(files) {
+  const freshCounts = {};
   for (const file of files) {
     const text = await file.text(); const lines = text.split(/\r?\n/);
     for (const line of lines) {
@@ -1065,12 +1196,17 @@ async function processFileList(files) {
         if (m) {
           let logDate = m[1]; let logHour = parseInt(m[2], 10);
           if (logHour >= 0 && logHour < 5) { let d = new Date(logDate); d.setDate(d.getDate() - 1); logDate = d.toISOString().substring(0, 10); }
-          globalData[currentUser].reports[logDate] = (globalData[currentUser].reports[logDate] || 0) + 1;
+          freshCounts[logDate] = (freshCounts[logDate] || 0) + 1;
         }
       }
     }
   }
-  await saveGlobal(); render(); alert('Logok feldolgozva!');
+  // Bármelyik nap, amire a most betöltött log adatot tartalmaz, felülíródik a friss számmal
+  // (nem adódik hozzá a régi értékhez), így nem kell előtte kézzel törölni azt a napot.
+  Object.keys(freshCounts).forEach(date => {
+    globalData[currentUser].reports[date] = freshCounts[date];
+  });
+  await saveGlobal(); render(); alert('Logok feldolgozva! Az érintett napok adatai frissültek (felülírva) a logban talált új értékekkel.');
 }
 
 function render() {
@@ -1139,9 +1275,10 @@ function render() {
   const sortedMonths = Object.keys(monthlyData).sort().reverse();
   monthlySummaryContainer.innerHTML = sortedMonths.map(m => {
     return `
-      <div class="see-panel" style="background: var(--see-card-inner); padding: 20px;">
-        <div style="font-weight: 800; color: var(--see-gold); font-size: 14px; text-transform: uppercase; border-bottom: 1px solid var(--see-border); padding-bottom: 8px; margin-bottom: 12px; display:flex; justify-content:space-between;">
+      <div class="see-panel month-card-clickable" style="background: var(--see-card-inner); padding: 20px;" onclick="openMonthEdit('${m}')">
+        <div style="font-weight: 800; color: var(--see-gold); font-size: 14px; text-transform: uppercase; border-bottom: 1px solid var(--see-border); padding-bottom: 8px; margin-bottom: 12px; display:flex; justify-content:space-between; align-items:center;">
           <span>📅 ${m}</span>
+          <span style="font-size:11px; font-weight:600; color:var(--see-text-muted); text-transform:none;">✏ Szerkesztés</span>
         </div>
         <div style="font-size: 12px; display: flex; flex-direction: column; gap: 8px; color: var(--see-text-muted);">
           <div style="display:flex; justify-content:space-between;"><span>Duty idő:</span><strong style="color:#fff; font-family:'Roboto Mono', monospace;">${monthlyData[m].duty} p</strong></div>
