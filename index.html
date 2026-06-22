@@ -659,7 +659,13 @@ input[type="file"] { display: none; }
             👈 Válassz egy felhasználót a listából a statisztikái megtekintéséhez.
           </div>
           <div id="devStatsDashboard" style="display: none;">
-            <div style="font-size:13px; font-weight:700; text-transform:uppercase; color:var(--see-gold); margin-bottom:12px;" id="devStatsSelectedName"></div>
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
+              <div style="font-size:13px; font-weight:700; text-transform:uppercase; color:var(--see-gold);" id="devStatsSelectedName"></div>
+              <div style="display:flex; align-items:center; gap:10px;">
+                <span style="font-size:10px; color:var(--see-text-muted);" id="devStatsLastRefresh"></span>
+                <button class="bulk-btn" onclick="refreshStatsUserData(selectedStatsUser)">🔄 Frissítés</button>
+              </div>
+            </div>
             <div class="stats-grid-mini">
               <div class="stats-card-mini">
                 <div class="label">Duty Idő</div>
@@ -738,6 +744,11 @@ async function initAuth() {
 function switchPage(pageId) {
   document.querySelectorAll('.see-section').forEach(el => el.classList.remove('active'));
   document.querySelectorAll('.side-nav-item').forEach(el => el.classList.remove('active'));
+
+  if (pageId !== 'devstats' && typeof statsRefreshInterval !== 'undefined' && statsRefreshInterval) {
+    clearInterval(statsRefreshInterval);
+    statsRefreshInterval = null;
+  }
   
   if (pageId === 'main') {
     document.getElementById('mainSection').classList.add('active');
@@ -872,10 +883,12 @@ async function openDevPage() {
 }
 
 let selectedStatsUser = null;
+let statsRefreshInterval = null;
 
 async function openDevStatsPage() {
   switchPage('devstats');
   selectedStatsUser = null;
+  if (statsRefreshInterval) { clearInterval(statsRefreshInterval); statsRefreshInterval = null; }
   document.getElementById("devStatsDashboard").style.display = "none";
   document.getElementById("devStatsEmptyState").style.display = "block";
   usersDB = await fbFetch("users") || {};
@@ -899,7 +912,7 @@ function renderDevStatsUserList() {
   }).join('') || '<div style="font-size:13px;color:var(--see-text-muted);">Nincs regisztrált felhasználó.</div>';
 }
 
-function selectStatsUser(username) {
+async function selectStatsUser(username) {
   selectedStatsUser = username;
   document.querySelectorAll('#devStatsUserList .see-list-item').forEach(el => el.classList.remove('selected'));
   const row = document.getElementById(`statsrow-${username}`);
@@ -909,6 +922,26 @@ function selectStatsUser(username) {
   document.getElementById("devStatsDashboard").style.display = "block";
   document.getElementById("devStatsSelectedName").textContent = usersDB[username] ? usersDB[username].display : username;
 
+  await refreshStatsUserData(username);
+
+  // Élő frissítés: amíg ennél a felhasználónál vagyunk, néhány másodpercenként újra lekérjük
+  // a friss adatot Firebase-ből, hogy ha ő (vagy más eszközön) közben feltölt egy logot, az itt is megjelenjen.
+  if (statsRefreshInterval) clearInterval(statsRefreshInterval);
+  statsRefreshInterval = setInterval(() => {
+    if (selectedStatsUser === username) refreshStatsUserData(username, true);
+  }, 5000);
+}
+
+async function refreshStatsUserData(username, silent) {
+  if (!username) return;
+  const fresh = await fbFetch(`data/${username}`);
+  globalData[username] = fresh || { duty: [], off: [], reports: {} };
+  renderStatsDashboard(username);
+  const now = new Date();
+  document.getElementById("devStatsLastRefresh").textContent = `Frissítve: ${now.toLocaleTimeString('hu-HU')}`;
+}
+
+function renderStatsDashboard(username) {
   const uData = globalData[username] || { duty: [], off: [], reports: {} };
   const dList = uData.duty || [];
   const oList = uData.off || [];
