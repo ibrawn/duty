@@ -45,7 +45,7 @@ header {
   justify-content: space-between;
   align-items: center;
   position: relative;
-  z-index: 1000; /* Biztosítja, hogy a fejléc elemei legfelül legyenek */
+  z-index: 1000;
 }
 .header-left {
   display: flex;
@@ -83,7 +83,7 @@ header h1 span { color: var(--see-gold); }
   gap: 15px;
 }
 
-/* ÚJ JAVÍTOTT GYORS LINKEK LENYÍLÓ */
+/* GYORS LINKEK LENYÍLÓ FIXES */
 .see-dropdown { 
   position: relative; 
   display: inline-block; 
@@ -109,7 +109,7 @@ header h1 span { color: var(--see-gold); }
   box-shadow: 0px 8px 24px rgba(0,0,0,0.6);
   border: 1px solid var(--see-border);
   border-radius: 6px;
-  z-index: 999; /* Magasabb mint a statisztikák, így felette jelenik meg */
+  z-index: 999;
   margin-top: 5px;
   overflow: hidden;
 }
@@ -192,7 +192,7 @@ header h1 span { color: var(--see-gold); }
   gap: 20px;
   margin-bottom: 25px; 
   position: relative;
-  z-index: 1; /* Alacsonyabb z-index, hogy a lenyíló rács rácsúszhasson */
+  z-index: 1;
 }
 .see-stat-card { 
   background: var(--see-card); 
@@ -218,9 +218,22 @@ header h1 span { color: var(--see-gold); }
 }
 .see-stat-value span { font-size: 16px; color: var(--see-text-muted); font-weight: 500; }
 
+/* ÚJ KÉTHASÁBOS ELRENDEZÉS A HAVI ÖSSZESÍTÉSHEZ */
+.see-main-layout {
+  display: grid;
+  grid-template-columns: 320px 1fr;
+  gap: 25px;
+  align-items: start;
+}
+@media (max-width: 1024px) {
+  .see-main-layout {
+    grid-template-columns: 1fr;
+  }
+}
+
 .see-workspace { 
   display: grid; 
-  grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); /* Finomított alap méret, hogy ne tolódjon szét */
+  grid-template-columns: repeat(auto-fit, minmax(340px, 1fr)); 
   gap: 25px; 
 }
 .see-panel { 
@@ -229,8 +242,8 @@ header h1 span { color: var(--see-gold); }
   border-radius: 12px; 
   padding: 24px; 
   display: flex; 
-  flex-direction: column;
-  overflow: hidden; /* Biztosítja, hogy semmi ne lógjon ki a kártyából */
+  flex-direction: column; 
+  overflow: hidden;
 }
 .see-panel-title { 
   font-size: 15px; 
@@ -287,16 +300,10 @@ header h1 span { color: var(--see-gold); }
   background: var(--see-danger-hover);
 }
 
-/* JAVÍTOTT INPUT MEZŐK ÉS ELRENDEZÉS */
-.see-input-row { 
-  display: flex; 
-  gap: 10px; 
-  margin-bottom: 12px;
-  width: 100%;
-}
+.see-input-row { display: flex; gap: 10px; margin-bottom: 12px; width: 100%; }
 input[type="number"], input[type="text"], input[type="password"], select { 
   flex: 1; 
-  min-width: 0; /* KRITIKUS JAVÍTÁS: Megakadályozza, hogy a flexbox túlnyújtsa az inputot */
+  min-width: 0; /* Megakadályozza a flex túlnyúlást */
   max-width: 100%;
   background: var(--see-card-inner); 
   border: 1px solid var(--see-border); 
@@ -325,8 +332,8 @@ input[type="file"] { display: none; }
   cursor: pointer; 
   font-weight: 500; 
   transition: all 0.2s; 
-  text-align: center;
   width: 100%;
+  text-align: center;
 }
 .see-file-label:hover { border-color: var(--see-gold); color: #fff; }
 
@@ -543,51 +550,61 @@ input[type="file"] { display: none; }
     </div>
   </div>
 
-  <div class="see-workspace">
+  <div class="see-main-layout">
+    
     <div class="see-panel">
-      <div class="see-panel-title">Duty Rögzítés <span id="dutyCount">0 sor</span></div>
-      <div class="see-input-row">
-        <input id="dutyOn" type="number" placeholder="Kezdő perc">
-        <input id="dutyOff" type="number" placeholder="Vég perc">
-      </div>
-      <button class="see-btn" onclick="saveDuty()">Mentés</button>
-      
-      <div class="panel-bulk-actions">
-        <button class="bulk-btn" onclick="toggleSelectAll('duty')">Összes kijelölése</button>
-        <button class="bulk-btn danger-bulk" id="bulkDelBtn-duty" onclick="deleteSelected('duty')">Kijelöltek törlése</button>
-      </div>
-      <div class="see-list-container" id="dutyStream"></div>
+      <div class="see-panel-title">Havi Összesítések</div>
+      <div class="see-list-container" id="monthlySummaryStream" style="max-height: 600px;">
+        </div>
     </div>
 
-    <div class="see-panel">
-      <div class="see-panel-title">Off Duty Rögzítés <span id="offCount">0 sor</span></div>
-      <div class="see-input-row">
-        <input id="offOn" type="number" placeholder="Kezdő perc">
-        <input id="offOff" type="number" placeholder="Vég perc">
+    <div class="see-workspace">
+      <div class="see-panel">
+        <div class="see-panel-title">Duty Rögzítés <span id="dutyCount">0 sor</span></div>
+        <div class="see-input-row">
+          <input id="dutyOn" type="number" placeholder="Kezdő perc">
+          <input id="dutyOff" type="number" placeholder="Vég perc">
+        </div>
+        <button class="see-btn" onclick="saveDuty()">Mentés</button>
+        
+        <div class="panel-bulk-actions">
+          <button class="bulk-btn" onclick="toggleSelectAll('duty')">Összes kijelölése</button>
+          <button class="bulk-btn danger-bulk" id="bulkDelBtn-duty" onclick="deleteSelected('duty')">Kijelöltek törlése</button>
+        </div>
+        <div class="see-list-container" id="dutyStream"></div>
       </div>
-      <button class="see-btn" onclick="saveOff()">Mentés</button>
-      
-      <div class="panel-bulk-actions">
-        <button class="bulk-btn" onclick="toggleSelectAll('off')">Összes kijelölése</button>
-        <button class="bulk-btn danger-bulk" id="bulkDelBtn-off" onclick="deleteSelected('off')">Kijelöltek törlése</button>
+
+      <div class="see-panel">
+        <div class="see-panel-title">Off Duty Rögzítés <span id="offCount">0 sor</span></div>
+        <div class="see-input-row">
+          <input id="offOn" type="number" placeholder="Kezdő perc">
+          <input id="offOff" type="number" placeholder="Vég perc">
+        </div>
+        <button class="see-btn" onclick="saveOff()">Mentés</button>
+        
+        <div class="panel-bulk-actions">
+          <button class="bulk-btn" onclick="toggleSelectAll('off')">Összes kijelölése</button>
+          <button class="bulk-btn danger-bulk" id="bulkDelBtn-off" onclick="deleteSelected('off')">Kijelöltek törlése</button>
+        </div>
+        <div class="see-list-container" id="offStream"></div>
       </div>
-      <div class="see-list-container" id="offStream"></div>
+
+      <div class="see-panel report-type">
+        <div class="see-panel-title">Logok Beolvasása <span id="reportDaysCount">0 nap</span></div>
+        <div class="see-file-wrapper">
+          <label for="logFiles" class="see-file-label" id="fileLabel">Tallózás a gépedről (nem töltődik fel)</label>
+          <input type="file" id="logFiles" multiple accept=".txt,.log" onchange="updateFileLabel()">
+        </div>
+        <button class="see-btn" onclick="processLogs()">Betöltés és elemzés</button>
+        
+        <div class="panel-bulk-actions">
+          <button class="bulk-btn" onclick="toggleSelectAll('reports')">Összes kijelölése</button>
+          <button class="bulk-btn danger-bulk" id="bulkDelBtn-reports" onclick="deleteSelected('reports')">Kijelöltek törlése</button>
+        </div>
+        <div class="see-list-container" id="reportStream"></div>
+      </div>
     </div>
 
-    <div class="see-panel report-type">
-      <div class="see-panel-title">Logok Beolvasása <span id="reportDaysCount">0 nap</span></div>
-      <div class="see-file-wrapper">
-        <label for="logFiles" class="see-file-label" id="fileLabel">Tallózás a gépedről (nem töltődik fel)</label>
-        <input type="file" id="logFiles" multiple accept=".txt,.log" onchange="updateFileLabel()">
-      </div>
-      <button class="see-btn" onclick="processLogs()">Betöltés és elemzés</button>
-      
-      <div class="panel-bulk-actions">
-        <button class="bulk-btn" onclick="toggleSelectAll('reports')">Összes kijelölése</button>
-        <button class="bulk-btn danger-bulk" id="bulkDelBtn-reports" onclick="deleteSelected('reports')">Kijelöltek törlése</button>
-      </div>
-      <div class="see-list-container" id="reportStream"></div>
-    </div>
   </div>
 </div>
 
@@ -625,11 +642,10 @@ async function initAuth() {
   }
 }
 
-/* LENYÍLÓ FUNKCIÓK KIEGÉSZÍTÉSE */
+/* GYORS LINKEK MŰKÖDÉSE */
 function toggleDropdown() {
   document.getElementById("linksDropdown").classList.toggle("open");
 }
-
 function setupDropdownCloseListener() {
   window.addEventListener("click", function(event) {
     if (!event.target.matches('.see-dropdown-btn')) {
@@ -1020,10 +1036,19 @@ async function processLogs() {
 
 function render() {
   let duty = 0, off = 0, reports = 0;
+  
+  // Objektum a havi statisztikák gyűjtéséhez
+  let monthlyData = {};
 
   const dList = globalData[currentUser].duty || [];
   dutyStream.innerHTML = dList.map((x, i) => {
     duty += x.perc;
+    
+    // Hónap kinyerése (YYYY-MM)
+    let mKey = x.date.substring(0, 7);
+    if (!monthlyData[mKey]) monthlyData[mKey] = { duty: 0, off: 0, reports: 0 };
+    monthlyData[mKey].duty += x.perc;
+
     const isChecked = selectedItems.duty[i] ? 'checked' : '';
     return `
       <div class="see-list-item">
@@ -1042,6 +1067,12 @@ function render() {
   const oList = globalData[currentUser].off || [];
   offStream.innerHTML = oList.map((x, i) => {
     off += x.perc;
+
+    // Hónap kinyerése (YYYY-MM)
+    let mKey = x.date.substring(0, 7);
+    if (!monthlyData[mKey]) monthlyData[mKey] = { duty: 0, off: 0, reports: 0 };
+    monthlyData[mKey].off += x.perc;
+
     const isChecked = selectedItems.off[i] ? 'checked' : '';
     return `
       <div class="see-list-item">
@@ -1061,6 +1092,12 @@ function render() {
   const sortedReportKeys = Object.keys(reps).sort();
   reportStream.innerHTML = sortedReportKeys.map(d => {
     reports += reps[d];
+
+    // Hónap kinyerése (YYYY-MM)
+    let mKey = d.substring(0, 7);
+    if (!monthlyData[mKey]) monthlyData[mKey] = { duty: 0, off: 0, reports: 0 };
+    monthlyData[mKey].reports += reps[d];
+
     const isChecked = selectedItems.reports[d] ? 'checked' : '';
     return `
       <div class="see-list-item">
@@ -1075,6 +1112,20 @@ function render() {
         </div>
       </div>`;
   }).join('');
+
+  // BAL OLDALI HAVI ÖSSZESÍTŐK GENERÁLÁSA ÉS RENDERELÉSE
+  const sortedMonths = Object.keys(monthlyData).sort().reverse();
+  monthlySummaryStream.innerHTML = sortedMonths.map(m => {
+    return `
+      <div class="see-list-item" style="flex-direction: column; align-items: flex-start; gap: 8px; padding: 14px;">
+        <div style="font-weight: 700; color: var(--see-gold); font-size: 13px; text-transform: uppercase; letter-spacing: 0.5px;">📅 ${m}</div>
+        <div style="font-size: 11px; display: flex; flex-direction: column; gap: 4px; width: 100%; color: var(--see-text-muted);">
+          <div style="display:flex; justify-content:space-between;"><span>Duty idő:</span><strong style="color:#fff; font-family:'Roboto Mono', monospace;">${monthlyData[m].duty} p</strong></div>
+          <div style="display:flex; justify-content:space-between;"><span>Off Duty idő:</span><strong style="color:#fff; font-family:'Roboto Mono', monospace;">${monthlyData[m].off} p</strong></div>
+          <div style="display:flex; justify-content:space-between;"><span>Feldolgozott Reportok:</span><strong style="color:var(--see-success); font-family:'Roboto Mono', monospace;">${monthlyData[m].reports} db</strong></div>
+        </div>
+      </div>`;
+  }).join('') || '<div style="font-size:12px;color:var(--see-text-muted);text-align:center;padding:10px;">Nincs még rögzített adat.</div>';
 
   totalDuty.innerHTML = `${duty} <span>perc</span>`;
   totalOff.innerHTML = `${off} <span>perc</span>`;
