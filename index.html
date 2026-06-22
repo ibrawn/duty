@@ -726,8 +726,10 @@ async function fbFetch(path) {
 
 async function fbSave(path, data) {
   try {
-    await fetch(`${FIREBASE_DB_URL}/${path}.json`, { method: 'PUT', body: JSON.stringify(data) });
-  } catch(e) { console.error(e); }
+    const res = await fetch(`${FIREBASE_DB_URL}/${path}.json`, { method: 'PUT', body: JSON.stringify(data) });
+    if (!res.ok) { console.error('fbSave failed', path, res.status); return false; }
+    return true;
+  } catch(e) { console.error(e); return false; }
 }
 
 async function initAuth() {
@@ -951,12 +953,12 @@ function renderStatsDashboard(username) {
   
   document.getElementById("miniDutyStream").innerHTML = dList.map(x => {
     totalDutyMin += x.perc;
-    return `<div class="see-list-item" style="padding: 8px 10px;"><span class="see-item-date">${x.date}</span><span class="see-item-value" style="color:var(--see-gold)">${x.perc} p</span></div>`;
+    return `<div class="see-list-item" style="padding: 8px 10px;"><span class="see-item-date">${x.date} <span style="color:var(--see-text-muted); font-size:10px;">(${x.on} - ${x.off})</span></span><span class="see-item-value" style="color:var(--see-gold)">${x.perc} p</span></div>`;
   }).join('') || '<div style="font-size:11px;color:var(--see-text-muted);">Nincs adat</div>';
   
   document.getElementById("miniOffStream").innerHTML = oList.map(x => {
     totalOffMin += x.perc;
-    return `<div class="see-list-item" style="padding: 8px 10px;"><span class="see-item-date">${x.date}</span><span class="see-item-value" style="color:#fff">${x.perc} p</span></div>`;
+    return `<div class="see-list-item" style="padding: 8px 10px;"><span class="see-item-date">${x.date} <span style="color:var(--see-text-muted); font-size:10px;">(${x.on} - ${x.off})</span></span><span class="see-item-value" style="color:#fff">${x.perc} p</span></div>`;
   }).join('') || '<div style="font-size:11px;color:var(--see-text-muted);">Nincs adat</div>';
   
   document.getElementById("miniReportsStream").innerHTML = Object.keys(reps).sort().map(d => {
@@ -1008,7 +1010,7 @@ async function devDeleteUser(username) {
   }
 }
 
-async function saveGlobal() { await fbSave(`data/${currentUser}`, globalData[currentUser]); }
+async function saveGlobal() { return await fbSave(`data/${currentUser}`, globalData[currentUser]); }
 function today() { return new Date().toISOString().substring(0,10); }
 
 let currentEditMonth = null;
@@ -1035,7 +1037,10 @@ function renderMonthEdit() {
     if (x.date.substring(0, 7) !== monthKey) return '';
     return `
       <div class="see-list-item">
-        <span class="see-item-date">${x.date}</span>
+        <div>
+          <span class="see-item-date">${x.date}</span>
+          <span style="font-size:11px; color:var(--see-text-muted); font-family:'Roboto Mono', monospace; margin-left:6px;">(${x.on} - ${x.off})</span>
+        </div>
         <span class="see-item-value" style="color:var(--see-gold)">${x.perc} perc</span>
         <div class="see-item-actions">
           <button class="see-action-btn" onclick="editMonthDutyItem(${i})">✏</button>
@@ -1048,7 +1053,10 @@ function renderMonthEdit() {
     if (x.date.substring(0, 7) !== monthKey) return '';
     return `
       <div class="see-list-item">
-        <span class="see-item-date">${x.date}</span>
+        <div>
+          <span class="see-item-date">${x.date}</span>
+          <span style="font-size:11px; color:var(--see-text-muted); font-family:'Roboto Mono', monospace; margin-left:6px;">(${x.on} - ${x.off})</span>
+        </div>
         <span class="see-item-value" style="color:#fff">${x.perc} perc</span>
         <div class="see-item-actions">
           <button class="see-action-btn" onclick="editMonthOffItem(${i})">✏</button>
@@ -1234,12 +1242,30 @@ async function processFileList(files) {
       }
     }
   }
+
+  // Mentés előtt mindig a Firebase-ben aktuálisan tárolt, legfrissebb állapotot kérjük le,
+  // és arra építve írjuk rá a log alapján kapott napokat. Így ha közben (pl. a Statisztikák
+  // oldal frissítése miatt) a memóriában lévő globalData elavult lenne, az nem írja felül
+  // véletlenül a többi, már elmentett adatot, és a log feldolgozása nem "tűnik el" mentés után.
+  const latestUserData = await fbFetch(`data/${currentUser}`) || {};
+  if (!latestUserData.duty) latestUserData.duty = [];
+  if (!latestUserData.off) latestUserData.off = [];
+  if (!latestUserData.reports) latestUserData.reports = {};
+
   // Bármelyik nap, amire a most betöltött log adatot tartalmaz, felülíródik a friss számmal
   // (nem adódik hozzá a régi értékhez), így nem kell előtte kézzel törölni azt a napot.
   Object.keys(freshCounts).forEach(date => {
-    globalData[currentUser].reports[date] = freshCounts[date];
+    latestUserData.reports[date] = freshCounts[date];
   });
-  await saveGlobal(); render(); alert('Logok feldolgozva! Az érintett napok adatai frissültek (felülírva) a logban talált új értékekkel.');
+
+  globalData[currentUser] = latestUserData;
+  const ok = await saveGlobal();
+  render();
+  if (ok) {
+    alert('Logok feldolgozva! Az érintett napok adatai frissültek (felülírva) a logban talált új értékekkel.');
+  } else {
+    alert('Hiba történt a mentés közben — az adatok NEM kerültek elmentve a szerverre. Próbáld újra, és ellenőrizd a hálózati kapcsolatot.');
+  }
 }
 
 function render() {
@@ -1259,6 +1285,7 @@ function render() {
         <div class="see-item-left">
           <input type="checkbox" id="cb-duty-${i}" class="see-checkbox" onchange="handleCheckboxChange('duty', ${i})" ${isChecked}>
           <span class="see-item-date">${x.date}</span>
+          <span style="font-size:11px; color:var(--see-text-muted); font-family:'Roboto Mono', monospace;">(${x.on} - ${x.off})</span>
         </div>
         <span class="see-item-value" style="color:var(--see-gold)">${x.perc} perc</span>
         <div class="see-item-actions"><button class="see-action-btn" onclick="editItem('duty',${i})">✏</button><button class="see-action-btn del" onclick="delItem('duty',${i})">✕</button></div>
@@ -1278,6 +1305,7 @@ function render() {
         <div class="see-item-left">
           <input type="checkbox" id="cb-off-${i}" class="see-checkbox" onchange="handleCheckboxChange('off', ${i})" ${isChecked}>
           <span class="see-item-date">${x.date}</span>
+          <span style="font-size:11px; color:var(--see-text-muted); font-family:'Roboto Mono', monospace;">(${x.on} - ${x.off})</span>
         </div>
         <span class="see-item-value" style="color:#fff">${x.perc} perc</span>
         <div class="see-item-actions"><button class="see-action-btn" onclick="editItem('off',${i})">✏</button><button class="see-action-btn del" onclick="delItem('off',${i})">✕</button></div>
