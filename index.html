@@ -482,7 +482,10 @@ input[type="file"] { display: none; }
   <div class="dev-modal-content" style="max-width: 760px;">
     <div class="dev-modal-header">
       <h2 id="monthEditTitle">📅 Hónap szerkesztése</h2>
-      <button class="dev-close" onclick="closeMonthEdit()">✕</button>
+      <div style="display:flex; align-items:center; gap:10px;">
+        <button class="bulk-btn" id="monthReopenBtn" style="display:none; border-color:var(--see-success); color:var(--see-success);" onclick="reopenMonth(currentEditMonth)">🔓 Hónap megnyitása</button>
+        <button class="dev-close" onclick="closeMonthEdit()">✕</button>
+      </div>
     </div>
     <div class="see-workspace" style="grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px;">
       <div>
@@ -574,6 +577,9 @@ input[type="file"] { display: none; }
   </div>
 
   <div id="mainSection" class="see-section active">
+    <div style="display:flex; justify-content:flex-end; margin-bottom:15px;">
+      <button class="bulk-btn" id="closeMonthBtn" style="border-color: var(--see-gold); color: var(--see-gold); padding: 10px 16px; font-size:12px;" onclick="closeCurrentMonth()">🔒 Hónap lezárása</button>
+    </div>
     <div class="see-workspace">
       <div class="see-panel">
         <div class="see-panel-title">Duty Rögzítés <span id="dutyCount">0 sor</span></div>
@@ -862,6 +868,7 @@ async function showMainUcp() {
   if (!globalData[currentUser].duty) globalData[currentUser].duty = [];
   if (!globalData[currentUser].off) globalData[currentUser].off = [];
   if (!globalData[currentUser].reports) globalData[currentUser].reports = {};
+  if (!globalData[currentUser].closedMonths) globalData[currentUser].closedMonths = {};
   selectedItems = { duty: {}, off: {}, reports: {} };
   
   switchPage('main');
@@ -1013,11 +1020,104 @@ async function devDeleteUser(username) {
 async function saveGlobal() { return await fbSave(`data/${currentUser}`, globalData[currentUser]); }
 function today() { return new Date().toISOString().substring(0,10); }
 
+function isMonthClosed(monthKey) {
+  return !!(globalData[currentUser] && globalData[currentUser].closedMonths && globalData[currentUser].closedMonths[monthKey]);
+}
+
+// Kitalálja, melyik hónaphoz tartozik a jelenleg még NYITOTT (le nem zárt) adat,
+// a legkorábbi rögzített dátum alapján -- így ha pl. már július 4-e van, de még
+// nem zártad le júniust, a javaslat "2026-06" lesz, nem a mai naptári hónap.
+function guessOpenPeriodMonthLabel() {
+  const dList = globalData[currentUser].duty || [];
+  const oList = globalData[currentUser].off || [];
+  const reps = globalData[currentUser].reports || {};
+  let dates = [];
+  dList.forEach(x => { if (x && x.date) dates.push(x.date); });
+  oList.forEach(x => { if (x && x.date) dates.push(x.date); });
+  Object.keys(reps).forEach(d => dates.push(d));
+  if (dates.length === 0) return today().substring(0, 7);
+  dates.sort();
+  return dates[0].substring(0, 7);
+}
+
+async function closeCurrentMonth() {
+  const dList = globalData[currentUser].duty || [];
+  const oList = globalData[currentUser].off || [];
+  const reps = globalData[currentUser].reports || {};
+
+  if (dList.length === 0 && oList.length === 0 && Object.keys(reps).length === 0) {
+    alert('Nincs mit lezárni: a munkaterületen jelenleg nincs rögzített adat.');
+    return;
+  }
+
+  const suggested = guessOpenPeriodMonthLabel();
+  const input = prompt(`Melyik hónaphoz zárjuk le a jelenleg nyitott statisztikákat?\n\nÍrd be ÉÉÉÉ-HH formátumban (pl. ${suggested}).`, suggested);
+  if (input === null) return;
+  const monthKey = input.trim();
+  if (!/^\d{4}-\d{2}$/.test(monthKey)) { alert('Érvénytelen formátum! Használd az ÉÉÉÉ-HH formát (pl. 2026-06).'); return; }
+
+  if (!confirm(`Biztosan lezárod a jelenlegi nyitott időszakot "${monthKey}" néven?\n\nA jelenlegi Duty / Off Duty / Report adatok archiválásra kerülnek ehhez a hónaphoz, a munkaterület pedig KIÜRÜL (nullázódik), hogy elölről kezdhesd a rögzítést.`)) return;
+
+  if (!globalData[currentUser].closedMonths) globalData[currentUser].closedMonths = {};
+  const existing = globalData[currentUser].closedMonths[monthKey] || { duty: [], off: [], reports: {} };
+  existing.duty = (existing.duty || []).concat(dList);
+  existing.off = (existing.off || []).concat(oList);
+  existing.reports = existing.reports || {};
+  Object.keys(reps).forEach(d => { existing.reports[d] = (existing.reports[d] || 0) + reps[d]; });
+  globalData[currentUser].closedMonths[monthKey] = existing;
+
+  // Munkaterület nullázása - kezdődjön elölről
+  globalData[currentUser].duty = [];
+  globalData[currentUser].off = [];
+  globalData[currentUser].reports = {};
+  selectedItems = { duty: {}, off: {}, reports: {} };
+
+  const ok = await saveGlobal();
+  if (ok) {
+    switchPage('monthly');
+    render();
+  } else {
+    alert('Hiba történt a hónap lezárása közben, próbáld újra!');
+  }
+}
+
+async function reopenMonth(monthKey) {
+  if (!monthKey) return;
+  const closedMonths = globalData[currentUser].closedMonths || {};
+  const arc = closedMonths[monthKey];
+  if (!arc) return;
+
+  const hasOpenData = (globalData[currentUser].duty || []).length > 0
+    || (globalData[currentUser].off || []).length > 0
+    || Object.keys(globalData[currentUser].reports || {}).length > 0;
+
+  let msg = `Biztosan újra megnyitod a(z) ${monthKey} hónapot?\n\nA lezárt hónap adatai visszakerülnek a Munkaterületre szerkesztésre. Ez NEM indít automatikusan új hónapot.`;
+  if (hasOpenData) {
+    msg += `\n\nFIGYELEM: a Munkaterületen jelenleg már van más, még le nem zárt adat! A megnyitott hónap adatai hozzáadódnak ezekhez. Lezáráskor ügyelj a helyes hónap névre, nehogy összekeveredjenek az adatok.`;
+  }
+  if (!confirm(msg)) return;
+
+  globalData[currentUser].duty = (globalData[currentUser].duty || []).concat(arc.duty || []);
+  globalData[currentUser].off = (globalData[currentUser].off || []).concat(arc.off || []);
+  const reports = globalData[currentUser].reports || {};
+  Object.keys(arc.reports || {}).forEach(d => { reports[d] = (reports[d] || 0) + arc.reports[d]; });
+  globalData[currentUser].reports = reports;
+
+  delete globalData[currentUser].closedMonths[monthKey];
+
+  const ok = await saveGlobal();
+  if (!ok) { alert('Hiba történt a hónap megnyitása közben, próbáld újra!'); return; }
+  closeMonthEdit();
+  switchPage('main');
+  render();
+}
+
 let currentEditMonth = null;
 
 function openMonthEdit(monthKey) {
   currentEditMonth = monthKey;
-  document.getElementById('monthEditTitle').textContent = `📅 ${monthKey} szerkesztése`;
+  document.getElementById('monthEditTitle').textContent = `📅 ${monthKey} szerkesztése (🔒 Lezárva)`;
+  document.getElementById('monthReopenBtn').style.display = 'inline-block';
   document.getElementById('monthEditModal').style.display = 'flex';
   renderMonthEdit();
 }
@@ -1026,15 +1126,23 @@ function closeMonthEdit() {
   currentEditMonth = null;
 }
 
+// A lezárt hónapok saját, archivált duty/off/reports tömbökkel rendelkeznek
+// (globalData[currentUser].closedMonths[monthKey]), függetlenül a munkaterület
+// jelenlegi (még nyitott) adataitól.
+function getArchivedMonth(monthKey) {
+  const closedMonths = globalData[currentUser].closedMonths || {};
+  return closedMonths[monthKey] || { duty: [], off: [], reports: {} };
+}
+
 function renderMonthEdit() {
   if (!currentEditMonth) return;
   const monthKey = currentEditMonth;
-  const dList = globalData[currentUser].duty || [];
-  const oList = globalData[currentUser].off || [];
-  const reps = globalData[currentUser].reports || {};
+  const arc = getArchivedMonth(monthKey);
+  const dList = arc.duty || [];
+  const oList = arc.off || [];
+  const reps = arc.reports || {};
 
   document.getElementById('monthEditDuty').innerHTML = dList.map((x, i) => {
-    if (x.date.substring(0, 7) !== monthKey) return '';
     return `
       <div class="see-list-item">
         <div>
@@ -1050,7 +1158,6 @@ function renderMonthEdit() {
   }).join('').trim() || '<div style="font-size:11px;color:var(--see-text-muted);">Nincs adat erre a hónapra</div>';
 
   document.getElementById('monthEditOff').innerHTML = oList.map((x, i) => {
-    if (x.date.substring(0, 7) !== monthKey) return '';
     return `
       <div class="see-list-item">
         <div>
@@ -1066,7 +1173,6 @@ function renderMonthEdit() {
   }).join('').trim() || '<div style="font-size:11px;color:var(--see-text-muted);">Nincs adat erre a hónapra</div>';
 
   document.getElementById('monthEditReports').innerHTML = Object.keys(reps).sort().map(d => {
-    if (d.substring(0, 7) !== monthKey) return '';
     return `
       <div class="see-list-item">
         <span class="see-item-date">${d}</span>
@@ -1080,7 +1186,8 @@ function renderMonthEdit() {
 }
 
 async function editMonthDutyItem(i) {
-  const item = globalData[currentUser].duty[i];
+  const arc = getArchivedMonth(currentEditMonth);
+  const item = arc.duty[i];
   const newVal = prompt(`Percek száma (${item.date}):`, item.perc);
   if (newVal !== null && newVal.trim() !== '' && !isNaN(newVal)) {
     const v = parseInt(newVal, 10);
@@ -1090,12 +1197,13 @@ async function editMonthDutyItem(i) {
 }
 async function delMonthDutyItem(i) {
   if (confirm('Biztosan törlöd?')) {
-    globalData[currentUser].duty.splice(i, 1);
+    getArchivedMonth(currentEditMonth).duty.splice(i, 1);
     await saveGlobal(); render(); renderMonthEdit();
   }
 }
 async function editMonthOffItem(i) {
-  const item = globalData[currentUser].off[i];
+  const arc = getArchivedMonth(currentEditMonth);
+  const item = arc.off[i];
   const newVal = prompt(`Percek száma (${item.date}):`, item.perc);
   if (newVal !== null && newVal.trim() !== '' && !isNaN(newVal)) {
     const v = parseInt(newVal, 10);
@@ -1105,21 +1213,22 @@ async function editMonthOffItem(i) {
 }
 async function delMonthOffItem(i) {
   if (confirm('Biztosan törlöd?')) {
-    globalData[currentUser].off.splice(i, 1);
+    getArchivedMonth(currentEditMonth).off.splice(i, 1);
     await saveGlobal(); render(); renderMonthEdit();
   }
 }
 async function editMonthReport(date) {
-  const currentCount = globalData[currentUser].reports[date] || 0;
+  const arc = getArchivedMonth(currentEditMonth);
+  const currentCount = arc.reports[date] || 0;
   const newCount = prompt(`Módosítás (${date}):`, currentCount);
   if (newCount !== null && !isNaN(newCount) && newCount.trim() !== '') {
-    globalData[currentUser].reports[date] = parseInt(newCount, 10);
+    arc.reports[date] = parseInt(newCount, 10);
     await saveGlobal(); render(); renderMonthEdit();
   }
 }
 async function delMonthReport(date) {
   if (confirm('Törlöd?')) {
-    delete globalData[currentUser].reports[date];
+    delete getArchivedMonth(currentEditMonth).reports[date];
     await saveGlobal(); render(); renderMonthEdit();
   }
 }
@@ -1251,6 +1360,7 @@ async function processFileList(files) {
   if (!latestUserData.duty) latestUserData.duty = [];
   if (!latestUserData.off) latestUserData.off = [];
   if (!latestUserData.reports) latestUserData.reports = {};
+  if (!latestUserData.closedMonths) latestUserData.closedMonths = {};
 
   // Bármelyik nap, amire a most betöltött log adatot tartalmaz, felülíródik a friss számmal
   // (nem adódik hozzá a régi értékhez), így nem kell előtte kézzel törölni azt a napot.
@@ -1270,15 +1380,10 @@ async function processFileList(files) {
 
 function render() {
   let duty = 0, off = 0, reports = 0;
-  let monthlyData = {};
 
   const dList = globalData[currentUser].duty || [];
   dutyStream.innerHTML = dList.map((x, i) => {
     duty += x.perc;
-    let mKey = x.date.substring(0, 7);
-    if (!monthlyData[mKey]) monthlyData[mKey] = { duty: 0, off: 0, reports: 0 };
-    monthlyData[mKey].duty += x.perc;
-
     const isChecked = selectedItems.duty[i] ? 'checked' : '';
     return `
       <div class="see-list-item">
@@ -1295,10 +1400,6 @@ function render() {
   const oList = globalData[currentUser].off || [];
   offStream.innerHTML = oList.map((x, i) => {
     off += x.perc;
-    let mKey = x.date.substring(0, 7);
-    if (!monthlyData[mKey]) monthlyData[mKey] = { duty: 0, off: 0, reports: 0 };
-    monthlyData[mKey].off += x.perc;
-
     const isChecked = selectedItems.off[i] ? 'checked' : '';
     return `
       <div class="see-list-item">
@@ -1316,10 +1417,6 @@ function render() {
   const sortedReportKeys = Object.keys(reps).sort();
   reportStream.innerHTML = sortedReportKeys.map(d => {
     reports += reps[d];
-    let mKey = d.substring(0, 7);
-    if (!monthlyData[mKey]) monthlyData[mKey] = { duty: 0, off: 0, reports: 0 };
-    monthlyData[mKey].reports += reps[d];
-
     const isChecked = selectedItems.reports[d] ? 'checked' : '';
     return `
       <div class="see-list-item">
@@ -1332,22 +1429,28 @@ function render() {
       </div>`;
   }).join('');
 
-  // KÜLÖNÁLLÓ LAPRA TÖLTÉS RENDERELÉSE (csak percek és reportok)
-  const sortedMonths = Object.keys(monthlyData).sort().reverse();
+  // HAVI ÖSSZESÍTÉS: csak a már LEZÁRT (archivált) hónapok jelennek meg itt.
+  // A jelenleg még nyitott/folyamatban lévő adatokat a fenti dashboard kártyák (Összes Duty/Off/Report) mutatják.
+  const closedMonths = globalData[currentUser].closedMonths || {};
+  const sortedMonths = Object.keys(closedMonths).sort().reverse();
   monthlySummaryContainer.innerHTML = sortedMonths.map(m => {
+    const arc = closedMonths[m] || { duty: [], off: [], reports: {} };
+    const mDuty = (arc.duty || []).reduce((s, x) => s + x.perc, 0);
+    const mOff = (arc.off || []).reduce((s, x) => s + x.perc, 0);
+    const mReports = Object.values(arc.reports || {}).reduce((s, v) => s + v, 0);
     return `
-      <div class="see-panel month-card-clickable" style="background: var(--see-card-inner); padding: 20px;" onclick="openMonthEdit('${m}')">
+      <div class="see-panel month-card-clickable" style="background: var(--see-card-inner); padding: 20px; border-color: var(--see-danger);" onclick="openMonthEdit('${m}')">
         <div style="font-weight: 800; color: var(--see-gold); font-size: 14px; text-transform: uppercase; border-bottom: 1px solid var(--see-border); padding-bottom: 8px; margin-bottom: 12px; display:flex; justify-content:space-between; align-items:center;">
-          <span>📅 ${m}</span>
-          <span style="font-size:11px; font-weight:600; color:var(--see-text-muted); text-transform:none;">✏ Szerkesztés</span>
+          <span>📅 ${m} <span style="color:var(--see-danger); font-size:11px; margin-left:6px; text-transform:none;">🔒 Lezárva</span></span>
+          <span style="font-size:11px; font-weight:600; color:var(--see-text-muted); text-transform:none;">🔓 Megnyitás / Szerkesztés</span>
         </div>
         <div style="font-size: 12px; display: flex; flex-direction: column; gap: 8px; color: var(--see-text-muted);">
-          <div style="display:flex; justify-content:space-between;"><span>Duty idő:</span><strong style="color:#fff; font-family:'Roboto Mono', monospace;">${monthlyData[m].duty} p</strong></div>
-          <div style="display:flex; justify-content:space-between;"><span>Off Duty idő:</span><strong style="color:#fff; font-family:'Roboto Mono', monospace;">${monthlyData[m].off} p</strong></div>
-          <div style="display:flex; justify-content:space-between; border-top: 1px dashed var(--see-border); padding-top: 6px; margin-top: 4px;"><span>Reportok:</span><strong style="color:var(--see-success); font-family:'Roboto Mono', monospace;">${monthlyData[m].reports} db</strong></div>
+          <div style="display:flex; justify-content:space-between;"><span>Duty idő:</span><strong style="color:#fff; font-family:'Roboto Mono', monospace;">${mDuty} p</strong></div>
+          <div style="display:flex; justify-content:space-between;"><span>Off Duty idő:</span><strong style="color:#fff; font-family:'Roboto Mono', monospace;">${mOff} p</strong></div>
+          <div style="display:flex; justify-content:space-between; border-top: 1px dashed var(--see-border); padding-top: 6px; margin-top: 4px;"><span>Reportok:</span><strong style="color:var(--see-success); font-family:'Roboto Mono', monospace;">${mReports} db</strong></div>
         </div>
       </div>`;
-  }).join('') || '<div style="font-size:13px;color:var(--see-text-muted);grid-column: 1 / -1; text-align:center; padding:20px;">Nincs még rögzített adat.</div>';
+  }).join('') || '<div style="font-size:13px;color:var(--see-text-muted);grid-column: 1 / -1; text-align:center; padding:20px;">Még nincs lezárt hónap. A "Hónap lezárása" gombbal archiválhatod a jelenlegi statisztikákat.</div>';
 
   totalDuty.innerHTML = `${duty} <span>perc</span>`;
   totalOff.innerHTML = `${off} <span>perc</span>`;
