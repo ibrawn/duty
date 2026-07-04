@@ -6,474 +6,651 @@
 <title>SeeRPG - Admin Duty Dashboard</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700;800&family=Roboto+Mono:wght@400;700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Plus+Jakarta+Sans:wght@500;600;700;800&family=Roboto+Mono:wght@400;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
 <style>
 :root {
-  --see-bg: #121318;
-  --see-card: #1a1c23;
-  --see-card-inner: #22252f;
-  --see-border: #2d313f;
-  --see-gold: #ffc107;
-  --see-gold-hover: #e0a800;
-  --see-text: #ffffff;
-  --see-text-muted: #8a8f9e;
-  --see-danger: #ff4a4a;
-  --see-danger-hover: #d93838;
-  --see-success: #2ecc71;
-  --see-dev: #00bcd4;
-  --see-stats-view: #9c27b0;
+  --see-bg: #101113;
+  --see-card: #18191d;
+  --see-card-inner: #1e2024;
+  --see-border: rgba(255,255,255,0.08);
+  --see-border-strong: rgba(255,255,255,0.16);
+  --see-gold: #2dd4bf;
+  --see-gold-hover: #5eead4;
+  --see-text: #f3f4f6;
+  --see-text-muted: #93949c;
+  --see-danger: #fb7185;
+  --see-danger-hover: #f43f5e;
+  --see-success: #4ade80;
+  --see-dev: #a78bfa;
+  --see-stats-view: #f472b6;
+
+  --sidebar-w: 260px;
+  --radius-lg: 18px;
+  --radius-md: 12px;
+  --radius-sm: 9px;
+  --shadow-soft: 0 30px 60px -30px rgba(0,0,0,0.6);
+  --shadow-pop: 0 1px 2px rgba(0,0,0,0.2);
+  --shadow-glow-gold: 0 0 40px rgba(45,212,191,0.14);
+  --font-display: 'Plus Jakarta Sans', 'Inter', sans-serif;
+  --font-body: 'Inter', sans-serif;
+  --font-mono: 'Roboto Mono', monospace;
 }
 
-* { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Montserrat', sans-serif; }
-body { 
-  background-color: var(--see-bg); 
-  color: var(--see-text); 
-  padding: 30px 20px; 
+* { box-sizing: border-box; margin: 0; padding: 0; font-family: var(--font-body); }
+html { scroll-behavior: smooth; }
+
+body {
+  background-color: var(--see-bg);
+  color: var(--see-text);
   min-height: 100vh;
-  background-image: radial-gradient(circle at 50% 0%, #1c1e26 0%, #121318 70%);
+  background-image:
+    radial-gradient(ellipse 1000px 650px at 12% -10%, rgba(45,212,191,0.10), transparent 58%),
+    radial-gradient(ellipse 900px 750px at 108% 10%, rgba(167,139,250,0.06), transparent 60%),
+    radial-gradient(ellipse 1000px 550px at 50% 120%, rgba(45,212,191,0.05), transparent 60%),
+    linear-gradient(180deg, #131417, #101113 40%, #0d0e10);
+  background-attachment: fixed;
 }
 
-.ucp-container { max-width: 1400px; margin: 0 auto; display: none; }
+::-webkit-scrollbar { width: 6px; height: 6px; }
+::-webkit-scrollbar-thumb { background: var(--see-border-strong); border-radius: 10px; }
+::-webkit-scrollbar-track { background: transparent; }
 
-header { 
-  background: var(--see-card); 
+@keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+@keyframes slideUp { from { opacity: 0; transform: translateY(14px); } to { opacity: 1; transform: translateY(0); } }
+@keyframes popIn { from { opacity: 0; transform: scale(0.96); } to { opacity: 1; transform: scale(1); } }
+
+/* ============ LAYOUT SHELLS ============ */
+.ucp-container { display: none; }
+
+.main-content {
+  max-width: 1400px;
+  margin: 0 auto;
+  padding: 28px 32px 70px;
+  animation: fadeIn 0.4s ease;
+}
+@media (min-width: 881px) {
+  .main-content { margin-left: var(--sidebar-w); margin-right: 0; max-width: 1300px; padding: 28px 40px 70px; }
+}
+
+/* ============ AUTH SCREEN ============ */
+.auth-wrapper { display: flex; justify-content: center; align-items: center; min-height: 100vh; padding: 20px; }
+.auth-card {
+  background: var(--see-card);
   border: 1px solid var(--see-border);
-  border-radius: 12px;
-  padding: 18px 24px;
-  margin-bottom: 25px;
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  position: relative;
-  z-index: 1000;
+  border-radius: var(--radius-lg);
+  padding: 40px 36px;
+  width: 100%;
+  max-width: 400px;
+  box-shadow: var(--shadow-soft);
+  animation: slideUp 0.45s ease;
 }
-.header-left {
-  display: flex;
-  flex-direction: row;
-  align-items: center;
-  gap: 16px;
+.auth-logo { display: flex; justify-content: center; margin-bottom: 18px; }
+.auth-logo .logo-mark {
+  width: 54px; height: 54px; border-radius: 16px;
+  background: linear-gradient(135deg, var(--see-gold), #22c1a8);
+  display: flex; align-items: center; justify-content: center;
+  color: #ffffff; font-size: 22px;
+  box-shadow: 0 10px 24px -8px rgba(45,212,191,0.55);
 }
-header h1 { 
-  font-size: 20px;
-  font-weight: 700; 
-  letter-spacing: 0.5px; 
-  text-transform: uppercase;
-  display: flex;
-  align-items: center;
-  gap: 10px;
-}
-header h1 span { color: var(--see-gold); }
+.auth-title { font-family: var(--font-display); font-size: 21px; font-weight: 800; text-transform: uppercase; text-align: center; margin-bottom: 26px; letter-spacing: 0.5px; }
+.auth-title span { color: var(--see-gold); }
+.auth-form-group { margin-bottom: 16px; }
+.auth-form-group label { display: block; font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; color: var(--see-text-muted); margin-bottom: 7px; }
+.input-icon-wrap { position: relative; display: flex; align-items: center; }
+.input-icon-wrap i { position: absolute; left: 14px; color: var(--see-text-muted); font-size: 13px; pointer-events: none; }
+.input-icon-wrap input { padding-left: 38px !important; }
+.auth-form-group input[type="text"], .auth-form-group input[type="password"] { width: 100%; display: block; }
+.auth-switch { text-align: center; margin-top: 18px; font-size: 13px; color: var(--see-text-muted); }
+.auth-switch span { color: var(--see-gold); cursor: pointer; font-weight: 700; }
+.auth-switch span:hover { text-decoration: underline; }
 
-.header-summary-stats {
-  font-size: 11px;
-  font-weight: 600;
-  color: var(--see-text-muted);
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
-  display: flex;
-  gap: 12px;
-}
-.header-summary-stats span strong {
-  font-family: 'Roboto Mono', monospace;
-}
-.header-summary-stats .total-s { color: var(--see-gold); }
-
-.header-right {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-}
-
-.see-dropdown { 
-  position: relative; 
-  display: inline-block; 
-}
-.see-dropdown-btn {
-  background: transparent;
+/* ============ SIDEBAR ============ */
+.side-nav-toggle {
+  display: none;
+  background: rgba(255,255,255,0.06);
   border: none;
   color: #fff;
-  padding: 12px 18px;
-  font-size: 12px;
-  font-weight: 600;
-  text-transform: uppercase;
-  letter-spacing: 0.3px;
+  width: 40px; height: 40px;
+  border-radius: var(--radius-sm);
+  font-size: 15px;
   cursor: pointer;
-  transition: all 0.2s;
-  width: 100%;
-  height: 100%;
-}
-.see-dropdown-btn:hover { color: var(--see-gold); background: rgba(255,193,7,0.08); }
-.see-dropdown-content {
-  display: none;
-  position: absolute;
-  right: 0;
-  background-color: var(--see-card);
-  min-width: 160px;
-  box-shadow: 0px 8px 24px rgba(0,0,0,0.6);
-  border: 1px solid var(--see-border);
-  border-radius: 6px;
-  z-index: 999;
-  margin-top: 5px;
-  overflow: hidden;
-}
-.see-dropdown-content a {
-  color: var(--see-text-muted);
-  padding: 10px 14px;
-  text-decoration: none;
-  display: block;
-  font-size: 12px;
-  font-weight: 600;
+  align-items: center; justify-content: center;
   transition: all 0.2s;
 }
-.see-dropdown-content a:hover { background-color: var(--see-card-inner); color: var(--see-gold); }
-.see-dropdown.open .see-dropdown-content { display: block; }
-
-.side-nav-toggle {
-  background: var(--see-card-inner);
-  border: 1px solid var(--see-border);
-  color: #fff;
-  padding: 8px 14px;
-  border-radius: 6px;
-  font-size: 12px;
-  font-weight: 600;
-  cursor: pointer;
-  transition: all 0.2s;
-}
-.side-nav-toggle:hover { border-color: var(--see-gold); color: var(--see-gold); }
+.side-nav-toggle:hover { background: rgba(45,212,191,0.16); color: var(--see-gold); }
 
 .side-nav-overlay {
   display: none;
   position: fixed;
   top: 0; left: 0;
   width: 100%; height: 100%;
-  background: rgba(0,0,0,0.6);
+  background: rgba(6,9,16,0.65);
+  backdrop-filter: blur(2px);
   z-index: 1400;
 }
-.side-nav-overlay.open { display: block; }
+.side-nav-overlay.open { display: block; animation: fadeIn 0.2s ease; }
 
 .side-nav {
   position: fixed;
-  top: 0;
-  left: 0;
+  top: 0; left: 0;
   height: 100vh;
-  width: 260px;
-  background: var(--see-card);
+  width: var(--sidebar-w);
+  background: #0d111c;
   border-right: 1px solid var(--see-border);
   z-index: 1500;
   transform: translateX(-100%);
-  transition: transform 0.25s ease;
+  transition: transform 0.28s cubic-bezier(.4,0,.2,1);
   display: flex;
   flex-direction: column;
-  padding: 10px 0;
-  box-shadow: 8px 0 30px rgba(0,0,0,0.5);
 }
 .side-nav.open { transform: translateX(0); }
+@media (min-width: 881px) { .side-nav { transform: translateX(0); } }
+
 .side-nav-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 14px 20px 16px 20px;
-  margin-bottom: 8px;
-  border-bottom: 1px solid var(--see-border);
-  font-size: 12px;
-  font-weight: 700;
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
-  color: var(--see-text-muted);
+  padding: 26px 20px 20px;
 }
-.side-nav-close {
-  background: transparent;
-  border: none;
-  color: var(--see-text-muted);
-  font-size: 18px;
-  cursor: pointer;
+.brand { display: flex; align-items: center; gap: 12px; }
+.brand-mark {
+  width: 38px; height: 38px; border-radius: 11px;
+  background: linear-gradient(135deg, var(--see-gold), #22c1a8);
+  display: flex; align-items: center; justify-content: center;
+  color: #ffffff; font-size: 16px; flex-shrink: 0;
+  box-shadow: 0 8px 18px -6px rgba(45,212,191,0.5);
 }
+.brand-text { display: flex; flex-direction: column; line-height: 1.25; }
+.brand-text strong { font-family: var(--font-display); font-size: 14px; font-weight: 800; letter-spacing: 0.5px; text-transform: uppercase; }
+.brand-text small { font-size: 10px; color: var(--see-text-muted); font-weight: 600; text-transform: uppercase; letter-spacing: 0.6px; }
+.side-nav-close { display: none; background: transparent; border: none; color: var(--see-text-muted); font-size: 16px; cursor: pointer; width: 30px; height: 30px; }
 .side-nav-close:hover { color: #fff; }
+@media (max-width: 880px) { .side-nav-close { display: block; } }
+
+.side-nav-items { flex: 1; padding: 14px 12px; display: flex; flex-direction: column; gap: 4px; overflow-y: auto; }
+.side-nav-footer { padding: 14px 12px 20px; }
+
 .side-nav-item {
   background: transparent;
   border: none;
   border-left: 3px solid transparent;
   text-align: left;
-  color: #fff;
-  padding: 14px 20px;
+  color: #cdd3de;
+  padding: 12px 14px;
+  border-radius: var(--radius-sm);
   font-size: 13px;
   font-weight: 600;
-  text-transform: uppercase;
-  letter-spacing: 0.3px;
   cursor: pointer;
-  transition: all 0.2s;
-}
-.side-nav-item:hover { background: rgba(255,193,7,0.08); color: var(--see-gold); }
-.side-nav-item.active { color: var(--see-gold); border-left-color: var(--see-gold); background: rgba(255,193,7,0.08); }
-.side-nav-item-dev { color: var(--see-dev); }
-.side-nav-item-dev:hover, .side-nav-item-dev.active { color: var(--see-dev); border-left-color: var(--see-dev); background: rgba(0,188,212,0.1); }
-.side-nav-item-stats { color: var(--see-stats-view); }
-.side-nav-item-stats:hover, .side-nav-item-stats.active { color: var(--see-stats-view); border-left-color: var(--see-stats-view); background: rgba(156,39,176,0.1); }
-
-.ucp-logo-badge {
-  background: var(--see-gold);
-  color: #000;
-  padding: 6px 12px;
-  border-radius: 6px;
-  font-weight: 800;
-  font-size: 12px;
-}
-.ucp-logo-badge.dev {
-  background: var(--see-dev);
-  color: #fff;
-}
-
-.logout-btn {
-  background: transparent;
-  border: 1px solid var(--see-danger);
-  color: var(--see-danger);
-  padding: 8px 14px;
-  border-radius: 6px;
-  font-size: 12px;
-  font-weight: 600;
-  cursor: pointer;
-  transition: all 0.2s;
-}
-.logout-btn:hover { background: var(--see-danger); color: #fff; }
-
-.see-grid-stats { 
-  display: grid; 
-  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); 
-  gap: 20px;
-  margin-bottom: 25px; 
-}
-.see-stat-card { 
-  background: var(--see-card); 
-  border: 1px solid var(--see-border); 
-  border-radius: 12px; 
-  padding: 22px; 
-}
-.see-stat-label { 
-  font-size: 12px; 
-  font-weight: 600; 
-  color: var(--see-text-muted); 
-  text-transform: uppercase; 
-  letter-spacing: 0.5px; 
-}
-.see-stat-value { 
-  font-size: 30px;
-  font-weight: 700; 
-  margin-top: 10px; 
-  color: #fff;
+  transition: all 0.18s;
   display: flex;
-  align-items: baseline;
-  gap: 6px;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
 }
-.see-stat-value span { font-size: 16px; color: var(--see-text-muted); font-weight: 500; }
+.side-nav-item i { width: 18px; text-align: center; font-size: 14px; }
+.side-nav-item:hover { background: rgba(45,212,191,0.08); color: var(--see-gold); }
+.side-nav-item.active { color: var(--see-gold); background: rgba(45,212,191,0.1); border-left-color: var(--see-gold); }
+.side-nav-item-dev { color: var(--see-dev); }
+.side-nav-item-dev:hover, .side-nav-item-dev.active { color: var(--see-dev); border-left-color: var(--see-dev); background: rgba(34,211,238,0.1); }
+.side-nav-item-stats { color: var(--see-stats-view); }
+.side-nav-item-stats:hover, .side-nav-item-stats.active { color: var(--see-stats-view); border-left-color: var(--see-stats-view); background: rgba(192,132,252,0.1); }
+.side-nav-item-logout { color: var(--see-danger); }
+.side-nav-item-logout:hover { background: rgba(239,68,68,0.1); border-left-color: var(--see-danger); }
 
-.see-workspace { 
-  display: grid; 
-  grid-template-columns: repeat(auto-fit, minmax(340px, 1fr)); 
-  gap: 25px; 
-}
-
-/* SZEKCIÓK REJTÉSE / MEGJELENÍTÉSE */
-.see-section { display: none; }
-.see-section.active { display: block; }
-
-.see-panel { 
-  background: var(--see-card);
-  border: 1px solid var(--see-border); 
-  border-radius: 12px; 
-  padding: 24px; 
-  display: flex; 
-  flex-direction: column; 
-  overflow: hidden;
-}
-.see-panel-title { 
-  font-size: 15px; 
-  font-weight: 700;
-  text-transform: uppercase;
-  color: #fff; 
-  margin-bottom: 18px; 
-  display: flex; 
-  align-items: center; 
-  justify-content: space-between; 
+/* ============ TOP HEADER ============ */
+.top-header {
+  position: sticky;
+  top: 0;
+  z-index: 300;
+  background: rgba(11,15,26,0.85);
+  backdrop-filter: blur(14px) saturate(140%);
+  -webkit-backdrop-filter: blur(14px) saturate(140%);
   border-bottom: 1px solid var(--see-border);
-  padding-bottom: 12px;
-}
-.see-panel-title span { 
-  font-size: 11px; 
-  font-weight: 600; 
-  background: var(--see-card-inner); 
-  padding: 4px 10px; 
-  border-radius: 6px; 
-  color: var(--see-gold);
-}
-
-.panel-bulk-actions {
+  padding: 18px 4px 20px;
+  margin: -28px -32px 26px;
+  padding-left: 32px;
+  padding-right: 32px;
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 12px;
-  gap: 10px;
+  gap: 16px;
+}
+@media (min-width: 881px) { .top-header { margin: -28px -40px 26px; padding-left: 40px; padding-right: 40px; } }
+.header-left { display: flex; align-items: center; gap: 16px; min-width: 0; }
+.header-title h1 {
+  font-family: var(--font-display);
+  font-size: 18px;
+  font-weight: 800;
+  letter-spacing: 0.3px;
+  display: flex; align-items: center; gap: 8px;
+  white-space: nowrap;
+}
+.header-title h1 span { color: var(--see-gold); }
+.header-subtitle { font-size: 11px; color: var(--see-text-muted); font-weight: 600; margin-top: 2px; }
+
+.header-right { display: flex; align-items: center; gap: 10px; }
+
+.see-dropdown { position: relative; display: inline-block; }
+.see-dropdown-btn {
+  background: rgba(255,255,255,0.06);
+  border: none;
+  color: #fff;
+  padding: 10px 16px;
+  border-radius: var(--radius-sm);
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.3px;
+  cursor: pointer;
+  transition: all 0.2s;
+  display: flex; align-items: center; gap: 8px;
+}
+.see-dropdown-btn i { font-size: 10px; transition: transform 0.2s; }
+.see-dropdown.open .see-dropdown-btn i { transform: rotate(180deg); }
+.see-dropdown-btn:hover { color: var(--see-gold); background: rgba(45,212,191,0.14); }
+.see-dropdown-content {
+  display: none;
+  position: absolute;
+  right: 0;
+  background: var(--see-card);
+  min-width: 180px;
+  box-shadow: 0 20px 40px rgba(0,0,0,0.6);
+  border-radius: var(--radius-md);
+  z-index: 999;
+  margin-top: 8px;
+  overflow: hidden;
+  animation: slideUp 0.18s ease;
+}
+.see-dropdown-content a {
+  color: var(--see-text-muted);
+  padding: 11px 15px;
+  text-decoration: none;
+  display: flex; align-items: center; gap: 10px;
+  font-size: 12px;
+  font-weight: 600;
+  transition: all 0.15s;
+}
+.see-dropdown-content a i { width: 14px; text-align: center; }
+.see-dropdown-content a:hover { background: var(--see-card-inner); color: var(--see-gold); }
+.see-dropdown.open .see-dropdown-content { display: block; }
+
+.ucp-logo-badge {
+  background: linear-gradient(135deg, var(--see-gold), #22c1a8);
+  color: #ffffff;
+  padding: 9px 16px;
+  border-radius: var(--radius-sm);
+  font-weight: 800;
+  font-size: 12px;
+  white-space: nowrap;
+}
+.ucp-logo-badge.dev { background: linear-gradient(135deg, var(--see-dev), #0891b2); color: #04222a; }
+
+.logout-btn {
+  background: rgba(239,68,68,0.12);
+  border: none;
+  color: var(--see-danger);
+  width: 38px; height: 38px;
+  border-radius: var(--radius-sm);
+  font-size: 13px;
+  cursor: pointer;
+  transition: all 0.2s;
+  display: flex; align-items: center; justify-content: center;
+  flex-shrink: 0;
+}
+.logout-btn:hover { background: var(--see-danger); color: #fff; }
+
+/* ============ STAT CARDS ============ */
+.overview-bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: stretch;
+  padding-bottom: 24px;
+  margin-bottom: 28px;
+  border-bottom: 1px solid var(--see-border);
+  gap: 22px 0;
+}
+.overview-metric {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 4px 28px;
+  border-right: 1px solid var(--see-border);
+}
+.overview-metric:first-child { padding-left: 0; }
+.overview-icon {
+  width: 42px; height: 42px; border-radius: 12px;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 16px; flex-shrink: 0;
+}
+.overview-icon.duty { background: rgba(45,212,191,0.14); color: var(--see-gold); }
+.overview-icon.off { background: rgba(148,163,184,0.14); color: #cbd5e1; }
+.overview-icon.reports { background: rgba(74,222,128,0.14); color: var(--see-success); }
+.overview-icon.total { background: rgba(244,114,182,0.14); color: var(--see-stats-view); }
+.overview-label { font-size: 10.5px; font-weight: 700; color: var(--see-text-muted); text-transform: uppercase; letter-spacing: 0.5px; display: block; }
+.overview-value {
+  font-family: var(--font-mono);
+  font-size: 22px;
+  font-weight: 700;
+  margin-top: 4px;
+  color: #fff;
+  display: flex;
+  align-items: baseline;
+  gap: 5px;
+}
+.overview-value em { font-style: normal; font-size: 12px; color: var(--see-text-muted); font-weight: 500; font-family: var(--font-body); }
+
+.overview-ratio { flex: 1; min-width: 240px; padding: 4px 0 4px 28px; }
+.overview-ratio-head { display: flex; justify-content: space-between; align-items: center; font-size: 10.5px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; color: var(--see-text-muted); margin-bottom: 12px; }
+.overview-ratio-head b { color: var(--see-gold); font-weight: 700; background: rgba(45,212,191,0.12); padding: 3px 9px; border-radius: 20px; text-transform: none; letter-spacing: 0; font-size: 10px; }
+.ratio-bar-track { height: 10px; border-radius: 20px; background: var(--see-card-inner); overflow: hidden; }
+.ratio-bar-fill { height: 100%; width: 0%; border-radius: 20px; transition: width 0.6s ease; }
+.ratio-bar-legend { display: flex; gap: 24px; margin-top: 11px; font-size: 12px; color: var(--see-text-muted); font-weight: 600; flex-wrap: wrap; }
+.ratio-bar-legend strong { color: #fff; font-family: var(--font-mono); font-weight: 700; }
+
+/* ============ SECTIONS / TOOLBAR ============ */
+.see-section { display: none; }
+.see-section.active { display: block; animation: fadeIn 0.35s ease; }
+
+.section-toolbar { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px; margin-bottom: 18px; }
+.section-heading { font-family: var(--font-display); font-size: 15px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.4px; display: flex; align-items: center; gap: 10px; color: #fff; }
+.section-heading i { color: var(--see-gold); }
+.month-close-btn { background: rgba(45,212,191,0.12) !important; color: var(--see-gold) !important; padding: 10px 18px !important; font-size: 12px !important; }
+.month-close-btn:hover { background: var(--see-gold) !important; color: #ffffff !important; }
+
+.see-workspace {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+  gap: 1px;
+  align-items: stretch;
+  background: var(--see-border);
+  border: 1px solid var(--see-border);
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+  box-shadow: var(--shadow-soft);
 }
 
+.see-panel {
+  background: var(--see-card);
+  padding: 26px;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  animation: fadeIn 0.4s ease;
+}
+.see-panel-title {
+  font-family: var(--font-display);
+  font-size: 13px;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.4px;
+  color: #fff;
+  margin-bottom: 20px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+.panel-title-text { display: flex; align-items: center; gap: 11px; }
+.panel-title-text i {
+  width: 28px; height: 28px; border-radius: 9px;
+  background: rgba(45,212,191,0.14);
+  color: var(--see-gold);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 12px; flex-shrink: 0;
+}
+.see-panel-title > span:not(.panel-title-text) {
+  font-size: 11px;
+  font-weight: 700;
+  background: var(--see-card-inner);
+  padding: 5px 11px;
+  border-radius: 20px;
+  color: var(--see-gold);
+  white-space: nowrap;
+}
+
+/* ============ BULK ACTIONS ============ */
+.panel-bulk-actions { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; gap: 10px; flex-wrap: wrap; }
 .bulk-btn {
-  background: transparent;
-  border: 1px solid var(--see-border);
+  background: rgba(255,255,255,0.05);
+  border: none;
   color: var(--see-text-muted);
   font-size: 11px;
-  font-weight: 600;
-  padding: 5px 10px;
-  border-radius: 6px;
+  font-weight: 700;
+  padding: 8px 13px;
+  border-radius: var(--radius-sm);
   cursor: pointer;
   transition: all 0.2s;
   text-transform: uppercase;
+  letter-spacing: 0.3px;
+  display: inline-flex; align-items: center; gap: 7px;
 }
-.bulk-btn:hover { border-color: var(--see-gold); color: #fff; }
-.bulk-btn.danger-bulk {
-  background: var(--see-danger);
-  border-color: var(--see-danger);
-  color: #fff;
-  display: none;
-}
+.bulk-btn:hover { background: rgba(45,212,191,0.14); color: #fff; transform: translateY(-1px); }
+.bulk-btn.danger-bulk { background: var(--see-danger); color: #fff; display: none; }
 .bulk-btn.danger-bulk:hover { background: var(--see-danger-hover); }
 
-.see-input-row { display: flex; gap: 10px; margin-bottom: 12px; width: 100%; }
-input[type="number"], input[type="text"], input[type="password"], select { 
-  flex: 1; 
+/* ============ INPUTS ============ */
+.see-input-row { display: flex; gap: 8px; margin-bottom: 12px; width: 100%; }
+.see-btn-compact {
+  width: auto;
+  display: inline-flex;
+  padding: 9px 20px;
+  font-size: 11.5px;
+  margin-bottom: 16px;
+  box-shadow: none;
+}
+.see-btn-compact:hover { transform: none; box-shadow: 0 8px 16px -10px rgba(45,212,191,0.55); }
+
+/* ============ MUNKATERÜLET (Duty / Off Duty / Log feltöltés egy oldalon) ============ */
+.work-panel {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 1px;
+  background: var(--see-border);
+  border: 1px solid var(--see-border);
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+  box-shadow: var(--shadow-soft);
+}
+.work-col { background: var(--see-card); padding: 24px; display: flex; flex-direction: column; }
+.work-col-head {
+  font-family: var(--font-display);
+  font-size: 13px;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.4px;
+  color: #fff;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 18px;
+}
+.work-col-head i { color: var(--see-gold); width: 18px; text-align: center; }
+.work-col-head span { margin-left: auto; font-size: 10.5px; font-weight: 700; background: var(--see-card-inner); padding: 4px 10px; border-radius: 20px; color: var(--see-text-muted); text-transform: none; letter-spacing: 0; }
+input[type="number"], input[type="text"], input[type="password"], select {
+  flex: 1;
   min-width: 0;
   max-width: 100%;
-  background: var(--see-card-inner); 
-  border: 1px solid var(--see-border); 
-  border-radius: 8px; 
-  padding: 12px 14px;
-  color: #fff; 
-  font-size: 13px; 
-  font-weight: 500; 
-  transition: border-color 0.2s; 
+  background: rgba(255,255,255,0.045);
+  border: none;
+  border-radius: var(--radius-sm);
+  padding: 14px 14px;
+  color: #fff;
+  font-size: 14px;
+  font-weight: 500;
+  transition: background 0.2s, box-shadow 0.2s;
 }
-input[type="number"]:focus, input[type="text"]:focus, input[type="password"]:focus, select:focus { outline: none; border-color: var(--see-gold); }
+input[type="number"]:focus, input[type="text"]:focus, input[type="password"]:focus, select:focus {
+  outline: none;
+  background: rgba(255,255,255,0.07);
+  box-shadow: 0 0 0 3px rgba(45,212,191,0.18);
+}
+input::placeholder { color: #5f6a7d; }
 
-.see-file-wrapper { position: relative; margin-bottom: 12px; width: 100%; }
+/* ============ FILE DROP ZONE ============ */
+.see-file-wrapper { position: relative; margin-bottom: 14px; width: 100%; }
 input[type="file"] { display: none; }
-.see-file-label { 
-  display: flex; 
+.see-file-label {
+  display: flex;
   flex-direction: column;
-  align-items: center; 
-  justify-content: center; 
-  gap: 10px;
-  background: var(--see-card-inner); 
-  border: 2px dashed var(--see-border); 
-  border-radius: 10px; 
-  padding: 30px 16px;
-  min-height: 160px;
-  font-size: 13px; 
-  color: var(--see-text-muted); 
-  cursor: pointer; 
-  font-weight: 500; 
-  transition: all 0.2s; 
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  background: rgba(255,255,255,0.035);
+  border-radius: var(--radius-md);
+  padding: 32px 16px;
+  min-height: 170px;
+  font-size: 13px;
+  color: var(--see-text-muted);
+  cursor: pointer;
+  font-weight: 500;
+  transition: all 0.22s;
   width: 100%;
   text-align: center;
 }
-.see-file-icon { font-size: 36px; line-height: 1; }
+.see-file-icon { font-size: 32px; line-height: 1; color: var(--see-text-muted); transition: all 0.22s; }
 .see-file-text small { display: block; color: var(--see-text-muted); font-weight: 500; margin-top: 4px; font-size: 11px; }
-.see-file-label:hover { border-color: var(--see-gold); color: #fff; }
-.see-file-label.dragover { border-color: var(--see-gold); color: #fff; background: rgba(255,193,7,0.08); transform: scale(1.01); }
+.see-file-label:hover { color: #fff; background: rgba(45,212,191,0.09); }
+.see-file-label:hover .see-file-icon { color: var(--see-gold); transform: translateY(-3px); }
+.see-file-label.dragover { color: #fff; background: rgba(45,212,191,0.14); transform: scale(1.01); box-shadow: var(--shadow-glow-gold); }
+.see-file-label.dragover .see-file-icon { color: var(--see-gold); transform: scale(1.1); }
 
-.see-btn { 
-  background: var(--see-gold); 
-  color: #000; 
-  border: none; 
-  padding: 12px; 
-  border-radius: 8px; 
-  font-size: 13px; 
-  font-weight: 700; 
+/* ============ BUTTONS ============ */
+.see-btn {
+  background: linear-gradient(135deg, var(--see-gold), #22c1a8);
+  color: #ffffff;
+  border: none;
+  padding: 13px;
+  border-radius: var(--radius-sm);
+  font-size: 13px;
+  font-weight: 800;
   cursor: pointer;
-  transition: background 0.2s; 
-  width: 100%; 
+  transition: all 0.2s;
+  width: 100%;
   text-transform: uppercase;
+  letter-spacing: 0.3px;
+  margin-bottom: 14px;
+  display: flex; align-items: center; justify-content: center; gap: 9px;
+  box-shadow: 0 10px 22px -10px rgba(45,212,191,0.5);
 }
-.see-btn:hover { background: var(--see-gold-hover); }
-.see-panel.report-type .see-btn { background: #242734; color: #fff; border: 1px solid var(--see-border); }
-.see-panel.report-type .see-btn:hover { background: #2d3142; }
+.see-btn:hover { filter: brightness(1.08); transform: translateY(-2px); box-shadow: 0 14px 26px -10px rgba(45,212,191,0.6); }
+.see-btn:active { transform: translateY(0); }
 
-.see-list-container { 
-  margin-top: 10px; 
-  overflow-y: auto; 
+/* ============ LIST ITEMS ============ */
+.see-list-container {
+  margin-top: 4px;
+  overflow-y: auto;
   max-height: 300px;
-  padding-right: 4px; 
-  display: flex; 
-  flex-direction: column; 
-  gap: 8px; 
-}
-.see-list-item { 
-  background: var(--see-card-inner); 
-  border: 1px solid var(--see-border); 
-  border-radius: 8px;
-  padding: 12px 14px; 
-  display: flex; 
-  align-items: center; 
-  justify-content: space-between; 
-}
-.see-list-item.clickable { cursor: pointer; transition: all 0.2s; }
-.see-list-item.clickable:hover { border-color: var(--see-stats-view); }
-.see-list-item.clickable.selected { border-color: var(--see-stats-view); background: rgba(156,39,176,0.15); }
-.see-item-left { display: flex; align-items: center; gap: 12px; }
-.see-checkbox { width: 16px; height: 16px; accent-color: var(--see-gold); cursor: pointer; }
-.see-item-date { font-size: 12px; color: var(--see-text-muted); font-weight: 500; }
-.see-item-value { font-size: 13px; font-weight: 600; font-family: 'Roboto Mono', monospace; }
-
-.see-item-actions { display: flex; gap: 4px; }
-.see-action-btn { 
-  background: #1a1c23; 
-  border: 1px solid var(--see-border); 
-  color: var(--see-text-muted); 
-  width: 28px; 
-  height: 28px; 
-  border-radius: 6px; 
+  padding-right: 4px;
   display: flex;
-  align-items: center; 
-  justify-content: center; 
-  cursor: pointer; 
-  transition: all 0.2s; 
-  font-size: 11px; 
+  flex-direction: column;
 }
-.see-action-btn:hover { border-color: var(--see-gold); color: var(--see-gold); }
-.see-action-btn.del:hover { border-color: var(--see-danger); color: var(--see-danger); }
+.see-list-item {
+  background: transparent;
+  border-bottom: 1px solid var(--see-border);
+  padding: 12px 4px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  transition: background 0.15s;
+  animation: fadeIn 0.25s ease;
+}
+.see-list-item:hover { background: rgba(255,255,255,0.03); }
+.see-list-item.clickable { cursor: pointer; border-radius: var(--radius-sm); }
+.see-list-item.clickable:hover { background: rgba(167,139,250,0.08); }
+.see-list-item.clickable.selected { background: rgba(167,139,250,0.12); box-shadow: inset 2px 0 0 var(--see-dev); }
+.see-item-left { display: flex; align-items: center; gap: 12px; min-width: 0; }
+.see-checkbox { width: 16px; height: 16px; accent-color: var(--see-gold); cursor: pointer; flex-shrink: 0; }
+.see-item-date { font-size: 12px; color: var(--see-text-muted); font-weight: 600; }
+.see-item-value { font-size: 13px; font-weight: 700; font-family: var(--font-mono); white-space: nowrap; }
 
-.see-list-container::-webkit-scrollbar { width: 4px; }
-.see-list-container::-webkit-scrollbar-thumb { background: var(--see-border); border-radius: 10px; }
+.see-item-actions { display: flex; gap: 5px; flex-shrink: 0; }
+.see-action-btn {
+  background: rgba(255,255,255,0.05);
+  color: var(--see-text-muted);
+  width: 28px;
+  height: 28px;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.18s;
+  font-size: 11px;
+}
+.see-action-btn:hover { background: rgba(45,212,191,0.16); color: var(--see-gold); transform: translateY(-1px); }
+.see-action-btn.del:hover { background: rgba(239,68,68,0.16); color: var(--see-danger); }
 
-/* Különálló Havi Összesítő Rács */
+/* ============ MONTHLY GRID ============ */
 .monthly-page-container {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
   gap: 20px;
-  margin-top: 15px;
+  margin-top: 18px;
 }
-.month-card-clickable { cursor: pointer; transition: all 0.2s; }
-.month-card-clickable:hover { border-color: var(--see-gold); transform: translateY(-2px); box-shadow: 0 6px 18px rgba(0,0,0,0.3); }
+.month-card-clickable { cursor: pointer; transition: all 0.2s; border: 1px solid var(--see-border) !important; }
+.month-card-clickable:hover { transform: translateY(-2px); border-color: var(--see-border-strong) !important; box-shadow: 0 14px 28px -16px rgba(0,0,0,0.5); }
 
-.auth-wrapper { display: flex; justify-content: center; align-items: center; min-height: 80vh; }
-.auth-card { background: var(--see-card); border: 1px solid var(--see-border); border-radius: 12px; padding: 35px; width: 100%; max-width: 400px; box-shadow: 0 10px 30px rgba(0,0,0,0.5); }
-.auth-title { font-size: 22px; font-weight: 800; text-transform: uppercase; text-align: center; margin-bottom: 25px; letter-spacing: 1px; }
-.auth-title span { color: var(--see-gold); }
-.auth-form-group { margin-bottom: 15px; }
-.auth-form-group label { display: block; font-size: 11px; font-weight: 700; text-transform: uppercase; color: var(--see-text-muted); margin-bottom: 6px; }
-.auth-form-group input[type="text"],
-.auth-form-group input[type="password"] { width: 100%; display: block; }
-.auth-switch { text-align: center; margin-top: 15px; font-size: 13px; color: var(--see-text-muted); }
-.auth-switch span { color: var(--see-gold); cursor: pointer; font-weight: 600; text-decoration: underline; }
-
-.dev-modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.75); backdrop-filter: blur(4px); z-index: 2000; justify-content: center; align-items: center; }
-.dev-modal-content { background: var(--see-card); border: 1px solid var(--see-border); border-radius: 12px; width: 90%; max-width: 600px; padding: 25px; }
-.dev-modal-header { display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--see-border); padding-bottom: 15px; margin-bottom: 15px; }
-.dev-modal-header h2 { font-size: 16px; text-transform: uppercase; color: var(--see-dev); }
+/* ============ MODAL ============ */
+.dev-modal {
+  display: none;
+  position: fixed;
+  top: 0; left: 0;
+  width: 100%; height: 100%;
+  background: rgba(6,9,16,0.75);
+  backdrop-filter: blur(6px);
+  z-index: 2000;
+  justify-content: center;
+  align-items: center;
+  padding: 20px;
+}
+.dev-modal-content {
+  background: var(--see-card);
+  border: 1px solid var(--see-border-strong);
+  border-radius: var(--radius-lg);
+  width: 90%;
+  max-width: 600px;
+  padding: 26px;
+  box-shadow: var(--shadow-soft);
+  animation: popIn 0.22s ease;
+}
+.dev-modal-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; }
+.dev-modal-header h2 { font-family: var(--font-display); font-size: 15px; text-transform: uppercase; color: var(--see-dev); letter-spacing: 0.3px; }
 .dev-modal-header.stats h2 { color: var(--see-stats-view); }
-.dev-close { background: transparent; color: var(--see-text-muted); font-size: 20px; cursor: pointer; border: none; }
-.dev-close:hover { color: #fff; }
+.dev-close { background: rgba(255,255,255,0.06); border: none; color: var(--see-text-muted); font-size: 15px; cursor: pointer; width: 32px; height: 32px; border-radius: 9px; transition: all 0.18s; }
+.dev-close:hover { color: #fff; background: rgba(255,255,255,0.12); }
 
-.stats-grid-mini { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; margin: 15px 0; }
-.stats-card-mini { background: var(--see-card-inner); border: 1px solid var(--see-border); border-radius: 8px; padding: 12px; text-align: center; }
-.stats-card-mini .label { font-size: 10px; text-transform: uppercase; color: var(--see-text-muted); font-weight: 600; }
-.stats-card-mini .val { font-size: 16px; font-weight: 700; margin-top: 4px; font-family: 'Roboto Mono', monospace; }
+.stats-grid-mini { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin: 16px 0; }
+.stats-card-mini { background: var(--see-card-inner); border-radius: var(--radius-sm); padding: 13px; text-align: center; transition: all 0.2s; }
+.stats-card-mini:hover { transform: translateY(-2px); box-shadow: 0 10px 20px -10px rgba(0,0,0,0.5); }
+.stats-card-mini .label { font-size: 10px; text-transform: uppercase; color: var(--see-text-muted); font-weight: 700; letter-spacing: 0.3px; }
+.stats-card-mini .val { font-size: 17px; font-weight: 800; margin-top: 5px; font-family: var(--font-mono); }
+
+.dot { width: 8px; height: 8px; border-radius: 3px; display: inline-block; margin-right: 7px; box-shadow: 0 0 8px currentColor; }
+.dot.gold { background: var(--see-gold); color: var(--see-gold); }
+.dot.slate { background: #6b7280; color: #6b7280; }
+
+/* ============ RESPONSIVE ============ */
+@media (max-width: 880px) {
+  .side-nav-toggle { display: inline-flex; }
+  .main-content { padding: 18px 16px 60px; }
+  .top-header { flex-wrap: wrap; top: 0; margin: -18px -16px 20px; padding: 14px 16px; }
+  .header-subtitle { display: none; }
+  .see-workspace { grid-template-columns: 1fr; }
+  .overview-metric { border-right: none; padding: 4px 0; flex: 1 1 45%; }
+  .overview-ratio { padding-left: 0; flex-basis: 100%; margin-top: 6px; }
+  .stats-grid-mini { grid-template-columns: repeat(2, 1fr); }
+  .see-workspace[style] { grid-template-columns: 1fr !important; }
+  .work-panel { grid-template-columns: 1fr; }
+  .see-input-row { flex-wrap: wrap; }
+  .see-input-row input { flex: 1 1 120px; }
+}
+@media (max-width: 520px) {
+  .header-right { gap: 7px; }
+  .ucp-logo-badge { display: none; }
+  .see-dropdown-btn span { display: none; }
+  .overview-metric { flex-basis: 100%; }
+}
 </style>
 </head>
 <body>
@@ -481,13 +658,13 @@ input[type="file"] { display: none; }
 <div class="dev-modal" id="monthEditModal">
   <div class="dev-modal-content" style="max-width: 760px;">
     <div class="dev-modal-header">
-      <h2 id="monthEditTitle">📅 Hónap szerkesztése</h2>
+      <h2 id="monthEditTitle"><i class="fa-solid fa-calendar-days"></i> Hónap szerkesztése</h2>
       <div style="display:flex; align-items:center; gap:10px;">
-        <button class="bulk-btn" id="monthReopenBtn" style="display:none; border-color:var(--see-success); color:var(--see-success);" onclick="reopenMonth(currentEditMonth)">🔓 Hónap megnyitása</button>
-        <button class="dev-close" onclick="closeMonthEdit()">✕</button>
+        <button class="bulk-btn" id="monthReopenBtn" style="display:none; background:rgba(34,197,94,0.14); color:var(--see-success);" onclick="reopenMonth(currentEditMonth)"><i class="fa-solid fa-lock-open"></i> Hónap megnyitása</button>
+        <button class="dev-close" onclick="closeMonthEdit()"><i class="fa-solid fa-xmark"></i></button>
       </div>
     </div>
-    <div class="see-workspace" style="grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px;">
+    <div class="see-workspace" style="grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));">
       <div>
         <div style="font-size:12px; font-weight:700; text-transform:uppercase; margin-bottom:8px; color:var(--see-gold);">Duty</div>
         <div class="see-list-container" id="monthEditDuty" style="max-height: 260px;"></div>
@@ -506,14 +683,21 @@ input[type="file"] { display: none; }
 
 <div class="auth-wrapper" id="authSection">
   <div class="auth-card">
+    <div class="auth-logo"><div class="logo-mark"><i class="fa-solid fa-shield-halved"></i></div></div>
     <div class="auth-title" id="authTitle"><span>SeeRPG</span> - Belépés</div>
     <div class="auth-form-group">
       <label>Felhasználónév</label>
-      <input type="text" id="authUser" placeholder="Karakter / Felhasználónév" onkeydown="if(event.key==='Enter'){ event.preventDefault(); handleAuth(); }">
+      <div class="input-icon-wrap">
+        <i class="fa-solid fa-user"></i>
+        <input type="text" id="authUser" placeholder="Karakter / Felhasználónév" onkeydown="if(event.key==='Enter'){ event.preventDefault(); handleAuth(); }">
+      </div>
     </div>
     <div class="auth-form-group">
       <label>Jelszó</label>
-      <input type="password" id="authPass" placeholder="••••••••" onkeydown="if(event.key==='Enter'){ event.preventDefault(); handleAuth(); }">
+      <div class="input-icon-wrap">
+        <i class="fa-solid fa-lock"></i>
+        <input type="password" id="authPass" placeholder="••••••••" onkeydown="if(event.key==='Enter'){ event.preventDefault(); handleAuth(); }">
+      </div>
     </div>
     <button class="see-btn" id="authBtn" onclick="handleAuth()">Bejelentkezés</button>
     <div class="auth-switch" id="authSwitchRow">
@@ -523,193 +707,225 @@ input[type="file"] { display: none; }
 </div>
 
 <div class="ucp-container" id="mainUcpSection">
-  <header>
-    <div class="header-left">
-      <button class="side-nav-toggle" onclick="toggleSideNav()">☰ Menü</button>
-      <div style="display:flex; flex-direction:column; gap:4px;">
-        <h1><span>SeeRPG</span> - Admin Duty</h1>
-        <div class="header-summary-stats">
-          <span>Összes játszott perc: <strong id="headTotalAll" class="total-s">0 p</strong></span>
-        </div>
-      </div>
-    </div>
-    <div class="header-right">
-      <div class="see-dropdown" id="linksDropdown">
-        <button class="see-dropdown-btn" onclick="toggleDropdown()">Linkek ▾</button>
-        <div class="see-dropdown-content">
-          <a href="https://forum.see-rpg.com/" target="_blank">Fórum</a>
-          <a href="https://ucp.see-rpg.com/seerpg" target="_blank">UCP</a>
-          <a href="https://rules.see-rpg.com/rpg/" target="_blank">Szabályzat</a>
-        </div>
-      </div>
-
-      <div class="ucp-logo-badge" id="welcomeUser">v4 UCP</div>
-      <button class="logout-btn" onclick="logout()">Kijelentkezés</button>
-    </div>
-  </header>
 
   <div class="side-nav-overlay" id="sideNavOverlay" onclick="closeSideNav()"></div>
   <nav class="side-nav" id="sideNav">
     <div class="side-nav-header">
-      <span>Navigáció</span>
-      <button class="side-nav-close" onclick="closeSideNav()">✕</button>
+      <div class="brand">
+        <div class="brand-mark"><i class="fa-solid fa-shield-halved"></i></div>
+        <div class="brand-text"><strong>SeeRPG</strong><small>Admin Duty</small></div>
+      </div>
+      <button class="side-nav-close" onclick="closeSideNav()"><i class="fa-solid fa-xmark"></i></button>
     </div>
-    <button class="side-nav-item active" id="navMainBtn" onclick="switchPage('main')">Munkaterület</button>
-    <button class="side-nav-item" id="navMonthlyBtn" onclick="switchPage('monthly')">Havi Összesítések</button>
-    <button class="side-nav-item side-nav-item-stats" id="devStatsBtn" style="display:none;" onclick="openDevStatsPage()">Statisztikák</button>
-    <button class="side-nav-item side-nav-item-dev" id="devPanelBtn" style="display:none;" onclick="openDevPage()">Fejlesztő</button>
+    <div class="side-nav-items">
+      <button class="side-nav-item active" id="navMainBtn" onclick="switchPage('main')"><i class="fa-solid fa-house"></i><span>Munkaterület</span></button>
+      <button class="side-nav-item" id="navMonthlyBtn" onclick="switchPage('monthly')"><i class="fa-regular fa-calendar-days"></i><span>Havi összesítések</span></button>
+      <button class="side-nav-item side-nav-item-stats" id="devStatsBtn" style="display:none;" onclick="openDevStatsPage()"><i class="fa-solid fa-chart-line"></i><span>Statisztikák</span></button>
+      <button class="side-nav-item side-nav-item-dev" id="devPanelBtn" style="display:none;" onclick="openDevPage()"><i class="fa-solid fa-gear"></i><span>Fejlesztő</span></button>
+    </div>
+    <div class="side-nav-footer">
+      <button class="side-nav-item side-nav-item-logout" onclick="logout()"><i class="fa-solid fa-right-from-bracket"></i><span>Kijelentkezés</span></button>
+    </div>
   </nav>
 
-  <div class="see-grid-stats">
-    <div class="see-stat-card">
-      <div class="see-stat-label">Összes Duty Idő</div>
-
-      <div id="totalDuty" class="see-value-wrapper see-stat-value">0<span>perc</span></div>
-    </div>
-    <div class="see-stat-card">
-      <div class="see-stat-label">Összes Off Duty Idő</div>
-      <div id="totalOff" class="see-value-wrapper see-stat-value">0<span>perc</span></div>
-    </div>
-    <div class="see-stat-card">
-      <div class="see-stat-label">Feldolgozott Reportok</div>
-      <div id="totalReports" class="see-value-wrapper see-stat-value">0<span>db</span></div>
-    </div>
-  </div>
-
-  <div id="mainSection" class="see-section active">
-    <div style="display:flex; justify-content:flex-end; margin-bottom:15px;">
-      <button class="bulk-btn" id="closeMonthBtn" style="border-color: var(--see-gold); color: var(--see-gold); padding: 10px 16px; font-size:12px;" onclick="closeCurrentMonth()">🔒 Hónap lezárása</button>
-    </div>
-    <div class="see-workspace">
-      <div class="see-panel">
-        <div class="see-panel-title">Duty Rögzítés <span id="dutyCount">0 sor</span></div>
-        <div class="see-input-row">
-          <input id="dutyOn" type="number" placeholder="Kezdő perc">
-          <input id="dutyOff" type="number" placeholder="Vég perc">
+  <div class="main-content">
+    <header class="top-header">
+      <div class="header-left">
+        <button class="side-nav-toggle" onclick="toggleSideNav()"><i class="fa-solid fa-bars"></i></button>
+        <div class="header-title">
+          <h1><span>SeeRPG</span> Admin Dashboard</h1>
+          <div class="header-subtitle">Duty &amp; Report kezelő felület</div>
         </div>
-        <button class="see-btn" onclick="saveDuty()">Mentés</button>
-        <div class="panel-bulk-actions">
-          <button class="bulk-btn" onclick="toggleSelectAll('duty')">Összes kijelölése</button>
-          <button class="bulk-btn danger-bulk" id="bulkDelBtn-duty" onclick="deleteSelected('duty')">Kijelöltek törlése</button>
-        </div>
-        <div class="see-list-container" id="dutyStream"></div>
       </div>
-
-      <div class="see-panel">
-        <div class="see-panel-title">Off Duty Rögzítés <span id="offCount">0 sor</span></div>
-        <div class="see-input-row">
-          <input id="offOn" type="number" placeholder="Kezdő perc">
-          <input id="offOff" type="number" placeholder="Vég perc">
-        </div>
-        <button class="see-btn" onclick="saveOff()">Mentés</button>
-        <div class="panel-bulk-actions">
-          <button class="bulk-btn" onclick="toggleSelectAll('off')">Összes kijelölése</button>
-          <button class="bulk-btn danger-bulk" id="bulkDelBtn-off" onclick="deleteSelected('off')">Kijelöltek törlése</button>
-        </div>
-        <div class="see-list-container" id="offStream"></div>
-      </div>
-
-      <div class="see-panel report-type">
-        <div class="see-panel-title">Logok Beolvasása <span id="reportDaysCount">0 nap</span></div>
-        <div class="see-file-wrapper">
-          <label for="logFiles" class="see-file-label" id="fileLabel" ondragover="handleLogDragOver(event)" ondragleave="handleLogDragLeave(event)" ondrop="handleLogDrop(event)">
-            <span class="see-file-icon">📂</span>
-            <span class="see-file-text" id="fileLabelText">Tallózás, vagy húzd ide a log fájlokat<small>(nem töltődik fel)</small></span>
-          </label>
-          <input type="file" id="logFiles" multiple accept=".txt,.log" onchange="updateFileLabel()">
-        </div>
-        <button class="see-btn" onclick="processLogs()">Betöltés és elemzés</button>
-        <div class="panel-bulk-actions">
-          <button class="bulk-btn" onclick="toggleSelectAll('reports')">Összes kijelölése</button>
-          <button class="bulk-btn danger-bulk" id="bulkDelBtn-reports" onclick="deleteSelected('reports')">Kijelöltek törlése</button>
-        </div>
-        <div class="see-list-container" id="reportStream"></div>
-      </div>
-    </div>
-  </div>
-
-  <div id="monthlySection" class="see-section">
-    <div class="see-panel">
-      <div class="see-panel-title">
-        <span>📅 Hónapokra lebontott statisztikák</span>
-        <button class="bulk-btn" onclick="switchPage('main')">🔙 Vissza a főoldalra</button>
-      </div>
-      <div class="monthly-page-container" id="monthlySummaryContainer">
-        </div>
-    </div>
-  </div>
-
-  <div id="devSection" class="see-section">
-    <div class="see-panel">
-      <div class="see-panel-title">
-        <span>⚙ Fejlesztői Panel - Regisztrált Felhasználók</span>
-        <button class="bulk-btn" onclick="switchPage('main')">🔙 Vissza a főoldalra</button>
-      </div>
-      <div class="see-list-container" id="devUserList" style="max-height: none;"></div>
-    </div>
-  </div>
-
-  <div id="devStatsSection" class="see-section">
-    <div class="see-panel">
-      <div class="see-panel-title">
-        <span>📊 Admin Statisztikák Áttekintése</span>
-        <button class="bulk-btn" onclick="switchPage('main')">🔙 Vissza a főoldalra</button>
-      </div>
-      <div class="see-workspace" style="grid-template-columns: 280px 1fr; gap: 25px;">
-        <div>
-          <div style="font-size:11px; font-weight:700; text-transform:uppercase; color:var(--see-text-muted); margin-bottom:10px;">Admin kiválasztása</div>
-          <div class="see-list-container" id="devStatsUserList" style="max-height: 550px;"></div>
-        </div>
-        <div>
-          <div id="devStatsEmptyState" style="font-size:13px; color:var(--see-text-muted); text-align:center; padding:60px 20px; border:1px dashed var(--see-border); border-radius:10px;">
-            👈 Válassz egy felhasználót a listából a statisztikái megtekintéséhez.
-          </div>
-          <div id="devStatsDashboard" style="display: none;">
-            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
-              <div style="font-size:13px; font-weight:700; text-transform:uppercase; color:var(--see-gold);" id="devStatsSelectedName"></div>
-              <div style="display:flex; align-items:center; gap:10px;">
-                <span style="font-size:10px; color:var(--see-text-muted);" id="devStatsLastRefresh"></span>
-                <button class="bulk-btn" onclick="refreshStatsUserData(selectedStatsUser)">🔄 Frissítés</button>
-              </div>
-            </div>
-            <div class="stats-grid-mini">
-              <div class="stats-card-mini">
-                <div class="label">Duty Idő</div>
-                <div class="val" id="miniDuty" style="color: var(--see-gold);">0 p</div>
-              </div>
-              <div class="stats-card-mini">
-                <div class="label">Off Duty Idő</div>
-                <div class="val" id="miniOff" style="color: #fff;">0 p</div>
-              </div>
-              <div class="stats-card-mini">
-                <div class="label">Összesen (Duty+Off)</div>
-                <div class="val" id="miniTotal" style="color: var(--see-gold);">0 p</div>
-              </div>
-              <div class="stats-card-mini">
-                <div class="label">Feldolgozott Reportok</div>
-                <div class="val" id="miniReports" style="color: var(--see-success);">0 db</div>
-              </div>
-            </div>
-            <div class="see-workspace" style="grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 15px; margin-top: 15px;">
-              <div>
-                <div style="font-size:12px; font-weight:700; text-transform:uppercase; margin-bottom:5px; color:var(--see-gold);">Duty</div>
-                <div class="see-list-container" id="miniDutyStream" style="max-height: 200px;"></div>
-              </div>
-              <div>
-                <div style="font-size:12px; font-weight:700; text-transform:uppercase; margin-bottom:5px; color:#fff;">Off Duty</div>
-                <div class="see-list-container" id="miniOffStream" style="max-height: 200px;"></div>
-              </div>
-              <div>
-                <div style="font-size:12px; font-weight:700; text-transform:uppercase; margin-bottom:5px; color:var(--see-success);">Reportok</div>
-                <div class="see-list-container" id="miniReportsStream" style="max-height: 200px;"></div>
-              </div>
-            </div>
+      <div class="header-right">
+        <div class="see-dropdown" id="linksDropdown">
+          <button class="see-dropdown-btn" onclick="toggleDropdown()"><span>Linkek</span> <i class="fa-solid fa-chevron-down"></i></button>
+          <div class="see-dropdown-content">
+            <a href="https://forum.see-rpg.com/" target="_blank"><i class="fa-solid fa-comments"></i> Fórum</a>
+            <a href="https://ucp.see-rpg.com/seerpg" target="_blank"><i class="fa-solid fa-user-gear"></i> UCP</a>
+            <a href="https://rules.see-rpg.com/rpg/" target="_blank"><i class="fa-solid fa-scroll"></i> Szabályzat</a>
           </div>
         </div>
+        <div class="ucp-logo-badge" id="welcomeUser">v4 UCP</div>
+        <button class="logout-btn" onclick="logout()" title="Kijelentkezés"><i class="fa-solid fa-right-from-bracket"></i></button>
+      </div>
+    </header>
+
+    <div class="overview-bar">
+      <div class="overview-metric">
+        <span class="overview-icon duty"><i class="fa-solid fa-user-clock"></i></span>
+        <div>
+          <span class="overview-label">Összes Duty Idő</span>
+          <div id="totalDuty" class="overview-value">0<em>perc</em></div>
+        </div>
+      </div>
+      <div class="overview-metric">
+        <span class="overview-icon off"><i class="fa-solid fa-mug-hot"></i></span>
+        <div>
+          <span class="overview-label">Összes Off Duty Idő</span>
+          <div id="totalOff" class="overview-value">0<em>perc</em></div>
+        </div>
+      </div>
+      <div class="overview-metric">
+        <span class="overview-icon reports"><i class="fa-solid fa-file-circle-check"></i></span>
+        <div>
+          <span class="overview-label">Feldolgozott Reportok</span>
+          <div id="totalReports" class="overview-value">0<em>db</em></div>
+        </div>
+      </div>
+      <div class="overview-metric">
+        <span class="overview-icon total"><i class="fa-solid fa-layer-group"></i></span>
+        <div>
+          <span class="overview-label">Összes Idő</span>
+          <div class="overview-value"><span id="headTotalAll">0 p</span></div>
+        </div>
+      </div>
+      <div class="overview-ratio">
+        <div class="overview-ratio-head"><span>Idő megoszlás</span><b>Nyitott időszak</b></div>
+        <div class="ratio-bar-track"><div class="ratio-bar-fill" id="donutChartVisual"></div></div>
+        <div class="ratio-bar-legend">
+          <span><span class="dot gold"></span>Duty <strong id="donutDutyVal">0 p</strong> · <strong id="donutCenterPct">0%</strong></span>
+          <span><span class="dot slate"></span>Off Duty <strong id="donutOffVal">0 p</strong></span>
+        </div>
       </div>
     </div>
-  </div>
 
+    <div id="mainSection" class="see-section active">
+      <div class="section-toolbar">
+        <h2 class="section-heading"><i class="fa-solid fa-briefcase"></i> Munkaterület</h2>
+        <button class="bulk-btn month-close-btn" id="closeMonthBtn" onclick="closeCurrentMonth()"><i class="fa-solid fa-lock"></i> Hónap lezárása</button>
+      </div>
+
+      <div class="work-panel">
+        <div class="work-col" id="workTab-duty">
+          <div class="work-col-head"><i class="fa-solid fa-user-clock"></i> Duty <span id="dutyCount">0 sor</span></div>
+          <div class="see-input-row">
+            <input id="dutyOn" type="number" placeholder="Kezdő perc">
+            <input id="dutyOff" type="number" placeholder="Vég perc">
+          </div>
+          <button class="see-btn see-btn-compact" onclick="saveDuty()"><i class="fa-solid fa-floppy-disk"></i> Mentés</button>
+          <div class="panel-bulk-actions">
+            <button class="bulk-btn" onclick="toggleSelectAll('duty')"><i class="fa-regular fa-square-check"></i> Összes kijelölése</button>
+            <button class="bulk-btn danger-bulk" id="bulkDelBtn-duty" onclick="deleteSelected('duty')">Kijelöltek törlése</button>
+          </div>
+          <div class="see-list-container" id="dutyStream"></div>
+        </div>
+
+        <div class="work-col" id="workTab-off">
+          <div class="work-col-head"><i class="fa-solid fa-mug-hot"></i> Off Duty <span id="offCount">0 sor</span></div>
+          <div class="see-input-row">
+            <input id="offOn" type="number" placeholder="Kezdő perc">
+            <input id="offOff" type="number" placeholder="Vég perc">
+          </div>
+          <button class="see-btn see-btn-compact" onclick="saveOff()"><i class="fa-solid fa-floppy-disk"></i> Mentés</button>
+          <div class="panel-bulk-actions">
+            <button class="bulk-btn" onclick="toggleSelectAll('off')"><i class="fa-regular fa-square-check"></i> Összes kijelölése</button>
+            <button class="bulk-btn danger-bulk" id="bulkDelBtn-off" onclick="deleteSelected('off')">Kijelöltek törlése</button>
+          </div>
+          <div class="see-list-container" id="offStream"></div>
+        </div>
+
+        <div class="work-col" id="workTab-reports">
+          <div class="work-col-head"><i class="fa-solid fa-file-lines"></i> Logok beolvasása <span id="reportDaysCount">0 nap</span></div>
+          <div class="see-file-wrapper">
+            <label for="logFiles" class="see-file-label" id="fileLabel" ondragover="handleLogDragOver(event)" ondragleave="handleLogDragLeave(event)" ondrop="handleLogDrop(event)">
+              <span class="see-file-icon"><i class="fa-solid fa-cloud-arrow-up"></i></span>
+              <span class="see-file-text" id="fileLabelText">Tallózás, vagy húzd ide a log fájlokat<small>(nem töltődik fel)</small></span>
+            </label>
+            <input type="file" id="logFiles" multiple accept=".txt,.log" onchange="updateFileLabel()">
+          </div>
+          <button class="see-btn see-btn-compact" onclick="processLogs()"><i class="fa-solid fa-magnifying-glass-chart"></i> Betöltés és elemzés</button>
+          <div class="panel-bulk-actions">
+            <button class="bulk-btn" onclick="toggleSelectAll('reports')"><i class="fa-regular fa-square-check"></i> Összes kijelölése</button>
+            <button class="bulk-btn danger-bulk" id="bulkDelBtn-reports" onclick="deleteSelected('reports')">Kijelöltek törlése</button>
+          </div>
+          <div class="see-list-container" id="reportStream"></div>
+        </div>
+      </div>
+    </div>
+
+    <div id="monthlySection" class="see-section">
+      <div class="see-panel">
+        <div class="see-panel-title">
+          <span class="panel-title-text"><i class="fa-solid fa-calendar-days"></i> Hónapokra lebontott statisztikák</span>
+          <button class="bulk-btn" onclick="switchPage('main')"><i class="fa-solid fa-arrow-left"></i> Vissza a főoldalra</button>
+        </div>
+        <div class="monthly-page-container" id="monthlySummaryContainer"></div>
+      </div>
+    </div>
+
+    <div id="devSection" class="see-section">
+      <div class="see-panel">
+        <div class="see-panel-title">
+          <span class="panel-title-text"><i class="fa-solid fa-users-gear"></i> Fejlesztői Panel - Regisztrált Felhasználók</span>
+          <button class="bulk-btn" onclick="switchPage('main')"><i class="fa-solid fa-arrow-left"></i> Vissza a főoldalra</button>
+        </div>
+        <div class="see-list-container" id="devUserList" style="max-height: none;"></div>
+      </div>
+    </div>
+
+    <div id="devStatsSection" class="see-section">
+      <div class="see-panel">
+        <div class="see-panel-title">
+          <span class="panel-title-text"><i class="fa-solid fa-chart-line"></i> Admin Statisztikák Áttekintése</span>
+          <button class="bulk-btn" onclick="switchPage('main')"><i class="fa-solid fa-arrow-left"></i> Vissza a főoldalra</button>
+        </div>
+        <div class="see-workspace" style="grid-template-columns: 280px 1fr; gap: 25px;">
+          <div>
+            <div style="font-size:11px; font-weight:700; text-transform:uppercase; color:var(--see-text-muted); margin-bottom:10px;">Admin kiválasztása</div>
+            <div class="see-list-container" id="devStatsUserList" style="max-height: 550px;"></div>
+          </div>
+          <div>
+            <div id="devStatsEmptyState" style="font-size:13px; color:var(--see-text-muted); text-align:center; padding:60px 20px; border:1px dashed var(--see-border); border-radius:var(--radius-md);">
+              <i class="fa-solid fa-hand-point-left" style="margin-right:8px;"></i> Válassz egy felhasználót a listából a statisztikái megtekintéséhez.
+            </div>
+            <div id="devStatsDashboard" style="display: none;">
+              <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
+                <div style="font-size:13px; font-weight:700; text-transform:uppercase; color:var(--see-gold);" id="devStatsSelectedName"></div>
+                <div style="display:flex; align-items:center; gap:10px;">
+                  <span style="font-size:10px; color:var(--see-text-muted);" id="devStatsLastRefresh"></span>
+                  <button class="bulk-btn" onclick="refreshStatsUserData(selectedStatsUser)"><i class="fa-solid fa-arrow-rotate-right"></i> Frissítés</button>
+                </div>
+              </div>
+              <div class="stats-grid-mini">
+                <div class="stats-card-mini">
+                  <div class="label">Duty Idő</div>
+                  <div class="val" id="miniDuty" style="color: var(--see-gold);">0 p</div>
+                </div>
+                <div class="stats-card-mini">
+                  <div class="label">Off Duty Idő</div>
+                  <div class="val" id="miniOff" style="color: #fff;">0 p</div>
+                </div>
+                <div class="stats-card-mini">
+                  <div class="label">Összesen (Duty+Off)</div>
+                  <div class="val" id="miniTotal" style="color: var(--see-gold);">0 p</div>
+                </div>
+                <div class="stats-card-mini">
+                  <div class="label">Feldolgozott Reportok</div>
+                  <div class="val" id="miniReports" style="color: var(--see-success);">0 db</div>
+                </div>
+              </div>
+              <div class="see-workspace" style="grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 15px; margin-top: 15px;">
+                <div>
+                  <div style="font-size:12px; font-weight:700; text-transform:uppercase; margin-bottom:5px; color:var(--see-gold);">Duty</div>
+                  <div class="see-list-container" id="miniDutyStream" style="max-height: 200px;"></div>
+                </div>
+                <div>
+                  <div style="font-size:12px; font-weight:700; text-transform:uppercase; margin-bottom:5px; color:#fff;">Off Duty</div>
+                  <div class="see-list-container" id="miniOffStream" style="max-height: 200px;"></div>
+                </div>
+                <div>
+                  <div style="font-size:12px; font-weight:700; text-transform:uppercase; margin-bottom:5px; color:var(--see-success);">Reportok</div>
+                  <div class="see-list-container" id="miniReportsStream" style="max-height: 200px;"></div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </div>
 </div>
 
 <script>
@@ -1439,15 +1655,15 @@ function render() {
     const mOff = (arc.off || []).reduce((s, x) => s + x.perc, 0);
     const mReports = Object.values(arc.reports || {}).reduce((s, v) => s + v, 0);
     return `
-      <div class="see-panel month-card-clickable" style="background: var(--see-card-inner); padding: 20px; border-color: var(--see-danger);" onclick="openMonthEdit('${m}')">
-        <div style="font-weight: 800; color: var(--see-gold); font-size: 14px; text-transform: uppercase; border-bottom: 1px solid var(--see-border); padding-bottom: 8px; margin-bottom: 12px; display:flex; justify-content:space-between; align-items:center;">
+      <div class="see-panel month-card-clickable" style="background: var(--see-card-inner); padding: 20px;" onclick="openMonthEdit('${m}')">
+        <div style="font-weight: 800; color: var(--see-gold); font-size: 14px; text-transform: uppercase; margin-bottom: 14px; display:flex; justify-content:space-between; align-items:center;">
           <span>📅 ${m} <span style="color:var(--see-danger); font-size:11px; margin-left:6px; text-transform:none;">🔒 Lezárva</span></span>
           <span style="font-size:11px; font-weight:600; color:var(--see-text-muted); text-transform:none;">🔓 Megnyitás / Szerkesztés</span>
         </div>
-        <div style="font-size: 12px; display: flex; flex-direction: column; gap: 8px; color: var(--see-text-muted);">
+        <div style="font-size: 12px; display: flex; flex-direction: column; gap: 10px; color: var(--see-text-muted);">
           <div style="display:flex; justify-content:space-between;"><span>Duty idő:</span><strong style="color:#fff; font-family:'Roboto Mono', monospace;">${mDuty} p</strong></div>
           <div style="display:flex; justify-content:space-between;"><span>Off Duty idő:</span><strong style="color:#fff; font-family:'Roboto Mono', monospace;">${mOff} p</strong></div>
-          <div style="display:flex; justify-content:space-between; border-top: 1px dashed var(--see-border); padding-top: 6px; margin-top: 4px;"><span>Reportok:</span><strong style="color:var(--see-success); font-family:'Roboto Mono', monospace;">${mReports} db</strong></div>
+          <div style="display:flex; justify-content:space-between;"><span>Reportok:</span><strong style="color:var(--see-success); font-family:'Roboto Mono', monospace;">${mReports} db</strong></div>
         </div>
       </div>`;
   }).join('') || '<div style="font-size:13px;color:var(--see-text-muted);grid-column: 1 / -1; text-align:center; padding:20px;">Még nincs lezárt hónap. A "Hónap lezárása" gombbal archiválhatod a jelenlegi statisztikákat.</div>';
@@ -1465,6 +1681,46 @@ function render() {
   updateBulkDeleteButtonVisibility('off');
   updateBulkDeleteButtonVisibility('reports');
 }
+
+/* ============================================================
+   ÚJ, KIEGÉSZÍTŐ MEGJELENÍTÉS: Duty / Off Duty megoszlás (donut).
+   Ez a blokk NEM módosítja az eredeti render() függvény törzsét vagy
+   bármely más meglévő logikát - csak becsomagolja a render()-t, hogy
+   minden adatváltozás után a donut is frissüljön. Az eredeti
+   funkciók, ID-k és Firebase mentés változatlanok maradnak.
+   ============================================================ */
+function renderDashboardCharts() {
+  if (!currentUser || !globalData[currentUser]) return;
+  const data = globalData[currentUser];
+  const dList = data.duty || [];
+  const oList = data.off || [];
+
+  // ---- Duty / Off Duty megoszlás (vízszintes arány-sáv) ----
+  const dutySum = dList.reduce((s, x) => s + x.perc, 0);
+  const offSum = oList.reduce((s, x) => s + x.perc, 0);
+  const totalDO = dutySum + offSum;
+  const dutyPct = totalDO > 0 ? Math.round((dutySum / totalDO) * 100) : 0;
+
+  const donutEl = document.getElementById('donutChartVisual');
+  if (donutEl) {
+    donutEl.style.width = (totalDO > 0 ? dutyPct : 0) + '%';
+    donutEl.style.background = 'linear-gradient(90deg, #2dd4bf, #5eead4)';
+  }
+  const donutCenterPct = document.getElementById('donutCenterPct');
+  if (donutCenterPct) donutCenterPct.textContent = dutyPct + '%';
+  const donutDutyVal = document.getElementById('donutDutyVal');
+  if (donutDutyVal) donutDutyVal.textContent = dutySum + ' p';
+  const donutOffVal = document.getElementById('donutOffVal');
+  if (donutOffVal) donutOffVal.textContent = offSum + ' p';
+}
+
+// Az eredeti render() függvény becsomagolása - a törzse változatlan marad,
+// csak minden lefutása után frissül a donut is.
+const _originalRenderFn = render;
+render = function() {
+  _originalRenderFn();
+  try { renderDashboardCharts(); } catch (e) { console.error('Chart render error:', e); }
+};
 
 window.onload = function() { initAuth(); };
 </script>
