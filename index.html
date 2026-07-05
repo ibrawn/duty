@@ -627,6 +627,22 @@ input[type="file"] { display: none; }
 .stats-card-mini .label { font-size: 10px; text-transform: uppercase; color: var(--see-text-muted); font-weight: 700; letter-spacing: 0.3px; }
 .stats-card-mini .val { font-size: 17px; font-weight: 800; margin-top: 5px; font-family: var(--font-mono); }
 
+.cmd-stat-strip { display: flex; gap: 10px; flex-wrap: wrap; }
+.cmd-stat-chip {
+  display: flex; align-items: center; gap: 6px;
+  background: var(--see-card-inner);
+  border: 1px solid var(--see-border);
+  border-radius: 999px;
+  padding: 6px 12px;
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--see-text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.3px;
+}
+.cmd-stat-chip strong { color: var(--see-text); font-family: var(--font-mono); font-size: 12px; }
+.cmd-stat-chip i { color: var(--see-gold); font-size: 11px; }
+
 .dot { width: 8px; height: 8px; border-radius: 3px; display: inline-block; margin-right: 7px; box-shadow: 0 0 8px currentColor; }
 .dot.gold { background: var(--see-gold); color: var(--see-gold); }
 .dot.slate { background: #6b7280; color: #6b7280; }
@@ -677,6 +693,10 @@ input[type="file"] { display: none; }
       <div>
         <div style="font-size:12px; font-weight:700; text-transform:uppercase; margin-bottom:8px; color:var(--see-success);">Reportok</div>
         <div class="see-list-container" id="monthEditReports" style="max-height: 260px;"></div>
+      </div>
+      <div>
+        <div style="font-size:12px; font-weight:700; text-transform:uppercase; margin-bottom:8px; color:var(--see-gold);">Admin parancsok</div>
+        <div class="see-list-container" id="monthEditCommands" style="max-height: 260px;"></div>
       </div>
     </div>
   </div>
@@ -808,7 +828,10 @@ input[type="file"] { display: none; }
     <div id="mainSection" class="see-section active">
       <div class="section-toolbar">
         <h2 class="section-heading"><i class="fa-solid fa-briefcase"></i> Munkaterület</h2>
-        <button class="bulk-btn month-close-btn" id="closeMonthBtn" onclick="closeCurrentMonth()"><i class="fa-solid fa-lock"></i> Hónap lezárása</button>
+        <div style="display:flex; align-items:center; gap:14px; flex-wrap:wrap;">
+          <div id="currentCommandStats" class="cmd-stat-strip"></div>
+          <button class="bulk-btn month-close-btn" id="closeMonthBtn" onclick="closeCurrentMonth()"><i class="fa-solid fa-lock"></i> Hónap lezárása</button>
+        </div>
       </div>
 
       <div class="work-panel">
@@ -1095,7 +1118,7 @@ async function showMainUcp() {
   }
 
   globalData = await fbFetch("data") || {};
-  if (!globalData[currentUser]) { globalData[currentUser] = { duty: [], off: [], reports: {} }; }
+  if (!globalData[currentUser]) { globalData[currentUser] = { duty: [], off: [], reports: {}, commandsByDay: {} }; }
   if (!globalData[currentUser].duty) globalData[currentUser].duty = [];
   if (!globalData[currentUser].off) globalData[currentUser].off = [];
   if (!globalData[currentUser].reports) globalData[currentUser].reports = {};
@@ -1175,14 +1198,14 @@ async function selectStatsUser(username) {
 async function refreshStatsUserData(username, silent) {
   if (!username) return;
   const fresh = await fbFetch(`data/${username}`);
-  globalData[username] = fresh || { duty: [], off: [], reports: {} };
+  globalData[username] = fresh || { duty: [], off: [], reports: {}, commandsByDay: {} };
   renderStatsDashboard(username);
   const now = new Date();
   document.getElementById("devStatsLastRefresh").textContent = `Frissítve: ${now.toLocaleTimeString('hu-HU')}`;
 }
 
 function renderStatsDashboard(username) {
-  const uData = globalData[username] || { duty: [], off: [], reports: {} };
+  const uData = globalData[username] || { duty: [], off: [], reports: {}, commandsByDay: {} };
   const dList = uData.duty || [];
   const oList = uData.off || [];
   const reps = uData.reports || {};
@@ -1289,18 +1312,31 @@ async function closeCurrentMonth() {
 
   if (!confirm(`Biztosan lezárod a jelenlegi nyitott időszakot "${monthKey}" néven?\n\nA jelenlegi Duty / Off Duty / Report adatok archiválásra kerülnek ehhez a hónaphoz, a munkaterület pedig KIÜRÜL (nullázódik), hogy elölről kezdhesd a rögzítést.`)) return;
 
+  const cmdsByDay = globalData[currentUser].commandsByDay || {};
+
   if (!globalData[currentUser].closedMonths) globalData[currentUser].closedMonths = {};
-  const existing = globalData[currentUser].closedMonths[monthKey] || { duty: [], off: [], reports: {} };
+  const existing = globalData[currentUser].closedMonths[monthKey] || { duty: [], off: [], reports: {}, commandsByDay: {} };
   existing.duty = (existing.duty || []).concat(dList);
   existing.off = (existing.off || []).concat(oList);
   existing.reports = existing.reports || {};
   Object.keys(reps).forEach(d => { existing.reports[d] = (existing.reports[d] || 0) + reps[d]; });
+  // Adminparancsok (fixveh / asegit / agyogyit) napi bontásának archiválása a reportokéhoz
+  // hasonlóan - ha a hónap már korábban is tartalmazott ilyen adatot, összeadódik.
+  existing.commandsByDay = existing.commandsByDay || {};
+  Object.keys(cmdsByDay).forEach(d => {
+    const cur = existing.commandsByDay[d] || emptyCommandCounts();
+    cur.fixveh += cmdsByDay[d].fixveh || 0;
+    cur.asegit += cmdsByDay[d].asegit || 0;
+    cur.agyogyit += cmdsByDay[d].agyogyit || 0;
+    existing.commandsByDay[d] = cur;
+  });
   globalData[currentUser].closedMonths[monthKey] = existing;
 
   // Munkaterület nullázása - kezdődjön elölről
   globalData[currentUser].duty = [];
   globalData[currentUser].off = [];
   globalData[currentUser].reports = {};
+  globalData[currentUser].commandsByDay = {};
   selectedItems = { duty: {}, off: {}, reports: {} };
 
   const ok = await saveGlobal();
@@ -1334,6 +1370,16 @@ async function reopenMonth(monthKey) {
   Object.keys(arc.reports || {}).forEach(d => { reports[d] = (reports[d] || 0) + arc.reports[d]; });
   globalData[currentUser].reports = reports;
 
+  const cmdsByDay = globalData[currentUser].commandsByDay || {};
+  Object.keys(arc.commandsByDay || {}).forEach(d => {
+    const cur = cmdsByDay[d] || emptyCommandCounts();
+    cur.fixveh += arc.commandsByDay[d].fixveh || 0;
+    cur.asegit += arc.commandsByDay[d].asegit || 0;
+    cur.agyogyit += arc.commandsByDay[d].agyogyit || 0;
+    cmdsByDay[d] = cur;
+  });
+  globalData[currentUser].commandsByDay = cmdsByDay;
+
   delete globalData[currentUser].closedMonths[monthKey];
 
   const ok = await saveGlobal();
@@ -1362,7 +1408,7 @@ function closeMonthEdit() {
 // jelenlegi (még nyitott) adataitól.
 function getArchivedMonth(monthKey) {
   const closedMonths = globalData[currentUser].closedMonths || {};
-  return closedMonths[monthKey] || { duty: [], off: [], reports: {} };
+  return closedMonths[monthKey] || { duty: [], off: [], reports: {}, commandsByDay: {} };
 }
 
 function renderMonthEdit() {
@@ -1414,6 +1460,24 @@ function renderMonthEdit() {
         </div>
       </div>`;
   }).join('').trim() || '<div style="font-size:11px;color:var(--see-text-muted);">Nincs adat erre a hónapra</div>';
+
+  const cmdsByDay = arc.commandsByDay || {};
+  document.getElementById('monthEditCommands').innerHTML = Object.keys(cmdsByDay).sort().map(d => {
+    const c = cmdsByDay[d];
+    return `
+      <div class="see-list-item">
+        <span class="see-item-date">${d}</span>
+        <span class="see-item-value" style="font-size:11px; display:flex; gap:10px; color:var(--see-text-muted);">
+          <span>fixveh <strong style="color:#fff;">${c.fixveh || 0}</strong></span>
+          <span>asegit <strong style="color:#fff;">${c.asegit || 0}</strong></span>
+          <span>agyogyit <strong style="color:#fff;">${c.agyogyit || 0}</strong></span>
+        </span>
+        <div class="see-item-actions">
+          <button class="see-action-btn" onclick="editMonthCommandDay('${d}')">✏</button>
+          <button class="see-action-btn del" onclick="delMonthCommandDay('${d}')">✕</button>
+        </div>
+      </div>`;
+  }).join('').trim() || '<div style="font-size:11px;color:var(--see-text-muted);">Nincs adat erre a hónapra</div>';
 }
 
 async function editMonthDutyItem(i) {
@@ -1460,6 +1524,30 @@ async function editMonthReport(date) {
 async function delMonthReport(date) {
   if (confirm('Törlöd?')) {
     delete getArchivedMonth(currentEditMonth).reports[date];
+    await saveGlobal(); render(); renderMonthEdit();
+  }
+}
+
+async function editMonthCommandDay(date) {
+  const arc = getArchivedMonth(currentEditMonth);
+  if (!arc.commandsByDay) arc.commandsByDay = {};
+  const c = arc.commandsByDay[date] || emptyCommandCounts();
+  const newFixveh = prompt(`fixveh parancsok száma (${date}):`, c.fixveh || 0);
+  if (newFixveh === null) return;
+  const newAsegit = prompt(`asegit parancsok száma (${date}):`, c.asegit || 0);
+  if (newAsegit === null) return;
+  const newAgyogyit = prompt(`agyogyit parancsok száma (${date}):`, c.agyogyit || 0);
+  if (newAgyogyit === null) return;
+  arc.commandsByDay[date] = {
+    fixveh: isNaN(newFixveh) || newFixveh.trim() === '' ? (c.fixveh || 0) : parseInt(newFixveh, 10),
+    asegit: isNaN(newAsegit) || newAsegit.trim() === '' ? (c.asegit || 0) : parseInt(newAsegit, 10),
+    agyogyit: isNaN(newAgyogyit) || newAgyogyit.trim() === '' ? (c.agyogyit || 0) : parseInt(newAgyogyit, 10)
+  };
+  await saveGlobal(); render(); renderMonthEdit();
+}
+async function delMonthCommandDay(date) {
+  if (confirm('Törlöd?')) {
+    delete getArchivedMonth(currentEditMonth).commandsByDay[date];
     await saveGlobal(); render(); renderMonthEdit();
   }
 }
@@ -1596,6 +1684,42 @@ function extractDayCountsFromLogText(text) {
   return dayCounts;
 }
 
+// Az adminparancsok (fixveh / asegit / agyogyit) tényleges HASZNÁLATÁT kizárólag a
+// [INPUT] sorokból, a "/parancsnev" alakból nyerjük ki - így egy sima [CHAT] üzenet,
+// ami csak SZÓBAN említi a parancs nevét (pl. "sqlfixveh után nyomja el", vagy egy
+// bind leírása: bind keyboard "numpad6" "fixveh *"), sosem számít bele.
+// Napi bontásban tárolunk (a log sor saját dátuma alapján), hogy a "Hónap lezárása"
+// ugyanúgy tudja archiválni/nullázni, mint a reportoknál - lezárás után az adott napok
+// nem térnek vissza a nyitott munkaterületre, csak ha ténylegesen újra feltöltik a logot.
+function emptyCommandCounts() { return { fixveh: 0, asegit: 0, agyogyit: 0 }; }
+
+function extractCommandCountsFromLogText(text) {
+  const byDay = {};
+  const lines = text.split(/\r?\n/);
+  const re = /^\[(\d{4}-\d{2}-\d{2})\s\d{2}:\d{2}:\d{2}\]\s\[INPUT\]\s\/(fixveh|asegit|agyogyit)\b/;
+  for (const line of lines) {
+    const m = line.match(re);
+    if (m) {
+      const logDate = m[1];
+      const cmd = m[2];
+      if (!byDay[logDate]) byDay[logDate] = emptyCommandCounts();
+      byDay[logDate][cmd]++;
+    }
+  }
+  return byDay;
+}
+
+// Egy { date: {fixveh, asegit, agyogyit} } alakú objektumból összesített (teljes időszaki) totált ad vissza.
+function sumCommandCounts(commandsByDay) {
+  const totals = emptyCommandCounts();
+  Object.values(commandsByDay || {}).forEach(c => {
+    totals.fixveh += (c && c.fixveh) || 0;
+    totals.asegit += (c && c.asegit) || 0;
+    totals.agyogyit += (c && c.agyogyit) || 0;
+  });
+  return totals;
+}
+
 // Az utolsó feltöltés-köteg elemzésének eredménye, amíg a felhasználó jóvá nem hagyja
 // a modális ablakban. Csak a "Adatok mentése" gombra kerül ténylegesen mentésre.
 let pendingLogBatch = null;
@@ -1613,14 +1737,18 @@ async function processFileList(files) {
   // hozzájárulását. Ha egy fájlt (ugyanazzal a névvel) újra feltöltesz, csak az Ő saját
   // hozzájárulása frissül, a többi fájlé érintetlen marad.
   if (!latestUserData.logSources) latestUserData.logSources = {};
+  // commandsByDay: a nyitott munkaterület adminparancs-használatának napi bontása,
+  // ugyanúgy az összes ismert log-forrásból összesítve, mint a "reports" mező.
+  if (!latestUserData.commandsByDay) latestUserData.commandsByDay = {};
 
-  const fileResults = [];   // { filename, key, dayCounts, isUpdate }
+  const fileResults = [];   // { filename, key, dayCounts, cmdCounts, isUpdate }
   for (const file of files) {
     const text = await file.text();
     const dayCounts = extractDayCountsFromLogText(text);
+    const cmdCounts = extractCommandCountsFromLogText(text);
     const key = sanitizeFirebaseKey(file.name);
     const isUpdate = !!latestUserData.logSources[key];
-    fileResults.push({ filename: file.name, key, dayCounts, isUpdate });
+    fileResults.push({ filename: file.name, key, dayCounts, cmdCounts, isUpdate });
   }
 
   pendingLogBatch = { fileResults, latestUserData };
@@ -1656,12 +1784,21 @@ function renderLogBreakdownModal(fileResults, latestUserData) {
         }).join('')
       : `<div style="font-size:12px; color:var(--see-text-muted); padding:6px 0;">Nem található beszámítható report ebben a fájlban.</div>`;
     const updateBadge = fr.isUpdate ? ` <span style="font-size:10px; font-weight:700; color:var(--see-text-muted); text-transform:uppercase; background:rgba(255,255,255,0.06); padding:2px 8px; border-radius:6px;">Ismételt feltöltés - frissíti a fájl korábbi adatait</span>` : '';
+    const cmdTotals = sumCommandCounts(fr.cmdCounts);
+    const cmdRow = (cmdTotals.fixveh + cmdTotals.asegit + cmdTotals.agyogyit) > 0
+      ? `<div style="display:flex; gap:14px; flex-wrap:wrap; font-size:11px; color:var(--see-text-muted); padding-top:8px; margin-top:6px; border-top:1px solid var(--see-border);">
+          <span><i class="fa-solid fa-car-burst" style="color:var(--see-gold);"></i> fixveh: <strong style="color:#fff;">${cmdTotals.fixveh}</strong></span>
+          <span><i class="fa-solid fa-hand-holding-medical" style="color:var(--see-gold);"></i> asegit: <strong style="color:#fff;">${cmdTotals.asegit}</strong></span>
+          <span><i class="fa-solid fa-kit-medical" style="color:var(--see-gold);"></i> agyogyit: <strong style="color:#fff;">${cmdTotals.agyogyit}</strong></span>
+        </div>`
+      : '';
     return `
       <div class="see-panel" style="background: var(--see-card-inner); padding: 14px 16px;">
         <div style="font-weight:700; font-size:13px; margin-bottom:8px; display:flex; align-items:center; gap:8px; flex-wrap:wrap;">
           <i class="fa-solid fa-file-circle-check" style="color:var(--see-gold);"></i> ${fr.filename}${updateBadge}
         </div>
         ${rows}
+        ${cmdRow}
       </div>`;
   }).join('');
 
@@ -1688,21 +1825,35 @@ async function confirmLogBreakdown() {
   fileResults.forEach(fr => {
     const oldContribution = latestUserData.logSources[fr.key];
     if (oldContribution && oldContribution.days) Object.keys(oldContribution.days).forEach(d => touchedDates.add(d));
+    if (oldContribution && oldContribution.cmdCounts) Object.keys(oldContribution.cmdCounts).forEach(d => touchedDates.add(d));
     Object.keys(fr.dayCounts).forEach(d => touchedDates.add(d));
-    latestUserData.logSources[fr.key] = { filename: fr.filename, days: fr.dayCounts };
+    Object.keys(fr.cmdCounts).forEach(d => touchedDates.add(d));
+    latestUserData.logSources[fr.key] = { filename: fr.filename, days: fr.dayCounts, cmdCounts: fr.cmdCounts };
   });
 
   // 2) Csak azokat a napokat számoljuk újra, amikre ebben a körben valamelyik fájl adatot
   //    adott (vagy korábban adott). Az adott nap végső értéke MINDEN ismert log-forrás
   //    (fájl) aznapi hozzájárulásának összege - ez biztosítja, hogy egy új fájl sosem
   //    "vonhat le" egy másik, korábban feltöltött fájl adataiból.
+  if (!latestUserData.commandsByDay) latestUserData.commandsByDay = {};
   touchedDates.forEach(date => {
     let total = 0;
+    const cmdTotal = emptyCommandCounts();
     Object.keys(latestUserData.logSources).forEach(k => {
       const src = latestUserData.logSources[k];
       if (src && src.days && src.days[date]) total += src.days[date];
+      if (src && src.cmdCounts && src.cmdCounts[date]) {
+        cmdTotal.fixveh += src.cmdCounts[date].fixveh || 0;
+        cmdTotal.asegit += src.cmdCounts[date].asegit || 0;
+        cmdTotal.agyogyit += src.cmdCounts[date].agyogyit || 0;
+      }
     });
     latestUserData.reports[date] = total;
+    if (cmdTotal.fixveh || cmdTotal.asegit || cmdTotal.agyogyit) {
+      latestUserData.commandsByDay[date] = cmdTotal;
+    } else {
+      delete latestUserData.commandsByDay[date];
+    }
   });
 
   globalData[currentUser] = latestUserData;
@@ -1710,7 +1861,7 @@ async function confirmLogBreakdown() {
   render();
   closeLogBreakdownModal();
   if (ok) {
-    alert('Logok feldolgozva! Az érintett napok report-száma az összes ismert log fájl adatai alapján frissült.');
+    alert('Logok feldolgozva! Az érintett napok report-száma és a fixveh / asegit / agyogyit parancshasználat is frissült az összes ismert log fájl adatai alapján.');
   } else {
     alert('Hiba történt a mentés közben — az adatok NEM kerültek elmentve a szerverre. Próbáld újra, és ellenőrizd a hálózati kapcsolatot.');
   }
@@ -1773,10 +1924,11 @@ function render() {
   const closedMonths = globalData[currentUser].closedMonths || {};
   const sortedMonths = Object.keys(closedMonths).sort().reverse();
   monthlySummaryContainer.innerHTML = sortedMonths.map(m => {
-    const arc = closedMonths[m] || { duty: [], off: [], reports: {} };
+    const arc = closedMonths[m] || { duty: [], off: [], reports: {}, commandsByDay: {} };
     const mDuty = (arc.duty || []).reduce((s, x) => s + x.perc, 0);
     const mOff = (arc.off || []).reduce((s, x) => s + x.perc, 0);
     const mReports = Object.values(arc.reports || {}).reduce((s, v) => s + v, 0);
+    const mCmds = sumCommandCounts(arc.commandsByDay);
     return `
       <div class="see-panel month-card-clickable" style="background: var(--see-card-inner); padding: 20px;" onclick="openMonthEdit('${m}')">
         <div style="font-weight: 800; color: var(--see-gold); font-size: 14px; text-transform: uppercase; margin-bottom: 14px; display:flex; justify-content:space-between; align-items:center;">
@@ -1787,6 +1939,14 @@ function render() {
           <div style="display:flex; justify-content:space-between;"><span>Duty idő:</span><strong style="color:#fff; font-family:'Roboto Mono', monospace;">${mDuty} p</strong></div>
           <div style="display:flex; justify-content:space-between;"><span>Off Duty idő:</span><strong style="color:#fff; font-family:'Roboto Mono', monospace;">${mOff} p</strong></div>
           <div style="display:flex; justify-content:space-between;"><span>Reportok:</span><strong style="color:var(--see-success); font-family:'Roboto Mono', monospace;">${mReports} db</strong></div>
+        </div>
+        <div style="margin-top:14px; padding-top:12px; border-top:1px solid var(--see-border); font-size: 11px; display:flex; flex-direction:column; gap:8px; color: var(--see-text-muted); text-transform:uppercase; letter-spacing:0.3px;">
+          <span style="font-weight:700; color:var(--see-text-muted);">Admin parancsok</span>
+          <div style="display:flex; justify-content:space-between; flex-wrap:wrap; gap:6px; text-transform:none;">
+            <span><i class="fa-solid fa-car-burst" style="color:var(--see-gold);"></i> fixveh: <strong style="color:#fff; font-family:'Roboto Mono', monospace;">${mCmds.fixveh}</strong></span>
+            <span><i class="fa-solid fa-hand-holding-medical" style="color:var(--see-gold);"></i> asegit: <strong style="color:#fff; font-family:'Roboto Mono', monospace;">${mCmds.asegit}</strong></span>
+            <span><i class="fa-solid fa-kit-medical" style="color:var(--see-gold);"></i> agyogyit: <strong style="color:#fff; font-family:'Roboto Mono', monospace;">${mCmds.agyogyit}</strong></span>
+          </div>
         </div>
       </div>`;
   }).join('') || '<div style="font-size:13px;color:var(--see-text-muted);grid-column: 1 / -1; text-align:center; padding:20px;">Még nincs lezárt hónap. A "Hónap lezárása" gombbal archiválhatod a jelenlegi statisztikákat.</div>';
@@ -1799,6 +1959,17 @@ function render() {
   document.getElementById('dutyCount').textContent = dList.length + " sor";
   document.getElementById('offCount').textContent = oList.length + " sor";
   document.getElementById('reportDaysCount').textContent = sortedReportKeys.length + " nap";
+
+  // Nyitott időszak adminparancs-használata (fixveh / asegit / agyogyit) - ez kerül
+  // majd archiválásra a "Hónap lezárása" gombbal, ezért itt is látszik előre.
+  const openCmds = sumCommandCounts(globalData[currentUser].commandsByDay || {});
+  const cmdStatEl = document.getElementById('currentCommandStats');
+  if (cmdStatEl) {
+    cmdStatEl.innerHTML = `
+      <span class="cmd-stat-chip"><i class="fa-solid fa-car-burst"></i> fixveh <strong>${openCmds.fixveh}</strong></span>
+      <span class="cmd-stat-chip"><i class="fa-solid fa-hand-holding-medical"></i> asegit <strong>${openCmds.asegit}</strong></span>
+      <span class="cmd-stat-chip"><i class="fa-solid fa-kit-medical"></i> agyogyit <strong>${openCmds.agyogyit}</strong></span>`;
+  }
 
   updateBulkDeleteButtonVisibility('duty');
   updateBulkDeleteButtonVisibility('off');
