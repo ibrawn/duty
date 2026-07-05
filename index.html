@@ -4,6 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>SeeRPG - Admin Duty Dashboard</title>
+<link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A//www.w3.org/2000/svg%22%20viewBox%3D%220%200%2064%2064%22%3E%3Cdefs%3E%3ClinearGradient%20id%3D%22g%22%20x1%3D%220%22%20y1%3D%220%22%20x2%3D%2264%22%20y2%3D%2264%22%3E%3Cstop%20offset%3D%220%22%20stop-color%3D%22%232dd4bf%22/%3E%3Cstop%20offset%3D%221%22%20stop-color%3D%22%2322c1a8%22/%3E%3C/linearGradient%3E%3C/defs%3E%3Crect%20width%3D%2264%22%20height%3D%2264%22%20rx%3D%2216%22%20fill%3D%22url%28%23g%29%22/%3E%3Ctext%20x%3D%2232%22%20y%3D%2245%22%20font-family%3D%22Arial%2C%20Helvetica%2C%20sans-serif%22%20font-weight%3D%22800%22%20font-size%3D%2234%22%20fill%3D%22%23ffffff%22%20text-anchor%3D%22middle%22%3ES%3C/text%3E%3C/svg%3E">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Plus+Jakarta+Sans:wght@500;600;700;800&family=Roboto+Mono:wght@400;600;700&display=swap" rel="stylesheet">
@@ -677,6 +678,20 @@ input[type="file"] { display: none; }
         <div style="font-size:12px; font-weight:700; text-transform:uppercase; margin-bottom:8px; color:var(--see-success);">Reportok</div>
         <div class="see-list-container" id="monthEditReports" style="max-height: 260px;"></div>
       </div>
+    </div>
+  </div>
+</div>
+
+<div class="dev-modal" id="logBreakdownModal">
+  <div class="dev-modal-content" style="max-width: 640px;">
+    <div class="dev-modal-header">
+      <h2 id="logBreakdownTitle"><i class="fa-solid fa-file-lines"></i> Log feldolgozás előnézete</h2>
+      <button class="dev-close" onclick="closeLogBreakdownModal()"><i class="fa-solid fa-xmark"></i></button>
+    </div>
+    <div id="logBreakdownBody" style="max-height: 55vh; overflow-y: auto; display:flex; flex-direction:column; gap:16px;"></div>
+    <div style="display:flex; justify-content:flex-end; gap:10px; margin-top:22px;">
+      <button class="bulk-btn" onclick="closeLogBreakdownModal()">Mégse</button>
+      <button class="see-btn see-btn-compact" style="width:auto; padding:0 22px;" onclick="confirmLogBreakdown()"><i class="fa-solid fa-check"></i> Adatok mentése</button>
     </div>
   </div>
 </div>
@@ -1552,47 +1567,144 @@ async function handleLogDrop(e) {
   await processFileList(files);
 }
 
-async function processFileList(files) {
-  const freshCounts = {};
-  for (const file of files) {
-    const text = await file.text(); const lines = text.split(/\r?\n/);
-    for (const line of lines) {
-      if (line.includes('Egy elvállalt reportod lezárásra került')) {
-        const m = line.match(/\[(\d{4}-\d{2}-\d{2})\s(\d{2}):/);
-        if (m) {
-          let logDate = m[1]; let logHour = parseInt(m[2], 10);
-          if (logHour >= 0 && logHour < 5) { let d = new Date(logDate); d.setDate(d.getDate() - 1); logDate = d.toISOString().substring(0, 10); }
-          freshCounts[logDate] = (freshCounts[logDate] || 0) + 1;
-        }
+// Egy adott fájl (log) szövegéből kinyeri, hogy melyik napra hány lezárt report esik.
+// A nap mindig a logban szereplő TÉNYLEGES naptári dátum (nincs éjszakai eltolás/áthúzás
+// az előző napra) - minden bejegyzés a saját időbélyegében szereplő napon számít.
+// Minden fájlt KÜLÖN, a többitől függetlenül dolgoz fel, így egyik fájl adatai
+// sosem "keverednek" bele egy másik fájléba a beolvasás során.
+function extractDayCountsFromLogText(text) {
+  const dayCounts = {};
+  const lines = text.split(/\r?\n/);
+  for (const line of lines) {
+    if (line.includes('Egy elvállalt reportod lezárásra került')) {
+      const m = line.match(/\[(\d{4}-\d{2}-\d{2})\s\d{2}:/);
+      if (m) {
+        const logDate = m[1];
+        dayCounts[logDate] = (dayCounts[logDate] || 0) + 1;
       }
     }
   }
+  return dayCounts;
+}
 
-  // Mentés előtt mindig a Firebase-ben aktuálisan tárolt, legfrissebb állapotot kérjük le,
-  // és arra építve írjuk rá a log alapján kapott napokat. Így ha közben (pl. a Statisztikák
-  // oldal frissítése miatt) a memóriában lévő globalData elavult lenne, az nem írja felül
-  // véletlenül a többi, már elmentett adatot, és a log feldolgozása nem "tűnik el" mentés után.
+// Az utolsó feltöltés-köteg elemzésének eredménye, amíg a felhasználó jóvá nem hagyja
+// a modális ablakban. Csak a "Adatok mentése" gombra kerül ténylegesen mentésre.
+let pendingLogBatch = null;
+
+async function processFileList(files) {
   const latestUserData = await fbFetch(`data/${currentUser}`) || {};
   if (!latestUserData.duty) latestUserData.duty = [];
   if (!latestUserData.off) latestUserData.off = [];
   if (!latestUserData.reports) latestUserData.reports = {};
   if (!latestUserData.closedMonths) latestUserData.closedMonths = {};
+  // logSources: minden feltöltött log fájl (fájlnév alapján) saját, elkülönített napi
+  // bontását tárolja. Így két KÜLÖNBÖZŐ log fájl adatai ugyanarra a napra mindig
+  // ÖSSZEADÓDNAK egymással, egyik fájl feltöltése sosem törli/csökkenti egy másik
+  // fájl korábban elmentett hozzájárulását. Ha egy fájlt (ugyanazzal a névvel) újra
+  // feltöltesz, csak az Ő saját hozzájárulása frissül, a többi fájlé érintetlen marad.
+  if (!latestUserData.logSources) latestUserData.logSources = {};
 
-  // Bármelyik nap, amire a most betöltött log adatot tartalmaz, felülíródik a friss számmal
-  // (nem adódik hozzá a régi értékhez), így nem kell előtte kézzel törölni azt a napot.
-  Object.keys(freshCounts).forEach(date => {
-    latestUserData.reports[date] = freshCounts[date];
+  const fileResults = [];   // { filename, dayCounts, isUpdate }
+  for (const file of files) {
+    const text = await file.text();
+    const dayCounts = extractDayCountsFromLogText(text);
+    const isUpdate = !!latestUserData.logSources[file.name];
+    fileResults.push({ filename: file.name, dayCounts, isUpdate });
+  }
+
+  pendingLogBatch = { fileResults, latestUserData };
+  renderLogBreakdownModal(fileResults, latestUserData);
+  document.getElementById('logBreakdownModal').style.display = 'flex';
+}
+
+function renderLogBreakdownModal(fileResults, latestUserData) {
+  const body = document.getElementById('logBreakdownBody');
+  let anyData = false;
+
+  body.innerHTML = fileResults.map(fr => {
+    const dates = Object.keys(fr.dayCounts).sort();
+    if (dates.length > 0) anyData = true;
+    const rows = dates.length
+      ? dates.map(d => {
+          // Előnézetként megmutatjuk azt is, hogy a többi (más nevű) fájlból már ismert
+          // hozzájárulással együtt mennyi lesz a nap végleges, összesített értéke.
+          let otherSum = 0;
+          Object.keys(latestUserData.logSources || {}).forEach(fname => {
+            if (fname !== fr.filename) {
+              const src = latestUserData.logSources[fname];
+              if (src && src[d]) otherSum += src[d];
+            }
+          });
+          const finalTotal = otherSum + fr.dayCounts[d];
+          const otherNote = otherSum > 0 ? ` <span style="color:var(--see-text-muted); font-weight:400;">(+${otherSum} más fájlból, összesen ${finalTotal})</span>` : '';
+          return `
+          <div style="display:flex; justify-content:space-between; font-size:12px; padding:6px 0; border-bottom:1px solid var(--see-border);">
+            <span style="color:var(--see-text-muted);">${d}</span>
+            <span><strong style="color:var(--see-success); font-family:'Roboto Mono', monospace;">${fr.dayCounts[d]} db</strong>${otherNote}</span>
+          </div>`;
+        }).join('')
+      : `<div style="font-size:12px; color:var(--see-text-muted); padding:6px 0;">Nem található beszámítható report ebben a fájlban.</div>`;
+    const updateBadge = fr.isUpdate ? ` <span style="font-size:10px; font-weight:700; color:var(--see-text-muted); text-transform:uppercase; background:rgba(255,255,255,0.06); padding:2px 8px; border-radius:6px;">Ismételt feltöltés - frissíti a fájl korábbi adatait</span>` : '';
+    return `
+      <div class="see-panel" style="background: var(--see-card-inner); padding: 14px 16px;">
+        <div style="font-weight:700; font-size:13px; margin-bottom:8px; display:flex; align-items:center; gap:8px; flex-wrap:wrap;">
+          <i class="fa-solid fa-file-circle-check" style="color:var(--see-gold);"></i> ${fr.filename}${updateBadge}
+        </div>
+        ${rows}
+      </div>`;
+  }).join('');
+
+  if (!anyData) {
+    body.innerHTML += `<div style="font-size:12px; color:var(--see-text-muted); text-align:center; padding:10px;">Nincs beszámítható adat ebben a köteg­ben.</div>`;
+  } else {
+    body.innerHTML += `<div style="font-size:11px; color:var(--see-text-muted); text-align:center; padding-top:4px;">Az egyes napok végső report-száma a fájl saját adata + a más fájlokból már ismert adatok összege lesz. Más napok/fájlok nem változnak.</div>`;
+  }
+}
+
+function closeLogBreakdownModal() {
+  document.getElementById('logBreakdownModal').style.display = 'none';
+  pendingLogBatch = null;
+}
+
+async function confirmLogBreakdown() {
+  if (!pendingLogBatch) { closeLogBreakdownModal(); return; }
+  const { fileResults, latestUserData } = pendingLogBatch;
+
+  // 1) Minden feltöltött fájl saját, névhez kötött hozzájárulását elmentjük/frissítjük.
+  //    Ha egy fájlt (azonos névvel) újra feltöltünk, az ő RÉGI napjait is újraszámoljuk,
+  //    nehogy egy már megszűnt (a fájlból időközben eltűnt) nap értéke "beragadjon".
+  const touchedDates = new Set();
+  fileResults.forEach(fr => {
+    const oldContribution = latestUserData.logSources[fr.filename];
+    if (oldContribution) Object.keys(oldContribution).forEach(d => touchedDates.add(d));
+    Object.keys(fr.dayCounts).forEach(d => touchedDates.add(d));
+    latestUserData.logSources[fr.filename] = fr.dayCounts;
+  });
+
+  // 2) Csak azokat a napokat számoljuk újra, amikre ebben a körben valamelyik fájl adatot
+  //    adott (vagy korábban adott). Az adott nap végső értéke MINDEN ismert log-forrás
+  //    (fájl) aznapi hozzájárulásának összege - ez biztosítja, hogy egy új fájl sosem
+  //    "vonhat le" egy másik, korábban feltöltött fájl adataiból.
+  touchedDates.forEach(date => {
+    let total = 0;
+    Object.keys(latestUserData.logSources).forEach(fname => {
+      const src = latestUserData.logSources[fname];
+      if (src && src[date]) total += src[date];
+    });
+    latestUserData.reports[date] = total;
   });
 
   globalData[currentUser] = latestUserData;
   const ok = await saveGlobal();
   render();
+  closeLogBreakdownModal();
   if (ok) {
-    alert('Logok feldolgozva! Az érintett napok adatai frissültek (felülírva) a logban talált új értékekkel.');
+    alert('Logok feldolgozva! Az érintett napok report-száma az összes ismert log fájl adatai alapján frissült.');
   } else {
     alert('Hiba történt a mentés közben — az adatok NEM kerültek elmentve a szerverre. Próbáld újra, és ellenőrizd a hálózati kapcsolatot.');
   }
 }
+
 
 function render() {
   let duty = 0, off = 0, reports = 0;
