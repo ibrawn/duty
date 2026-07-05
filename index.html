@@ -1567,6 +1567,15 @@ async function handleLogDrop(e) {
   await processFileList(files);
 }
 
+// Firebase Realtime Database kulcsnevekben TILOS a pont (.), kettőskereszt (#),
+// dollárjel ($), és szögletes zárójelek ([ ]) - egy fájlnév (pl. "log-2026-07-04.log")
+// viszont szinte mindig tartalmaz pontot, ezért ezeket egy biztonságos kulccsá
+// alakítjuk mentés előtt. Az eredeti fájlnevet külön, a value-n belül tároljuk,
+// hogy a felhasználónak a valós nevét mutathassuk.
+function sanitizeFirebaseKey(name) {
+  return name.replace(/[.#$\[\]\/\s]/g, '_');
+}
+
 // Egy adott fájl (log) szövegéből kinyeri, hogy melyik napra hány lezárt report esik.
 // A nap mindig a logban szereplő TÉNYLEGES naptári dátum (nincs éjszakai eltolás/áthúzás
 // az előző napra) - minden bejegyzés a saját időbélyegében szereplő napon számít.
@@ -1597,19 +1606,21 @@ async function processFileList(files) {
   if (!latestUserData.off) latestUserData.off = [];
   if (!latestUserData.reports) latestUserData.reports = {};
   if (!latestUserData.closedMonths) latestUserData.closedMonths = {};
-  // logSources: minden feltöltött log fájl (fájlnév alapján) saját, elkülönített napi
-  // bontását tárolja. Így két KÜLÖNBÖZŐ log fájl adatai ugyanarra a napra mindig
-  // ÖSSZEADÓDNAK egymással, egyik fájl feltöltése sosem törli/csökkenti egy másik
-  // fájl korábban elmentett hozzájárulását. Ha egy fájlt (ugyanazzal a névvel) újra
-  // feltöltesz, csak az Ő saját hozzájárulása frissül, a többi fájlé érintetlen marad.
+  // logSources: minden feltöltött log fájl saját, elkülönített napi bontását tárolja,
+  // egy Firebase-kompatibilis (pontmentes) kulcs alatt: { key: { filename, days } }.
+  // Így két KÜLÖNBÖZŐ log fájl adatai ugyanarra a napra mindig ÖSSZEADÓDNAK egymással,
+  // egyik fájl feltöltése sosem törli/csökkenti egy másik fájl korábban elmentett
+  // hozzájárulását. Ha egy fájlt (ugyanazzal a névvel) újra feltöltesz, csak az Ő saját
+  // hozzájárulása frissül, a többi fájlé érintetlen marad.
   if (!latestUserData.logSources) latestUserData.logSources = {};
 
-  const fileResults = [];   // { filename, dayCounts, isUpdate }
+  const fileResults = [];   // { filename, key, dayCounts, isUpdate }
   for (const file of files) {
     const text = await file.text();
     const dayCounts = extractDayCountsFromLogText(text);
-    const isUpdate = !!latestUserData.logSources[file.name];
-    fileResults.push({ filename: file.name, dayCounts, isUpdate });
+    const key = sanitizeFirebaseKey(file.name);
+    const isUpdate = !!latestUserData.logSources[key];
+    fileResults.push({ filename: file.name, key, dayCounts, isUpdate });
   }
 
   pendingLogBatch = { fileResults, latestUserData };
@@ -1629,10 +1640,10 @@ function renderLogBreakdownModal(fileResults, latestUserData) {
           // Előnézetként megmutatjuk azt is, hogy a többi (más nevű) fájlból már ismert
           // hozzájárulással együtt mennyi lesz a nap végleges, összesített értéke.
           let otherSum = 0;
-          Object.keys(latestUserData.logSources || {}).forEach(fname => {
-            if (fname !== fr.filename) {
-              const src = latestUserData.logSources[fname];
-              if (src && src[d]) otherSum += src[d];
+          Object.keys(latestUserData.logSources || {}).forEach(k => {
+            if (k !== fr.key) {
+              const src = latestUserData.logSources[k];
+              if (src && src.days && src.days[d]) otherSum += src.days[d];
             }
           });
           const finalTotal = otherSum + fr.dayCounts[d];
@@ -1670,15 +1681,15 @@ async function confirmLogBreakdown() {
   if (!pendingLogBatch) { closeLogBreakdownModal(); return; }
   const { fileResults, latestUserData } = pendingLogBatch;
 
-  // 1) Minden feltöltött fájl saját, névhez kötött hozzájárulását elmentjük/frissítjük.
+  // 1) Minden feltöltött fájl saját, kulcshoz kötött hozzájárulását elmentjük/frissítjük.
   //    Ha egy fájlt (azonos névvel) újra feltöltünk, az ő RÉGI napjait is újraszámoljuk,
   //    nehogy egy már megszűnt (a fájlból időközben eltűnt) nap értéke "beragadjon".
   const touchedDates = new Set();
   fileResults.forEach(fr => {
-    const oldContribution = latestUserData.logSources[fr.filename];
-    if (oldContribution) Object.keys(oldContribution).forEach(d => touchedDates.add(d));
+    const oldContribution = latestUserData.logSources[fr.key];
+    if (oldContribution && oldContribution.days) Object.keys(oldContribution.days).forEach(d => touchedDates.add(d));
     Object.keys(fr.dayCounts).forEach(d => touchedDates.add(d));
-    latestUserData.logSources[fr.filename] = fr.dayCounts;
+    latestUserData.logSources[fr.key] = { filename: fr.filename, days: fr.dayCounts };
   });
 
   // 2) Csak azokat a napokat számoljuk újra, amikre ebben a körben valamelyik fájl adatot
@@ -1687,9 +1698,9 @@ async function confirmLogBreakdown() {
   //    "vonhat le" egy másik, korábban feltöltött fájl adataiból.
   touchedDates.forEach(date => {
     let total = 0;
-    Object.keys(latestUserData.logSources).forEach(fname => {
-      const src = latestUserData.logSources[fname];
-      if (src && src[date]) total += src[date];
+    Object.keys(latestUserData.logSources).forEach(k => {
+      const src = latestUserData.logSources[k];
+      if (src && src.days && src.days[date]) total += src.days[date];
     });
     latestUserData.reports[date] = total;
   });
