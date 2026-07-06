@@ -837,6 +837,7 @@ input[type="file"] { display: none; }
       <div class="work-panel">
         <div class="work-col" id="workTab-duty">
           <div class="work-col-head"><i class="fa-solid fa-user-clock"></i> Duty <span id="dutyCount">0 sor</span></div>
+          <div style="font-size:11px; color:var(--see-text-muted); margin:-6px 0 8px;">A log feltöltése automatikusan tölti ezt a listát. Csak akkor add meg kézzel, ha nincs logod egy időszakról.</div>
           <div class="see-input-row">
             <input id="dutyOn" type="number" placeholder="Kezdő perc">
             <input id="dutyOff" type="number" placeholder="Vég perc">
@@ -851,6 +852,7 @@ input[type="file"] { display: none; }
 
         <div class="work-col" id="workTab-off">
           <div class="work-col-head"><i class="fa-solid fa-mug-hot"></i> Off Duty <span id="offCount">0 sor</span></div>
+          <div style="font-size:11px; color:var(--see-text-muted); margin:-6px 0 8px;">A log feltöltése automatikusan tölti ezt a listát (két adminszolgálatba állás közti idő). Csak akkor add meg kézzel, ha nincs logod egy időszakról.</div>
           <div class="see-input-row">
             <input id="offOn" type="number" placeholder="Kezdő perc">
             <input id="offOff" type="number" placeholder="Vég perc">
@@ -865,6 +867,12 @@ input[type="file"] { display: none; }
 
         <div class="work-col" id="workTab-reports">
           <div class="work-col-head"><i class="fa-solid fa-file-lines"></i> Logok beolvasása <span id="reportDaysCount">0 nap</span></div>
+          <div class="see-input-row" style="margin-bottom:10px;">
+            <input id="logAdminName" type="text" placeholder="Admin neved a logban (pl. ibrawn)" onchange="saveLogAdminNameField()" style="flex:1;">
+          </div>
+          <div style="font-size:11px; color:var(--see-text-muted); margin:-4px 0 10px;">
+            Ez alapján ismeri fel a rendszer a logban, hogy MIKOR álltál adminszolgálatba / MIKOR léptél ki belőle - ebből automatikusan számolja a Duty és Off Duty időt.
+          </div>
           <div class="see-file-wrapper">
             <label for="logFiles" class="see-file-label" id="fileLabel" ondragover="handleLogDragOver(event)" ondragleave="handleLogDragLeave(event)" ondrop="handleLogDrop(event)">
               <span class="see-file-icon"><i class="fa-solid fa-cloud-arrow-up"></i></span>
@@ -1124,9 +1132,21 @@ async function showMainUcp() {
   if (!globalData[currentUser].reports) globalData[currentUser].reports = {};
   if (!globalData[currentUser].closedMonths) globalData[currentUser].closedMonths = {};
   selectedItems = { duty: {}, off: {}, reports: {} };
-  
+
+  const logAdminNameInput = document.getElementById('logAdminName');
+  if (logAdminNameInput) logAdminNameInput.value = globalData[currentUser].logAdminName || '';
+
   switchPage('main');
   render();
+}
+
+// Elmenti, hogy a felhasználó milyen néven szerepel adminként a logokban -
+// ez alapján tudja a rendszer kiszűrni a SAJÁT adminszolgálatba lépés/kilépés
+// sorait a logból (más adminok be/kilépései nem számítanak bele).
+async function saveLogAdminNameField() {
+  const val = document.getElementById('logAdminName').value.trim();
+  globalData[currentUser].logAdminName = val;
+  await saveGlobal();
 }
 
 function logout() {
@@ -1709,6 +1729,265 @@ function extractCommandCountsFromLogText(text) {
   return byDay;
 }
 
+// ============================================================
+// DUTY / OFF DUTY AUTOMATIKUS FELISMERÉSE A LOGBÓL
+// ============================================================
+// A szerver a logba az adminszolgálatba lépést / kilépést kiírja, pl.:
+//   [2026-07-04 02:15:44] [CHAT] Admin 1 ibrawn adminszolgálatba lépett.
+//   [2026-07-06 01:25:09] [CHAT] Admin 2 ibrawn kilépett az adminszolgálatból.
+// A GYAKORLATBAN viszont a "kilépett az adminszolgálatból" sor RITKÁN
+// jelenik meg (a legtöbb admin egyszerűen kijelentkezik/kifagyik anélkül,
+// hogy explicit kilépne a szolgálatból). Ha ilyenkor a duty-t a KÖVETKEZŐ
+// belépésig nyújtanánk, az adná a "hatalmas ugrásokat" a duty oldalon -
+// ezért azt, hogy MEDDIG tartott ténylegesen egy nyitott duty szakasz, nem
+// a következő belépésből, hanem abból állapítjuk meg, hogy a névvel
+// kapcsolatban ([CHAT]/[OOC] sorokban) meddig látunk még aktivitást: ha egy
+// nyitott szolgálat közben IDLE_LIMIT_MINUTES percnél tovább semmi nem
+// történik a névvel kapcsolatban, a szakaszt ott zártnak tekintjük.
+//
+// MINDEN, amikor a fenti szabály szerint nem vagy admin dutyban (akár mert
+// explicit kiléptél, akár mert a session csendben megszakadt) - egészen a
+// következő "adminszolgálatba lépett" sorig - OFF DUTY, felső határ nélkül.
+// (Ez a felhasználó kifejezett kérése: két adminszolgálatba állás közti idő
+// mindig 100%-ban off duty, akkor is, ha ez több órás/napos szünetet jelent.)
+//
+// - "X adminszolgálatba lépett.": lezárja az esetlegesen még nyitva lévő
+//   előző szakaszt (lásd fent), és megnyit egy új duty szakaszt. A lezárás és
+//   az új nyitás közötti idő OFF DUTY.
+// - "X kilépett az adminszolgálatból.": lezárja a nyitott duty szakaszt
+//   (ez DUTY), és megnyitja az off duty szakaszt a következő belépésig.
+// - bármilyen egyéb, a névvel kapcsolatos [CHAT]/[OOC] sor "on" állapotban:
+//   frissíti, meddig van bizonyíték a folyamatos aktivitásra.
+// - ha "on" állapotban IDLE_LIMIT_MINUTES percnél nagyobb csönd után jön a
+//   következő esemény (új belépés VAGY újra felbukkanó aktivitás), a duty
+//   szakasz az UTOLSÓ ismert aktivitásig zárul le, és onnantól a következő
+//   eseményig (legyen az újabb aktivitás vagy belépés) OFF DUTY-t számolunk.
+//
+// TÖBB FÁJL EGYÜTT: mivel egy admin egy adott pillanatban csak egyszer lehet
+// szolgálatban, TÖBB feltöltött log fájl eseményeit MINDIG egyetlen, közös,
+// időrendbe rendezett idővonalra fésüljük össze, és az állapotgép ezen az
+// egyesített idővonalon fut végig EGYETLEN alkalommal. Ha fájlonként külön-
+// külön számolnánk, majd az eredményeket összeadnánk, két időben átfedő vagy
+// egymást közvetlenül folytató fájl könnyen duplán számítaná be ugyanazt az
+// időszakot - ez adta a korábbi irreálisan magas összesített perceket.
+function escapeRegexLiteral(s) {
+  return s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
+
+function parseLogTimestamp(dateStr, timeStr) {
+  return new Date(`${dateStr}T${timeStr}:00`).getTime();
+}
+
+// Ha egy nyitott duty szakaszon belül ennyi percnél hosszabb ideig nincs
+// semmi log-bejegyzés a névvel kapcsolatban, a szakaszt megszakadtnak
+// tekintjük (AFK / kijelentkezés / kifagyás anélkül, hogy ez külön sorban
+// megjelenne a logban) - innentől a következő eseményig off duty számolódik.
+const IDLE_LIMIT_MINUTES = 30;
+
+// EGY fájlból kinyeri a NYERS (még nem duty/off percekre bontott)
+// eseményeket: belépés, kilépés, illetve egyéb, a névhez köthető aktivitás.
+// Ezt azért különítjük el a tényleges percszámolástól, hogy TÖBB fájl
+// eseményeit egyetlen közös idővonalra lehessen fésülni feldolgozás előtt.
+function extractDutyEventsFromLogText(text, adminName) {
+  const events = [];
+  const name = (adminName || '').trim();
+  if (!name) return events;
+
+  const esc = escapeRegexLiteral(name);
+  const tsRe = /^\[(\d{4}-\d{2}-\d{2})\s(\d{2}:\d{2}):\d{2}\]/;
+  const startRe = new RegExp(`^\\[(\\d{4}-\\d{2}-\\d{2})\\s(\\d{2}:\\d{2}):\\d{2}\\]\\s\\[CHAT\\]\\s.*\\b${esc}\\sadminszolgálatba lépett\\.`);
+  const endRe = new RegExp(`^\\[(\\d{4}-\\d{2}-\\d{2})\\s(\\d{2}:\\d{2}):\\d{2}\\]\\s\\[CHAT\\]\\s.*\\b${esc}\\skilépett az adminszolgálatból\\.`);
+  const activityRe = new RegExp(`\\[(CHAT|OOC)\\].*\\b${esc}\\b`, 'i');
+
+  const lines = text.split(/\r?\n/).filter(l => l.trim() !== '');
+  for (const line of lines) {
+    const tm = line.match(tsRe);
+    if (!tm) continue;
+    const date = tm[1], time = tm[2], ts = parseLogTimestamp(date, time);
+    if (startRe.test(line)) { events.push({ date, time, ts, kind: 'start' }); continue; }
+    if (endRe.test(line)) { events.push({ date, time, ts, kind: 'end' }); continue; }
+    if (activityRe.test(line)) { events.push({ date, time, ts, kind: 'activity' }); }
+  }
+  return events;
+}
+
+// A KÖZÖS állapotgép: egy IDŐRENDBE RENDEZETT (akár több fájlból összefésült)
+// esemény-listán fut végig egyetlen alkalommal, és adja vissza a duty / off
+// duty szakaszokat. Lásd a fenti blokk elején lévő magyarázatot a pontos
+// szabályokról. Minden duty-n kívüli pillanat (a szakaszok közötti idő)
+// off duty-ként számolódik, felső határ nélkül.
+function runDutyStateMachine(events) {
+  const dutyPeriods = [];
+  const offPeriods = [];
+
+  function pushDuty(a, b) {
+    const perc = Math.max(0, Math.round((b.ts - a.ts) / 60000));
+    if (perc > 0) dutyPeriods.push({ date: a.date, on: a.time, off: b.time, perc });
+  }
+  function pushOff(a, b) {
+    const perc = Math.max(0, Math.round((b.ts - a.ts) / 60000));
+    if (perc > 0) offPeriods.push({ date: a.date, on: a.time, off: b.time, perc, startTs: a.ts, endTs: b.ts });
+  }
+
+  const idleMs = IDLE_LIMIT_MINUTES * 60000;
+  let state = 'off';               // 'on' = admin dutyban, 'off' = nincs dutyban
+  let sessionStart = null;         // a jelenlegi (nyitott) duty szakasz kezdete
+  let lastActivity = null;         // az utolsó ismert bizonyíték, hogy még aktív volt
+  let offCursor = null;            // a legutóbbi duty-lezárás időpontja (innentől off duty)
+
+  // Lezárja a nyitott duty szakaszt `endPoint`-nál, és megnyitja az off duty
+  // szakaszt onnantól - ezt hívjuk meg MINDEN lezáráskor (explicit kilépés
+  // ÉS idle-alapú megszakadás esetén is), hogy egyetlen szünet se maradjon ki.
+  function closeDutyAt(endPoint) {
+    pushDuty(sessionStart, endPoint);
+    offCursor = endPoint;
+    state = 'off';
+  }
+  // Megnyit egy új duty szakaszt `startPoint`-nál - ha volt nyitott off duty
+  // szakasz, azt itt zárja le (a teljes szünet, felső határ nélkül, off duty).
+  function openDutyAt(startPoint) {
+    if (state === 'off' && offCursor) pushOff(offCursor, startPoint);
+    sessionStart = startPoint;
+    lastActivity = startPoint;
+    state = 'on';
+  }
+
+  const sorted = events.slice().sort((a, b) => a.ts - b.ts);
+
+  for (const ev of sorted) {
+    if (ev.kind === 'start') {
+      if (state === 'on') closeDutyAt(lastActivity); // kilépés nélküli relogin - implicit lezárás
+      openDutyAt(ev);
+      continue;
+    }
+    if (ev.kind === 'end') {
+      if (state === 'on') closeDutyAt(ev);
+      // "off" állapotban lévő kilépés-sor inkonzisztens log sor, figyelmen kívül hagyjuk.
+      continue;
+    }
+    // ev.kind === 'activity'
+    if (state === 'on') {
+      if (ev.ts - lastActivity.ts > idleMs) {
+        // Túl nagy csönd volt - a session az utolsó ismert aktivitásig zárul,
+        // majd az off duty szünet után a mostani eseménnyel újranyílik.
+        closeDutyAt(lastActivity);
+        openDutyAt(ev);
+      } else {
+        lastActivity = ev;
+      }
+    }
+    // "off" állapotban lévő puszta aktivitás-sor (pl. valaki más ír róla,
+    // vagy éppen nem admin dutyban tesz valamit) nem indít új duty szakaszt -
+    // ahhoz mindig kifejezett "adminszolgálatba lépett" sor kell.
+  }
+
+  if (state === 'on' && sessionStart && lastActivity) pushDuty(sessionStart, lastActivity);
+
+  return { dutyPeriods, offPeriods };
+}
+
+// EGY fájl önálló (előnézeti) duty/off bontása - ezt látja a felhasználó a
+// feltöltési előnézetben ("Felismert szolgálati idő EBBŐL A FÁJLBÓL"). A
+// VÉGLEGES, mentéskor elszámolt érték több fájl esetén NEM ennek egyszerű
+// összegzése, hanem az ÖSSZES ismert log-forrás eseményének egyesített,
+// közös idővonalán számolt eredmény (lásd confirmLogBreakdown) - ez
+// küszöböli ki, hogy egymást időben átfedő/folytató fájlok duplán
+// számítsák be ugyanazt az időszakot.
+function extractDutyPeriodsFromLogText(text, adminName) {
+  const events = extractDutyEventsFromLogText(text, adminName);
+  const { dutyPeriods, offPeriods } = runDutyStateMachine(events);
+  const connectWindows = extractConnectWindowsFromLogText(text);
+  return { dutyPeriods, offPeriods: clipOffPeriodsToConnectWindows(offPeriods, connectWindows) };
+}
+
+// ============================================================
+// SZERVEREN VALÓ TÉNYLEGES JELENLÉT (csatlakozási ablakok) felismerése.
+// ============================================================
+// A user kérése: az off duty idő SOHA ne tartalmazzon olyan időszakot, amikor
+// nem is voltál fent a szerveren (pl. a gép ki volt kapcsolva, vagy csak
+// nem játszottál aznap) - csak azt az időt vegyük off dutynak, amíg
+// ténylegesen csatlakozva voltál a szerverhez, de épp nem voltál admin
+// dutyban.
+//
+// A log minden csatlakozáskor kiírja: "Üdvözlünk a SeeRPG szerverén! ...".
+// Kilépés/lecsatlakozás nincs külön logolva, ezért egy "jelenléti ablakot"
+// a csatlakozás-üzenettől addig a legutolsó (bármilyen) log sorig húzunk,
+// amit még LÁTUNK abban a munkamenetben - onnantól kezdve, hogy megjelenik
+// a következő "Üdvözlünk..." sor (vagy véget ér a fájl), a köztes idő NEM
+// számít jelenlétnek, tehát off dutynak sem.
+function extractConnectWindowsFromLogText(text) {
+  const windows = [];
+  const tsRe = /^\[(\d{4}-\d{2}-\d{2})\s(\d{2}:\d{2}):\d{2}\]/;
+  const lines = text.split(/\r?\n/).filter(l => l.trim() !== '');
+  let current = null;
+  for (const line of lines) {
+    const tm = line.match(tsRe);
+    if (!tm) continue;
+    const ts = parseLogTimestamp(tm[1], tm[2]);
+    if (line.includes('Üdvözlünk a SeeRPG szerverén')) {
+      if (current) windows.push(current);
+      current = { start: ts, end: ts };
+    } else if (current) {
+      if (ts > current.end) current.end = ts;
+    }
+  }
+  if (current) windows.push(current);
+  return windows;
+}
+
+// Több fájl (nap) csatlakozási ablakait egyesíti egyetlen, időrendbe rendezett,
+// átfedésmentes listává - hogy két, egymást érintő/átfedő munkamenet ne
+// duplikálódjon, és a klippelés (lásd lentebb) egységesen tudjon rájuk futni.
+function mergeConnectWindows(windows) {
+  const sorted = (windows || []).slice().sort((a, b) => a.start - b.start);
+  const merged = [];
+  for (const w of sorted) {
+    if (merged.length && w.start <= merged[merged.length - 1].end) {
+      if (w.end > merged[merged.length - 1].end) merged[merged.length - 1].end = w.end;
+    } else {
+      merged.push({ start: w.start, end: w.end });
+    }
+  }
+  return merged;
+}
+
+function tsToDateTime(ts) {
+  const d = new Date(ts);
+  const pad = n => String(n).padStart(2, '0');
+  return {
+    date: `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`,
+    time: `${pad(d.getHours())}:${pad(d.getMinutes())}`
+  };
+}
+
+// A nyers (állapotgépből kapott) off duty szakaszokat ("két adminszolgálat
+// közti idő") ráVÁGJA a ténylegesen ismert szerver-jelenléti ablakokra: ha egy
+// off duty szakasz részben vagy egészben olyan időre esik, amikor nem voltál
+// fent a szerveren, az a rész egyáltalán NEM kerül be az off duty összegbe.
+// Ha egy off duty szakasz közben le- majd újra felcsatlakozol, a szakasz
+// több, külön bejegyzésre bomlik (csak a ténylegesen "fent voltál" részekre).
+function clipOffPeriodsToConnectWindows(offPeriodsRaw, connectWindows) {
+  const merged = mergeConnectWindows(connectWindows);
+  if (merged.length === 0) return [];
+  const result = [];
+  offPeriodsRaw.forEach(seg => {
+    if (typeof seg.startTs !== 'number' || typeof seg.endTs !== 'number') return;
+    merged.forEach(w => {
+      const s = Math.max(seg.startTs, w.start);
+      const e = Math.min(seg.endTs, w.end);
+      if (e > s) {
+        const perc = Math.max(0, Math.round((e - s) / 60000));
+        if (perc > 0) {
+          const startInfo = tsToDateTime(s);
+          const endInfo = tsToDateTime(e);
+          result.push({ date: startInfo.date, on: startInfo.time, off: endInfo.time, perc });
+        }
+      }
+    });
+  });
+  return result;
+}
+
 // Egy { date: {fixveh, asegit, agyogyit} } alakú objektumból összesített (teljes időszaki) totált ad vissza.
 function sumCommandCounts(commandsByDay) {
   const totals = emptyCommandCounts();
@@ -1740,15 +2019,33 @@ async function processFileList(files) {
   // commandsByDay: a nyitott munkaterület adminparancs-használatának napi bontása,
   // ugyanúgy az összes ismert log-forrásból összesítve, mint a "reports" mező.
   if (!latestUserData.commandsByDay) latestUserData.commandsByDay = {};
+  if (!latestUserData.duty) latestUserData.duty = [];
+  if (!latestUserData.off) latestUserData.off = [];
 
-  const fileResults = [];   // { filename, key, dayCounts, cmdCounts, isUpdate }
+  const adminNameInput = document.getElementById('logAdminName');
+  const adminName = (adminNameInput ? adminNameInput.value : (latestUserData.logAdminName || '')).trim();
+  if (!adminName) {
+    alert('Előbb add meg, hogy milyen néven szerepelsz adminként a logban (a "Logok beolvasása" panel tetején), különben a Duty/Off Duty nem ismerhető fel automatikusan!');
+    return;
+  }
+  latestUserData.logAdminName = adminName;
+
+  const fileResults = [];   // { filename, key, dayCounts, cmdCounts, dutyEvents, dutyPeriods, offPeriods, isUpdate }
   for (const file of files) {
     const text = await file.text();
     const dayCounts = extractDayCountsFromLogText(text);
     const cmdCounts = extractCommandCountsFromLogText(text);
+    const dutyEvents = extractDutyEventsFromLogText(text, adminName);
+    const { dutyPeriods, offPeriods: offPeriodsRaw } = runDutyStateMachine(dutyEvents);
+    const connectWindows = extractConnectWindowsFromLogText(text);
+    // Előnézetben is csak a ténylegesen szerveren töltött off duty időt mutatjuk
+    // (ehhez a fájlhoz tartozó csatlakozási ablakok alapján) - a végleges,
+    // mentéskor elszámolt érték az ÖSSZES ismert log-forrás egyesített
+    // csatlakozási ablakaival számol (lásd confirmLogBreakdown).
+    const offPeriods = clipOffPeriodsToConnectWindows(offPeriodsRaw, connectWindows);
     const key = sanitizeFirebaseKey(file.name);
     const isUpdate = !!latestUserData.logSources[key];
-    fileResults.push({ filename: file.name, key, dayCounts, cmdCounts, isUpdate });
+    fileResults.push({ filename: file.name, key, dayCounts, cmdCounts, dutyEvents, dutyPeriods, offPeriods, connectWindows, isUpdate });
   }
 
   pendingLogBatch = { fileResults, latestUserData };
@@ -1785,6 +2082,14 @@ function renderLogBreakdownModal(fileResults, latestUserData) {
       : `<div style="font-size:12px; color:var(--see-text-muted); padding:6px 0;">Nem található beszámítható report ebben a fájlban.</div>`;
     const updateBadge = fr.isUpdate ? ` <span style="font-size:10px; font-weight:700; color:var(--see-text-muted); text-transform:uppercase; background:rgba(255,255,255,0.06); padding:2px 8px; border-radius:6px;">Ismételt feltöltés - frissíti a fájl korábbi adatait</span>` : '';
     const cmdTotals = sumCommandCounts(fr.cmdCounts);
+    const dutySum = (fr.dutyPeriods || []).reduce((s, x) => s + x.perc, 0);
+    const offSum = (fr.offPeriods || []).reduce((s, x) => s + x.perc, 0);
+    const dutyRow = (fr.dutyPeriods && fr.dutyPeriods.length > 0)
+      ? `<div style="font-size:11px; color:var(--see-text-muted); padding-top:8px; margin-top:6px; border-top:1px solid var(--see-border);">
+          <div style="font-weight:700; margin-bottom:6px;"><i class="fa-solid fa-user-clock" style="color:var(--see-gold);"></i> Felismert szolgálati idő ebből a fájlból: <strong style="color:var(--see-gold);">${dutySum} p</strong> duty / <strong style="color:#fff;">${offSum} p</strong> off duty</div>
+          ${fr.dutyPeriods.map(p => `<div style="display:flex; justify-content:space-between; padding:3px 0;"><span>${p.date} (${p.on} - ${p.off})</span><span style="font-family:'Roboto Mono', monospace;">${p.perc} p</span></div>`).join('')}
+        </div>`
+      : `<div style="font-size:11px; color:var(--see-text-muted); padding-top:8px; margin-top:6px; border-top:1px solid var(--see-border);">Nem található "${latestUserData.logAdminName || ''}" nevű admin szolgálatba lépés/kilépés ebben a fájlban.</div>`;
     const cmdRow = (cmdTotals.fixveh + cmdTotals.asegit + cmdTotals.agyogyit) > 0
       ? `<div style="display:flex; gap:14px; flex-wrap:wrap; font-size:11px; color:var(--see-text-muted); padding-top:8px; margin-top:6px; border-top:1px solid var(--see-border);">
           <span><i class="fa-solid fa-car-burst" style="color:var(--see-gold);"></i> fixveh: <strong style="color:#fff;">${cmdTotals.fixveh}</strong></span>
@@ -1799,6 +2104,7 @@ function renderLogBreakdownModal(fileResults, latestUserData) {
         </div>
         ${rows}
         ${cmdRow}
+        ${dutyRow}
       </div>`;
   }).join('');
 
@@ -1826,9 +2132,13 @@ async function confirmLogBreakdown() {
     const oldContribution = latestUserData.logSources[fr.key];
     if (oldContribution && oldContribution.days) Object.keys(oldContribution.days).forEach(d => touchedDates.add(d));
     if (oldContribution && oldContribution.cmdCounts) Object.keys(oldContribution.cmdCounts).forEach(d => touchedDates.add(d));
+    if (oldContribution && oldContribution.dutyEvents) oldContribution.dutyEvents.forEach(e => touchedDates.add(e.date));
+    if (oldContribution && oldContribution.connectWindows) oldContribution.connectWindows.forEach(w => touchedDates.add(tsToDateTime(w.start).date));
     Object.keys(fr.dayCounts).forEach(d => touchedDates.add(d));
     Object.keys(fr.cmdCounts).forEach(d => touchedDates.add(d));
-    latestUserData.logSources[fr.key] = { filename: fr.filename, days: fr.dayCounts, cmdCounts: fr.cmdCounts };
+    (fr.dutyEvents || []).forEach(e => touchedDates.add(e.date));
+    (fr.connectWindows || []).forEach(w => touchedDates.add(tsToDateTime(w.start).date));
+    latestUserData.logSources[fr.key] = { filename: fr.filename, days: fr.dayCounts, cmdCounts: fr.cmdCounts, dutyEvents: fr.dutyEvents || [], connectWindows: fr.connectWindows || [] };
   });
 
   // 2) Csak azokat a napokat számoljuk újra, amikre ebben a körben valamelyik fájl adatot
@@ -1856,12 +2166,48 @@ async function confirmLogBreakdown() {
     }
   });
 
+  // 3) Duty / Off Duty automatikus felismerése: az érintett napok korábbi, LOGBÓL
+  //    származó ("auto": true jelölésű) sorait eltávolítjuk, majd újraépítjük őket
+  //    az ÖSSZES ismert log-forrás adott napi hozzájárulásából. A kézzel felvitt
+  //    (auto jelzés nélküli) sorokhoz ez nem nyúl hozzá.
+  // 3) Duty / Off Duty automatikus felismerése: az érintett napok korábbi, LOGBÓL
+  //    származó ("auto": true jelölésű) sorait eltávolítjuk, majd újraépítjük őket.
+  //    FONTOS: nem fájlonként külön-külön számolt duty/off periódusokat adunk össze
+  //    (az duplán számolná az időt, ha 2+ fájl időben átfedi vagy folytatja egymást),
+  //    hanem az ÖSSZES ismert log-forrás nyers be-/kilépés és aktivitás eseményét
+  //    egyetlen közös, időrendbe rendezett idővonalra fésüljük, és az állapotgép ezen
+  //    fut végig EGYETLEN alkalommal - így minden pillanat csak egyszer számít bele.
+  //    A kézzel felvitt (auto jelzés nélküli) sorokhoz ez nem nyúl hozzá, és más
+  //    (nem érintett) napok korábban mentett auto sorai is érintetlenek maradnak.
+  if (!latestUserData.duty) latestUserData.duty = [];
+  if (!latestUserData.off) latestUserData.off = [];
+  latestUserData.duty = latestUserData.duty.filter(x => !(x && x.auto && touchedDates.has(x.date)));
+  latestUserData.off = latestUserData.off.filter(x => !(x && x.auto && touchedDates.has(x.date)));
+
+  let allEvents = [];
+  let allConnectWindows = [];
+  Object.keys(latestUserData.logSources).forEach(k => {
+    const src = latestUserData.logSources[k];
+    if (src && src.dutyEvents) allEvents = allEvents.concat(src.dutyEvents);
+    if (src && src.connectWindows) allConnectWindows = allConnectWindows.concat(src.connectWindows);
+  });
+  const { dutyPeriods, offPeriods: offPeriodsRaw } = runDutyStateMachine(allEvents);
+  // Az off duty időt csak arra az időre vágjuk rá, amikor ISMERTEN fent voltál a
+  // szerveren (bármelyik feltöltött log alapján) - a szerveren kívül töltött idő
+  // (pl. nem játszottál aznap) sosem számít bele sem duty-ba, sem off dutyba.
+  const offPeriods = clipOffPeriodsToConnectWindows(offPeriodsRaw, allConnectWindows);
+  dutyPeriods.filter(p => touchedDates.has(p.date)).forEach(p => latestUserData.duty.push({ ...p, auto: true }));
+  offPeriods.filter(p => touchedDates.has(p.date)).forEach(p => latestUserData.off.push({ ...p, auto: true }));
+
+  latestUserData.duty.sort((a, b) => (a.date + a.on).localeCompare(b.date + b.on));
+  latestUserData.off.sort((a, b) => (a.date + a.on).localeCompare(b.date + b.on));
+
   globalData[currentUser] = latestUserData;
   const ok = await saveGlobal();
   render();
   closeLogBreakdownModal();
   if (ok) {
-    alert('Logok feldolgozva! Az érintett napok report-száma és a fixveh / asegit / agyogyit parancshasználat is frissült az összes ismert log fájl adatai alapján.');
+    alert('Logok feldolgozva! Az érintett napok report-száma, a fixveh / asegit / agyogyit parancshasználat, valamint a Duty / Off Duty idő is frissült az összes ismert log fájl adatai alapján.');
   } else {
     alert('Hiba történt a mentés közben — az adatok NEM kerültek elmentve a szerverre. Próbáld újra, és ellenőrizd a hálózati kapcsolatot.');
   }
@@ -1881,6 +2227,7 @@ function render() {
           <input type="checkbox" id="cb-duty-${i}" class="see-checkbox" onchange="handleCheckboxChange('duty', ${i})" ${isChecked}>
           <span class="see-item-date">${x.date}</span>
           <span style="font-size:11px; color:var(--see-text-muted); font-family:'Roboto Mono', monospace;">(${x.on} - ${x.off})</span>
+          ${x.auto ? '<span style="font-size:9px; font-weight:700; color:var(--see-gold); background:rgba(45,212,191,0.12); padding:1px 6px; border-radius:5px; text-transform:uppercase; letter-spacing:0.3px;">Log</span>' : ''}
         </div>
         <span class="see-item-value" style="color:var(--see-gold)">${x.perc} perc</span>
         <div class="see-item-actions"><button class="see-action-btn" onclick="editItem('duty',${i})">✏</button><button class="see-action-btn del" onclick="delItem('duty',${i})">✕</button></div>
@@ -1897,6 +2244,7 @@ function render() {
           <input type="checkbox" id="cb-off-${i}" class="see-checkbox" onchange="handleCheckboxChange('off', ${i})" ${isChecked}>
           <span class="see-item-date">${x.date}</span>
           <span style="font-size:11px; color:var(--see-text-muted); font-family:'Roboto Mono', monospace;">(${x.on} - ${x.off})</span>
+          ${x.auto ? '<span style="font-size:9px; font-weight:700; color:var(--see-gold); background:rgba(45,212,191,0.12); padding:1px 6px; border-radius:5px; text-transform:uppercase; letter-spacing:0.3px;">Log</span>' : ''}
         </div>
         <span class="see-item-value" style="color:#fff">${x.perc} perc</span>
         <div class="see-item-actions"><button class="see-action-btn" onclick="editItem('off',${i})">✏</button><button class="see-action-btn del" onclick="delItem('off',${i})">✕</button></div>
