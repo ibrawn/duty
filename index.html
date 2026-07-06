@@ -673,7 +673,7 @@ input[type="file"] { display: none; }
 <body>
 
 <div class="dev-modal" id="monthEditModal">
-  <div class="dev-modal-content" style="max-width: 760px;">
+  <div class="dev-modal-content" style="max-width: 980px;">
     <div class="dev-modal-header">
       <h2 id="monthEditTitle"><i class="fa-solid fa-calendar-days"></i> Hónap szerkesztése</h2>
       <div style="display:flex; align-items:center; gap:10px;">
@@ -697,6 +697,14 @@ input[type="file"] { display: none; }
       <div>
         <div style="font-size:12px; font-weight:700; text-transform:uppercase; margin-bottom:8px; color:var(--see-gold);">Admin parancsok</div>
         <div class="see-list-container" id="monthEditCommands" style="max-height: 260px;"></div>
+      </div>
+      <div>
+        <div style="font-size:12px; font-weight:700; text-transform:uppercase; margin-bottom:8px; color:var(--see-success);">Report napló</div>
+        <div class="see-list-container" id="monthEditReportLog" style="max-height: 260px;"></div>
+      </div>
+      <div>
+        <div style="font-size:12px; font-weight:700; text-transform:uppercase; margin-bottom:8px; color:var(--see-danger);">Adminjail / Kick előzmények</div>
+        <div class="see-list-container" id="monthEditAdminActions" style="max-height: 260px;"></div>
       </div>
     </div>
   </div>
@@ -887,6 +895,26 @@ input[type="file"] { display: none; }
           </div>
           <div class="see-list-container" id="reportStream"></div>
         </div>
+      </div>
+
+      <div class="see-panel" style="margin-top:24px;">
+        <div class="see-panel-title">
+          <span class="panel-title-text"><i class="fa-solid fa-hashtag"></i> Report napló <span id="reportLogCount" style="font-size:11px;font-weight:600;color:var(--see-text-muted);text-transform:none;"></span></span>
+        </div>
+        <div style="font-size:11px; color:var(--see-text-muted); margin:-6px 0 12px;">
+          A logokból kiolvasott, ténylegesen lezárt reportjaid kronológiája (legújabb elöl) a jelenleg nyitott hónapban - a korábbi, már lezárt hónapok naplója a "Havi összesítések" oldalon, az adott hónap megnyitásával érhető el.
+        </div>
+        <div class="see-list-container" id="reportLogStream" style="max-height:420px;"></div>
+      </div>
+
+      <div class="see-panel" style="margin-top:24px;">
+        <div class="see-panel-title">
+          <span class="panel-title-text"><i class="fa-solid fa-clock-rotate-left"></i> Adminjail / Kick előzmények <span id="adminActionCount" style="font-size:11px;font-weight:600;color:var(--see-text-muted);text-transform:none;"></span></span>
+        </div>
+        <div style="font-size:11px; color:var(--see-text-muted); margin:-6px 0 12px;">
+          Kronológiailag (legújabb elöl), hogy kit és mikor adminjaileztél / kickeltél a logok alapján, a jelenleg nyitott hónapban - a korábbi, már lezárt hónapok előzményei a "Havi összesítések" oldalon, az adott hónap megnyitásával érhetők el.
+        </div>
+        <div class="see-list-container" id="adminActionStream" style="max-height:420px;"></div>
       </div>
     </div>
 
@@ -1126,11 +1154,13 @@ async function showMainUcp() {
   }
 
   globalData = await fbFetch("data") || {};
-  if (!globalData[currentUser]) { globalData[currentUser] = { duty: [], off: [], reports: {}, commandsByDay: {} }; }
+  if (!globalData[currentUser]) { globalData[currentUser] = { duty: [], off: [], reports: {}, commandsByDay: {}, reportLog: [], adminActions: [] }; }
   if (!globalData[currentUser].duty) globalData[currentUser].duty = [];
   if (!globalData[currentUser].off) globalData[currentUser].off = [];
   if (!globalData[currentUser].reports) globalData[currentUser].reports = {};
   if (!globalData[currentUser].closedMonths) globalData[currentUser].closedMonths = {};
+  if (!globalData[currentUser].reportLog) globalData[currentUser].reportLog = [];
+  if (!globalData[currentUser].adminActions) globalData[currentUser].adminActions = [];
   selectedItems = { duty: {}, off: {}, reports: {} };
 
   const logAdminNameInput = document.getElementById('logAdminName');
@@ -1218,14 +1248,14 @@ async function selectStatsUser(username) {
 async function refreshStatsUserData(username, silent) {
   if (!username) return;
   const fresh = await fbFetch(`data/${username}`);
-  globalData[username] = fresh || { duty: [], off: [], reports: {}, commandsByDay: {} };
+  globalData[username] = fresh || { duty: [], off: [], reports: {}, commandsByDay: {}, reportLog: [], adminActions: [] };
   renderStatsDashboard(username);
   const now = new Date();
   document.getElementById("devStatsLastRefresh").textContent = `Frissítve: ${now.toLocaleTimeString('hu-HU')}`;
 }
 
 function renderStatsDashboard(username) {
-  const uData = globalData[username] || { duty: [], off: [], reports: {}, commandsByDay: {} };
+  const uData = globalData[username] || { duty: [], off: [], reports: {}, commandsByDay: {}, reportLog: [], adminActions: [] };
   const dList = uData.duty || [];
   const oList = uData.off || [];
   const reps = uData.reports || {};
@@ -1310,11 +1340,15 @@ function getCurrentOpenMonthKey() {
   const oList = globalData[currentUser].off || [];
   const reps = globalData[currentUser].reports || {};
   const cmds = globalData[currentUser].commandsByDay || {};
+  const reportLogList = globalData[currentUser].reportLog || [];
+  const adminActionsList = globalData[currentUser].adminActions || [];
   let dates = [];
   dList.forEach(x => { if (x && x.date) dates.push(x.date); });
   oList.forEach(x => { if (x && x.date) dates.push(x.date); });
   Object.keys(reps).forEach(d => dates.push(d));
   Object.keys(cmds).forEach(d => dates.push(d));
+  reportLogList.forEach(ev => { if (ev && ev.date) dates.push(ev.date); });
+  adminActionsList.forEach(ev => { if (ev && ev.date) dates.push(ev.date); });
   if (dates.length === 0) return null;
   dates.sort();
   return dates[0].substring(0, 7);
@@ -1351,8 +1385,14 @@ async function closeCurrentMonth() {
   Object.keys(reps).forEach(d => { if (d.substring(0, 7) === monthKey) repsForMonth[d] = reps[d]; });
   const cmdsForMonth = {};
   Object.keys(cmdsByDay).forEach(d => { if (d.substring(0, 7) === monthKey) cmdsForMonth[d] = cmdsByDay[d]; });
+  // Report napló és Adminjail/Kick előzmények: csak az adott hónaphoz tartozó
+  // eseményeket válogatjuk ki - ugyanúgy, mint a fenti napi bontású adatoknál.
+  const reportLogList = globalData[currentUser].reportLog || [];
+  const adminActionsList = globalData[currentUser].adminActions || [];
+  const reportLogForMonth = reportLogList.filter(ev => ev && ev.date && ev.date.substring(0, 7) === monthKey);
+  const adminActionsForMonth = adminActionsList.filter(ev => ev && ev.date && ev.date.substring(0, 7) === monthKey);
 
-  if (dutyForMonth.length === 0 && offForMonth.length === 0 && Object.keys(repsForMonth).length === 0 && Object.keys(cmdsForMonth).length === 0) {
+  if (dutyForMonth.length === 0 && offForMonth.length === 0 && Object.keys(repsForMonth).length === 0 && Object.keys(cmdsForMonth).length === 0 && reportLogForMonth.length === 0 && adminActionsForMonth.length === 0) {
     alert(`Nincs "${monthKey}" hónaphoz tartozó adat a nyitott munkaterületen - ellenőrizd a hónap nevét.`);
     return;
   }
@@ -1360,7 +1400,7 @@ async function closeCurrentMonth() {
   if (!confirm(`Biztosan lezárod a(z) "${monthKey}" hónapot?\n\nCsak az ehhez a hónaphoz tartozó Duty / Off Duty / Report / adminparancs adatok archiválásra kerülnek, ezek eltűnnek a munkaterületről. A más hónapba eső, esetleg még nyitva lévő adat változatlanul megmarad.`)) return;
 
   if (!globalData[currentUser].closedMonths) globalData[currentUser].closedMonths = {};
-  const existing = globalData[currentUser].closedMonths[monthKey] || { duty: [], off: [], reports: {}, commandsByDay: {} };
+  const existing = globalData[currentUser].closedMonths[monthKey] || { duty: [], off: [], reports: {}, commandsByDay: {}, reportLog: [], adminActions: [] };
   existing.duty = (existing.duty || []).concat(dutyForMonth);
   existing.off = (existing.off || []).concat(offForMonth);
   existing.reports = existing.reports || {};
@@ -1387,12 +1427,28 @@ async function closeCurrentMonth() {
   });
   globalData[currentUser].closedMonths[monthKey] = existing;
 
+  // Report napló és Adminjail/Kick előzmények archiválása - dedup (report id, ill.
+  // dátum+idő+típus+célszemély alapján), hogy egy esetleges ismételt lezárás sose
+  // duplázza a már archívumban lévő bejegyzéseket.
+  existing.reportLog = existing.reportLog || [];
+  existing.adminActions = existing.adminActions || [];
+  const reportLogArcMap = new Map();
+  existing.reportLog.forEach(ev => reportLogArcMap.set(ev.id, ev));
+  reportLogForMonth.forEach(ev => reportLogArcMap.set(ev.id, ev));
+  existing.reportLog = Array.from(reportLogArcMap.values()).sort((a, b) => (b.date + b.time).localeCompare(a.date + a.time));
+  const adminActionsArcMap = new Map();
+  existing.adminActions.forEach(ev => adminActionsArcMap.set(`${ev.date}|${ev.time}|${ev.type}|${ev.target}`, ev));
+  adminActionsForMonth.forEach(ev => adminActionsArcMap.set(`${ev.date}|${ev.time}|${ev.type}|${ev.target}`, ev));
+  existing.adminActions = Array.from(adminActionsArcMap.values()).sort((a, b) => (b.date + b.time).localeCompare(a.date + a.time));
+
   // Munkaterület: CSAK a lezárt hónaphoz tartozó napokat távolítjuk el - minden más
   // hónapba eső, nyitva maradt adat érintetlen marad.
   globalData[currentUser].duty = dList.filter(x => !(x && x.date && x.date.substring(0, 7) === monthKey));
   globalData[currentUser].off = oList.filter(x => !(x && x.date && x.date.substring(0, 7) === monthKey));
   Object.keys(repsForMonth).forEach(d => { delete globalData[currentUser].reports[d]; });
   Object.keys(cmdsForMonth).forEach(d => { delete globalData[currentUser].commandsByDay[d]; });
+  globalData[currentUser].reportLog = reportLogList.filter(ev => !(ev && ev.date && ev.date.substring(0, 7) === monthKey));
+  globalData[currentUser].adminActions = adminActionsList.filter(ev => !(ev && ev.date && ev.date.substring(0, 7) === monthKey));
   selectedItems = { duty: {}, off: {}, reports: {} };
 
   const ok = await saveGlobal();
@@ -1440,6 +1496,17 @@ async function reopenMonth(monthKey) {
   });
   globalData[currentUser].commandsByDay = cmdsByDay;
 
+  // Report napló és Adminjail/Kick előzmények visszahozása a nyitott munkaterületre -
+  // dedup, hogy ha esetleg már lenne ott azonos bejegyzés, ne duplázódjon.
+  const reportLogMap = new Map();
+  (globalData[currentUser].reportLog || []).forEach(ev => reportLogMap.set(ev.id, ev));
+  (arc.reportLog || []).forEach(ev => reportLogMap.set(ev.id, ev));
+  globalData[currentUser].reportLog = Array.from(reportLogMap.values()).sort((a, b) => (b.date + b.time).localeCompare(a.date + a.time));
+  const adminActionsMap = new Map();
+  (globalData[currentUser].adminActions || []).forEach(ev => adminActionsMap.set(`${ev.date}|${ev.time}|${ev.type}|${ev.target}`, ev));
+  (arc.adminActions || []).forEach(ev => adminActionsMap.set(`${ev.date}|${ev.time}|${ev.type}|${ev.target}`, ev));
+  globalData[currentUser].adminActions = Array.from(adminActionsMap.values()).sort((a, b) => (b.date + b.time).localeCompare(a.date + a.time));
+
   delete globalData[currentUser].closedMonths[monthKey];
 
   const ok = await saveGlobal();
@@ -1468,7 +1535,7 @@ function closeMonthEdit() {
 // jelenlegi (még nyitott) adataitól.
 function getArchivedMonth(monthKey) {
   const closedMonths = globalData[currentUser].closedMonths || {};
-  return closedMonths[monthKey] || { duty: [], off: [], reports: {}, commandsByDay: {} };
+  return closedMonths[monthKey] || { duty: [], off: [], reports: {}, commandsByDay: {}, reportLog: [], adminActions: [] };
 }
 
 function renderMonthEdit() {
@@ -1537,6 +1604,46 @@ function renderMonthEdit() {
         <div class="see-item-actions">
           <button class="see-action-btn" onclick="editMonthCommandDay('${d}')">✏</button>
           <button class="see-action-btn del" onclick="delMonthCommandDay('${d}')">✕</button>
+        </div>
+      </div>`;
+  }).join('').trim() || '<div style="font-size:11px;color:var(--see-text-muted);">Nincs adat erre a hónapra</div>';
+
+  const arcReportLog = arc.reportLog || [];
+  document.getElementById('monthEditReportLog').innerHTML = arcReportLog.map(ev => `
+      <div class="see-list-item">
+        <div>
+          <span class="see-item-date">${ev.date}</span>
+          <span style="font-size:11px; color:var(--see-text-muted); font-family:'Roboto Mono', monospace; margin-left:6px;">${ev.time}</span>
+        </div>
+        <span class="see-item-value" style="color:var(--see-success); font-family:'Roboto Mono', monospace;">#${ev.id}</span>
+        <div class="see-item-actions">
+          <button class="see-action-btn del" onclick="delMonthReportLogEntry('${ev.id}')">✕</button>
+        </div>
+      </div>`).join('').trim() || '<div style="font-size:11px;color:var(--see-text-muted);">Nincs adat erre a hónapra</div>';
+
+  const arcAdminActions = arc.adminActions || [];
+  document.getElementById('monthEditAdminActions').innerHTML = arcAdminActions.map(ev => {
+    const isJail = ev.type === 'adminjail';
+    const icon = isJail ? 'fa-jail' : 'fa-boot';
+    const label = isJail ? 'AdminJail' : 'Kick';
+    const color = isJail ? 'var(--see-gold)' : 'var(--see-danger)';
+    const detail = isJail ? `${ev.minutes} perc` : '';
+    const reasonHtml = ev.reason ? `<div style="font-size:10px; color:var(--see-text-muted); margin-top:2px;">Indok: ${ev.reason}</div>` : '';
+    const evKey = `${ev.date}|${ev.time}|${ev.type}|${ev.target}`;
+    return `
+      <div class="see-list-item" style="align-items:flex-start;">
+        <div>
+          <div>
+            <span class="see-item-date">${ev.date}</span>
+            <span style="font-size:11px; color:var(--see-text-muted); font-family:'Roboto Mono', monospace; margin-left:6px;">${ev.time}</span>
+            <span style="font-size:9px; font-weight:700; color:${color}; background:rgba(255,255,255,0.06); padding:1px 6px; border-radius:5px; text-transform:uppercase; letter-spacing:0.3px; margin-left:6px;"><i class="fa-solid ${icon}"></i> ${label}</span>
+          </div>
+          <div style="font-weight:600; margin-top:3px;">${ev.target}</div>
+          ${reasonHtml}
+        </div>
+        <span class="see-item-value" style="color:#fff;">${detail}</span>
+        <div class="see-item-actions">
+          <button class="see-action-btn del" onclick="delMonthAdminActionEntry('${evKey.replace(/'/g, "\\'")}')">✕</button>
         </div>
       </div>`;
   }).join('').trim() || '<div style="font-size:11px;color:var(--see-text-muted);">Nincs adat erre a hónapra</div>';
@@ -1620,6 +1727,20 @@ async function delMonthCommandDay(date) {
   }
 }
 
+async function delMonthReportLogEntry(id) {
+  if (!confirm(`Törlöd a #${id} report bejegyzést ebből a hónapból?`)) return;
+  const arc = getArchivedMonth(currentEditMonth);
+  arc.reportLog = (arc.reportLog || []).filter(ev => ev.id !== id);
+  await saveGlobal(); render(); renderMonthEdit();
+}
+
+async function delMonthAdminActionEntry(evKey) {
+  if (!confirm('Törlöd ezt a bejegyzést az előzményekből?')) return;
+  const arc = getArchivedMonth(currentEditMonth);
+  arc.adminActions = (arc.adminActions || []).filter(ev => `${ev.date}|${ev.time}|${ev.type}|${ev.target}` !== evKey);
+  await saveGlobal(); render(); renderMonthEdit();
+}
+
 function updateFileLabel() {
   const files = document.getElementById('logFiles').files;
   document.getElementById('fileLabelText').innerHTML = files.length > 0 ? `Kiválasztva: ${files.length} db log` : 'Tallózás, vagy húzd ide a log fájlokat<small>(nem töltődik fel)</small>';
@@ -1661,6 +1782,18 @@ async function editReport(date) {
 
 async function delReport(date) {
   if (confirm(`Törlöd?`)) { delete globalData[currentUser].reports[date]; delete selectedItems.reports[date]; await saveGlobal(); render(); }
+}
+
+async function delReportLogEntry(id) {
+  if (!confirm(`Törlöd a #${id} report bejegyzést a naplóból?`)) return;
+  globalData[currentUser].reportLog = (globalData[currentUser].reportLog || []).filter(ev => ev.id !== id);
+  await saveGlobal(); render();
+}
+
+async function delAdminActionEntry(evKey) {
+  if (!confirm('Törlöd ezt a bejegyzést az előzményekből?')) return;
+  globalData[currentUser].adminActions = (globalData[currentUser].adminActions || []).filter(ev => `${ev.date}|${ev.time}|${ev.type}|${ev.target}` !== evKey);
+  await saveGlobal(); render();
 }
 
 function handleCheckboxChange(type, key) {
@@ -1764,17 +1897,94 @@ function emptyCommandCounts() { return { fixveh: 0, asegit: 0, agyogyit: 0, admi
 function extractCommandCountsFromLogText(text) {
   const byDay = {};
   const lines = text.split(/\r?\n/);
-  const re = /^\[(\d{4}-\d{2}-\d{2})\s\d{2}:\d{2}:\d{2}\]\s\[INPUT\]\s\/(fixveh|asegit|agyogyit|adminjail|kick)\b/;
+  // FONTOS: a szerver logjában az AdminJail parancs ténylegesen "/ajail" néven fut le
+  // (NEM "/adminjail"-ként) - ezt korábban tévesen kerestük, ezért az adminjail
+  // számláló mindig 0-t mutatott, függetlenül attól, hogy a "Havi/Nyitott" nézetben
+  // (extractAdminActionEventsFromLogText alapján, ami a [CHAT] visszaigazoló sorból
+  // dolgozik) helyesen jelent meg legalább 1 esemény. A belső "adminjail" kulcsnevet
+  // (statisztikákban, tárolásban) NEM módosítjuk, csak a felismert parancs alakját.
+  const re = /^\[(\d{4}-\d{2}-\d{2})\s\d{2}:\d{2}:\d{2}\]\s\[INPUT\]\s\/(fixveh|asegit|agyogyit|ajail|kick)\b/;
   for (const line of lines) {
     const m = line.match(re);
     if (m) {
       const logDate = m[1];
-      const cmd = m[2];
+      const cmd = m[2] === 'ajail' ? 'adminjail' : m[2];
       if (!byDay[logDate]) byDay[logDate] = emptyCommandCounts();
       byDay[logDate][cmd]++;
     }
   }
   return byDay;
+}
+
+// ============================================================
+// REPORT SZÁM (AZONOSÍTÓ) KINYERÉSE A LOGBÓL
+// ============================================================
+// A "Egy elvállalt reportod lezárásra került (#12345)." sorból kinyerjük a
+// szerver saját report-azonosítóját is (nem csak a napi darabszámot, mint az
+// extractDayCountsFromLogText teszi). Ez teszi lehetővé, hogy kronológiailag,
+// egyedi report-számokkal együtt is vissza lehessen nézni a lezárt reportokat.
+function extractReportEventsFromLogText(text) {
+  const events = [];
+  const re = /^\[(\d{4}-\d{2}-\d{2})\s(\d{2}:\d{2}):\d{2}\]\s\[CHAT\]\sEgy elvállalt reportod lezárásra került\s\(#(\d+)\)\./;
+  const lines = text.split(/\r?\n/);
+  for (const line of lines) {
+    const m = line.match(re);
+    if (m) events.push({ date: m[1], time: m[2], id: m[3] });
+  }
+  return events;
+}
+
+// ============================================================
+// ADMINJAIL / KICK KRONOLÓGIA KINYERÉSE A LOGBÓL
+// ============================================================
+// A szerver logja MINDEN admin adminjail/kick akcióját tartalmazza, ezért itt
+// (a duty felismeréshez hasonlóan) csak azokat a sorokat vesszük figyelembe,
+// amikben a végrehajtó admin neve a megadott "adminName"-re végződik - így
+// más adminok akciói nem keverednek bele a saját kronológiába. A generikus
+// "Egy RPŐr" általi kick (automata AFK-kick) emiatt sosem számít bele.
+//
+// A sorok időnként "Indok: ..." folytatással egy KÖVETKEZŐ, időbélyeg NÉLKÜLI
+// sorban jelennek meg (pl. "...120 percre.\nIndok: Nonrp") - ezt is kezeljük.
+function extractAdminActionEventsFromLogText(text, adminName) {
+  const events = [];
+  const name = (adminName || '').trim();
+  if (!name) return events;
+
+  const esc = escapeRegexLiteral(name);
+  const nameEndRe = new RegExp('\\b' + esc + '$');
+  const timestampRe = /^\[\d{4}-\d{2}-\d{2}\s\d{2}:\d{2}:\d{2}\]/;
+  const indokContinuationRe = /^Indok:\s*(.*)$/;
+
+  const jailRe = /^\[(\d{4}-\d{2}-\d{2})\s(\d{2}:\d{2}):\d{2}\]\s\[CHAT\]\s(.+?)\sAdminJailbe tette\s(.+?)\sjátékost\s(\d+)\spercre\.(?:Indok:\s*(.*))?$/;
+  const kickRe = /^\[(\d{4}-\d{2}-\d{2})\s(\d{2}:\d{2}):\d{2}\]\s\[CHAT\]\s(.+?)\ski lett rúgva a szerverről\s(.+?)\sáltal\.(?:Indok:\s*(.*))?$/;
+
+  const lines = text.split(/\r?\n/);
+  for (let i = 0; i < lines.length; i++) {
+    const line = lines[i];
+
+    let m = line.match(jailRe);
+    if (m && nameEndRe.test(m[3].trim())) {
+      let reason = (m[6] || '').trim();
+      if (!reason && i + 1 < lines.length && !timestampRe.test(lines[i + 1])) {
+        const cont = lines[i + 1].match(indokContinuationRe);
+        if (cont) reason = cont[1].trim();
+      }
+      events.push({ type: 'adminjail', date: m[1], time: m[2], admin: m[3].trim(), target: m[4].trim(), minutes: parseInt(m[5], 10), reason });
+      continue;
+    }
+
+    m = line.match(kickRe);
+    if (m && nameEndRe.test(m[4].trim())) {
+      let reason = (m[5] || '').trim();
+      if (!reason && i + 1 < lines.length && !timestampRe.test(lines[i + 1])) {
+        const cont = lines[i + 1].match(indokContinuationRe);
+        if (cont) reason = cont[1].trim();
+      }
+      events.push({ type: 'kick', date: m[1], time: m[2], admin: m[4].trim(), target: m[3].trim(), reason });
+      continue;
+    }
+  }
+  return events;
 }
 
 // ============================================================
@@ -2088,6 +2298,8 @@ async function processFileList(files) {
   if (!latestUserData.commandsByDay) latestUserData.commandsByDay = {};
   if (!latestUserData.duty) latestUserData.duty = [];
   if (!latestUserData.off) latestUserData.off = [];
+  if (!latestUserData.reportLog) latestUserData.reportLog = [];
+  if (!latestUserData.adminActions) latestUserData.adminActions = [];
 
   const adminNameInput = document.getElementById('logAdminName');
   const adminName = (adminNameInput ? adminNameInput.value : (latestUserData.logAdminName || '')).trim();
@@ -2110,9 +2322,11 @@ async function processFileList(files) {
     // mentéskor elszámolt érték az ÖSSZES ismert log-forrás egyesített
     // csatlakozási ablakaival számol (lásd confirmLogBreakdown).
     const offPeriods = clipOffPeriodsToConnectWindows(offPeriodsRaw, connectWindows);
+    const reportEvents = extractReportEventsFromLogText(text);
+    const adminActionEvents = extractAdminActionEventsFromLogText(text, adminName);
     const key = sanitizeFirebaseKey(file.name);
     const isUpdate = !!latestUserData.logSources[key];
-    fileResults.push({ filename: file.name, key, dayCounts, cmdCounts, dutyEvents, dutyPeriods, offPeriods, connectWindows, isUpdate });
+    fileResults.push({ filename: file.name, key, dayCounts, cmdCounts, dutyEvents, dutyPeriods, offPeriods, connectWindows, reportEvents, adminActionEvents, isUpdate });
   }
 
   pendingLogBatch = { fileResults, latestUserData };
@@ -2166,6 +2380,12 @@ function renderLogBreakdownModal(fileResults, latestUserData) {
           <span><i class="fa-solid fa-boot" style="color:var(--see-gold);"></i> kick: <strong style="color:#fff;">${cmdTotals.kick}</strong></span>
         </div>`
       : '';
+    const adminActionRow = (fr.adminActionEvents && fr.adminActionEvents.length > 0)
+      ? `<div style="font-size:11px; color:var(--see-text-muted); padding-top:8px; margin-top:6px; border-top:1px solid var(--see-border);">
+          <div style="font-weight:700; margin-bottom:6px;"><i class="fa-solid fa-clock-rotate-left" style="color:var(--see-gold);"></i> Adminjail/Kick események ebből a fájlból: <strong style="color:#fff;">${fr.adminActionEvents.length} db</strong></div>
+          ${fr.adminActionEvents.map(ev => `<div style="display:flex; justify-content:space-between; padding:3px 0;"><span>${ev.date} ${ev.time} · ${ev.type === 'adminjail' ? 'AdminJail' : 'Kick'} · ${ev.target}</span></div>`).join('')}
+        </div>`
+      : '';
     return `
       <div class="see-panel" style="background: var(--see-card-inner); padding: 14px 16px;">
         <div style="font-weight:700; font-size:13px; margin-bottom:8px; display:flex; align-items:center; gap:8px; flex-wrap:wrap;">
@@ -2174,6 +2394,7 @@ function renderLogBreakdownModal(fileResults, latestUserData) {
         ${rows}
         ${cmdRow}
         ${dutyRow}
+        ${adminActionRow}
       </div>`;
   }).join('');
 
@@ -2207,7 +2428,7 @@ async function confirmLogBreakdown() {
     Object.keys(fr.cmdCounts).forEach(d => touchedDates.add(d));
     (fr.dutyEvents || []).forEach(e => touchedDates.add(e.date));
     (fr.connectWindows || []).forEach(w => touchedDates.add(tsToDateTime(w.start).date));
-    latestUserData.logSources[fr.key] = { filename: fr.filename, days: fr.dayCounts, cmdCounts: fr.cmdCounts, dutyEvents: fr.dutyEvents || [], connectWindows: fr.connectWindows || [] };
+    latestUserData.logSources[fr.key] = { filename: fr.filename, days: fr.dayCounts, cmdCounts: fr.cmdCounts, dutyEvents: fr.dutyEvents || [], connectWindows: fr.connectWindows || [], reportEvents: fr.reportEvents || [], adminActionEvents: fr.adminActionEvents || [] };
   });
 
   // 2) Csak azokat a napokat számoljuk újra, amikre ebben a körben valamelyik fájl adatot
@@ -2317,12 +2538,65 @@ async function confirmLogBreakdown() {
   latestUserData.duty.sort((a, b) => (a.date + a.on).localeCompare(b.date + b.on));
   latestUserData.off.sort((a, b) => (a.date + a.on).localeCompare(b.date + b.on));
 
+  // 4) Report napló és Adminjail/Kick kronológia: az ÖSSZES ismert log-forrásból
+  //    (nem csak az ebben a körben feltöltött fájlokból) újraépítjük a teljes,
+  //    duplikátummentes listát. A report-számok (#id) globálisan egyediek, az
+  //    adminjail/kick eseményeket dátum+idő+típus+célszemély alapján szűrjük.
+  //    Így egy fájl ismételt feltöltése sosem duplikálja a korábban már ismert
+  //    bejegyzéseket, de egy MÁSIK (új) fájl mindig hozzáadja a sajátjait.
+  //    FONTOS: minden esemény ahhoz a hónaphoz kerül (nyitott munkaterület VAGY
+  //    a hozzá tartozó, már lezárt hónap archívuma), amelyikbe a saját dátuma esik -
+  //    így egy már lezárt hónapba eső, utólag feltöltött/frissített log adata
+  //    egyenesen az adott hónap archívumába kerül, nem keveredik a nyitott
+  //    időszak adataival.
+  const reportLogMap = new Map();
+  const adminActionMap = new Map();
+  Object.keys(latestUserData.logSources).forEach(k => {
+    const src = latestUserData.logSources[k];
+    (src && src.reportEvents || []).forEach(ev => { if (!reportLogMap.has(ev.id)) reportLogMap.set(ev.id, ev); });
+    (src && src.adminActionEvents || []).forEach(ev => {
+      const evKey = `${ev.date}|${ev.time}|${ev.type}|${ev.target}`;
+      if (!adminActionMap.has(evKey)) adminActionMap.set(evKey, ev);
+    });
+  });
+
+  const openReportLog = [];
+  const reportLogByClosedMonth = {};
+  reportLogMap.forEach(ev => {
+    const mk = ev.date.substring(0, 7);
+    if (latestUserData.closedMonths[mk]) {
+      (reportLogByClosedMonth[mk] = reportLogByClosedMonth[mk] || []).push(ev);
+    } else {
+      openReportLog.push(ev);
+    }
+  });
+
+  const openAdminActions = [];
+  const adminActionsByClosedMonth = {};
+  adminActionMap.forEach(ev => {
+    const mk = ev.date.substring(0, 7);
+    if (latestUserData.closedMonths[mk]) {
+      (adminActionsByClosedMonth[mk] = adminActionsByClosedMonth[mk] || []).push(ev);
+    } else {
+      openAdminActions.push(ev);
+    }
+  });
+
+  latestUserData.reportLog = openReportLog.sort((a, b) => (b.date + b.time).localeCompare(a.date + a.time));
+  latestUserData.adminActions = openAdminActions.sort((a, b) => (b.date + b.time).localeCompare(a.date + a.time));
+  Object.keys(reportLogByClosedMonth).forEach(mk => {
+    latestUserData.closedMonths[mk].reportLog = reportLogByClosedMonth[mk].sort((a, b) => (b.date + b.time).localeCompare(a.date + a.time));
+  });
+  Object.keys(adminActionsByClosedMonth).forEach(mk => {
+    latestUserData.closedMonths[mk].adminActions = adminActionsByClosedMonth[mk].sort((a, b) => (b.date + b.time).localeCompare(a.date + a.time));
+  });
+
   globalData[currentUser] = latestUserData;
   const ok = await saveGlobal();
   render();
   closeLogBreakdownModal();
   if (ok) {
-    alert('Logok feldolgozva! Az érintett napok report-száma, a fixveh / asegit / agyogyit parancshasználat, valamint a Duty / Off Duty idő is frissült az összes ismert log fájl adatai alapján.');
+    alert('Logok feldolgozva! Az érintett napok report-száma, a fixveh / asegit / agyogyit parancshasználat, a Duty / Off Duty idő, valamint a Report napló és az Adminjail/Kick előzmények is frissültek az összes ismert log fájl adatai alapján.');
   } else {
     alert('Hiba történt a mentés közben — az adatok NEM kerültek elmentve a szerverre. Próbáld újra, és ellenőrizd a hálózati kapcsolatot.');
   }
@@ -2387,7 +2661,7 @@ function render() {
   const closedMonths = globalData[currentUser].closedMonths || {};
   const sortedMonths = Object.keys(closedMonths).sort().reverse();
   monthlySummaryContainer.innerHTML = sortedMonths.map(m => {
-    const arc = closedMonths[m] || { duty: [], off: [], reports: {}, commandsByDay: {} };
+    const arc = closedMonths[m] || { duty: [], off: [], reports: {}, commandsByDay: {}, reportLog: [], adminActions: [] };
     const mDuty = (arc.duty || []).reduce((s, x) => s + x.perc, 0);
     const mOff = (arc.off || []).reduce((s, x) => s + x.perc, 0);
     const mReports = Object.values(arc.reports || {}).reduce((s, v) => s + v, 0);
@@ -2415,6 +2689,48 @@ function render() {
         </div>
       </div>`;
   }).join('') || '<div style="font-size:13px;color:var(--see-text-muted);grid-column: 1 / -1; text-align:center; padding:20px;">Még nincs lezárt hónap. A "Hónap lezárása" gombbal archiválhatod a jelenlegi statisztikákat.</div>';
+
+  // A Report napló és az Adminjail/Kick előzmények a főoldalon (nyitott munkaterület)
+  // MINDIG csak az aktuálisan nyitott hónaphoz tartozó bejegyzéseket mutatják - ha egy
+  // korábbi hónapot lezársz, annak bejegyzései az archívumba kerülnek (lásd
+  // closeCurrentMonth), és itt már nem jelennek meg, csak az újonnan nyíló hónap sajátjai.
+  const openMonthKeyForLogs = getCurrentOpenMonthKey();
+  const reportLogAll = globalData[currentUser].reportLog || [];
+  const reportLog = openMonthKeyForLogs ? reportLogAll.filter(ev => ev && ev.date && ev.date.substring(0, 7) === openMonthKeyForLogs) : reportLogAll;
+  reportLogStream.innerHTML = reportLog.map((ev, i) => `
+      <div class="see-list-item">
+        <div class="see-item-left">
+          <span class="see-item-date">${ev.date}</span>
+          <span style="font-size:11px; color:var(--see-text-muted); font-family:'Roboto Mono', monospace;">${ev.time}</span>
+        </div>
+        <span class="see-item-value" style="color:var(--see-success); font-family:'Roboto Mono', monospace;">#${ev.id}</span>
+        <div class="see-item-actions"><button class="see-action-btn del" onclick="delReportLogEntry('${ev.id}')">✕</button></div>
+      </div>`).join('') || '<div style="font-size:13px;color:var(--see-text-muted); text-align:center; padding:16px;">Még nincs log-forrásból beolvasott, azonosítóval rendelkező report ebben a nyitott hónapban.</div>';
+  document.getElementById('reportLogCount').textContent = reportLog.length ? `${reportLog.length} db` : '';
+
+  const adminActionsAll = globalData[currentUser].adminActions || [];
+  const adminActions = openMonthKeyForLogs ? adminActionsAll.filter(ev => ev && ev.date && ev.date.substring(0, 7) === openMonthKeyForLogs) : adminActionsAll;
+  adminActionStream.innerHTML = adminActions.map((ev) => {
+    const isJail = ev.type === 'adminjail';
+    const icon = isJail ? 'fa-jail' : 'fa-boot';
+    const label = isJail ? 'AdminJail' : 'Kick';
+    const color = isJail ? 'var(--see-gold)' : 'var(--see-danger)';
+    const detail = isJail ? `${ev.minutes} perc` : '';
+    const reasonHtml = ev.reason ? `<span style="font-size:11px; color:var(--see-text-muted);"> · Indok: ${ev.reason}</span>` : '';
+    const evKey = `${ev.date}|${ev.time}|${ev.type}|${ev.target}`;
+    return `
+      <div class="see-list-item">
+        <div class="see-item-left">
+          <span class="see-item-date">${ev.date}</span>
+          <span style="font-size:11px; color:var(--see-text-muted); font-family:'Roboto Mono', monospace;">${ev.time}</span>
+          <span style="font-size:9px; font-weight:700; color:${color}; background:rgba(255,255,255,0.06); padding:1px 6px; border-radius:5px; text-transform:uppercase; letter-spacing:0.3px;"><i class="fa-solid ${icon}"></i> ${label}</span>
+          <span style="font-weight:600;">${ev.target}</span>${reasonHtml}
+        </div>
+        <span class="see-item-value" style="color:#fff;">${detail}</span>
+        <div class="see-item-actions"><button class="see-action-btn del" onclick="delAdminActionEntry('${evKey.replace(/'/g, "\\'")}')">✕</button></div>
+      </div>`;
+  }).join('') || '<div style="font-size:13px;color:var(--see-text-muted); text-align:center; padding:16px;">Még nincs log-forrásból beolvasott adminjail/kick esemény ebben a nyitott hónapban.</div>';
+  document.getElementById('adminActionCount').textContent = adminActions.length ? `${adminActions.length} db` : '';
 
   totalDuty.innerHTML = `${duty} <span>perc</span>`;
   totalOff.innerHTML = `${off} <span>perc</span>`;
