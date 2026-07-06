@@ -1301,17 +1301,27 @@ function isMonthClosed(monthKey) {
 // Kitalálja, melyik hónaphoz tartozik a jelenleg még NYITOTT (le nem zárt) adat,
 // a legkorábbi rögzített dátum alapján -- így ha pl. már július 4-e van, de még
 // nem zártad le júniust, a javaslat "2026-06" lesz, nem a mai naptári hónap.
-function guessOpenPeriodMonthLabel() {
+// EZ AZ EGYETLEN, KÖZÖS forrása annak, hogy mit tekintünk "aktuális nyitott hónapnak" -
+// ugyanezt használja a "Hónap lezárása" javasolt neve ÉS a munkaterület fejlécén
+// megjelenő FIXVEH/ASEGIT/AGYOGYIT/ADMINJAIL/KICK statisztika is, hogy a kettő
+// SOSE mutasson egymásnak ellentmondó adatot.
+function getCurrentOpenMonthKey() {
   const dList = globalData[currentUser].duty || [];
   const oList = globalData[currentUser].off || [];
   const reps = globalData[currentUser].reports || {};
+  const cmds = globalData[currentUser].commandsByDay || {};
   let dates = [];
   dList.forEach(x => { if (x && x.date) dates.push(x.date); });
   oList.forEach(x => { if (x && x.date) dates.push(x.date); });
   Object.keys(reps).forEach(d => dates.push(d));
-  if (dates.length === 0) return today().substring(0, 7);
+  Object.keys(cmds).forEach(d => dates.push(d));
+  if (dates.length === 0) return null;
   dates.sort();
   return dates[0].substring(0, 7);
+}
+
+function guessOpenPeriodMonthLabel() {
+  return getCurrentOpenMonthKey() || today().substring(0, 7);
 }
 
 async function closeCurrentMonth() {
@@ -1325,38 +1335,64 @@ async function closeCurrentMonth() {
   }
 
   const suggested = guessOpenPeriodMonthLabel();
-  const input = prompt(`Melyik hónaphoz zárjuk le a jelenleg nyitott statisztikákat?\n\nÍrd be ÉÉÉÉ-HH formátumban (pl. ${suggested}).`, suggested);
+  const input = prompt(`Melyik hónaphoz zárjuk le a jelenleg nyitott statisztikákat?\n\nÍrd be ÉÉÉÉ-HH formátumban (pl. ${suggested}).\n\nFIGYELEM: csak az ehhez a hónaphoz tartozó napok kerülnek lezárásra - ha a munkaterületen több hónap adata is keveredik, a többi nyitva marad, és külön zárhatod le.`, suggested);
   if (input === null) return;
   const monthKey = input.trim();
   if (!/^\d{4}-\d{2}$/.test(monthKey)) { alert('Érvénytelen formátum! Használd az ÉÉÉÉ-HH formát (pl. 2026-06).'); return; }
 
-  if (!confirm(`Biztosan lezárod a jelenlegi nyitott időszakot "${monthKey}" néven?\n\nA jelenlegi Duty / Off Duty / Report adatok archiválásra kerülnek ehhez a hónaphoz, a munkaterület pedig KIÜRÜL (nullázódik), hogy elölről kezdhesd a rögzítést.`)) return;
-
+  // CSAK a megadott hónaphoz (monthKey) tartozó napokat válogatjuk ki - minden más,
+  // más hónapba eső nyitott adat VÁLTOZATLANUL a munkaterületen marad, hogy külön,
+  // a saját nevével lezárható legyen később. Ez akadályozza meg, hogy két különböző
+  // hónap adata egyetlen archívumba keveredjen.
   const cmdsByDay = globalData[currentUser].commandsByDay || {};
+  const dutyForMonth = dList.filter(x => x && x.date && x.date.substring(0, 7) === monthKey);
+  const offForMonth = oList.filter(x => x && x.date && x.date.substring(0, 7) === monthKey);
+  const repsForMonth = {};
+  Object.keys(reps).forEach(d => { if (d.substring(0, 7) === monthKey) repsForMonth[d] = reps[d]; });
+  const cmdsForMonth = {};
+  Object.keys(cmdsByDay).forEach(d => { if (d.substring(0, 7) === monthKey) cmdsForMonth[d] = cmdsByDay[d]; });
+
+  if (dutyForMonth.length === 0 && offForMonth.length === 0 && Object.keys(repsForMonth).length === 0 && Object.keys(cmdsForMonth).length === 0) {
+    alert(`Nincs "${monthKey}" hónaphoz tartozó adat a nyitott munkaterületen - ellenőrizd a hónap nevét.`);
+    return;
+  }
+
+  if (!confirm(`Biztosan lezárod a(z) "${monthKey}" hónapot?\n\nCsak az ehhez a hónaphoz tartozó Duty / Off Duty / Report / adminparancs adatok archiválásra kerülnek, ezek eltűnnek a munkaterületről. A más hónapba eső, esetleg még nyitva lévő adat változatlanul megmarad.`)) return;
 
   if (!globalData[currentUser].closedMonths) globalData[currentUser].closedMonths = {};
   const existing = globalData[currentUser].closedMonths[monthKey] || { duty: [], off: [], reports: {}, commandsByDay: {} };
-  existing.duty = (existing.duty || []).concat(dList);
-  existing.off = (existing.off || []).concat(oList);
+  existing.duty = (existing.duty || []).concat(dutyForMonth);
+  existing.off = (existing.off || []).concat(offForMonth);
   existing.reports = existing.reports || {};
-  Object.keys(reps).forEach(d => { existing.reports[d] = (existing.reports[d] || 0) + reps[d]; });
-  // Adminparancsok (fixveh / asegit / agyogyit) napi bontásának archiválása a reportokéhoz
-  // hasonlóan - ha a hónap már korábban is tartalmazott ilyen adatot, összeadódik.
+  // FONTOS: a nyitott munkaterület egy adott napra vonatkozó report-száma és
+  // parancshasználata MINDIG a végleges, teljes napi összeget tartalmazza (ezt a
+  // log-feldolgozás vagy a kézi szerkesztés már eleve úgy számolja ki, hogy az adott
+  // nap ÖSSZES ismert forrásból eredő adata legyen - lásd confirmLogBreakdown).
+  // Emiatt lezáráskor FELÜLÍRJUK (nem hozzáadjuk) az adott nap archív értékét, különben
+  // ha egy hónapot többször zársz le (pl. lezárás -> újranyitás -> újra lezárás, vagy egy
+  // már archivált nap adatait egy újabb log-feltöltés frissíti), ugyanaz a napi érték
+  // duplán (vagy többszörösen) beszámítódna az archívumba.
+  Object.keys(repsForMonth).forEach(d => { existing.reports[d] = repsForMonth[d]; });
+  // Adminparancsok (fixveh / asegit / agyogyit / adminjail / kick) napi bontásának
+  // archiválása - ugyanezen okból FELÜLÍRÁSSAL, nem összeadással.
   existing.commandsByDay = existing.commandsByDay || {};
-  Object.keys(cmdsByDay).forEach(d => {
-    const cur = existing.commandsByDay[d] || emptyCommandCounts();
-    cur.fixveh += cmdsByDay[d].fixveh || 0;
-    cur.asegit += cmdsByDay[d].asegit || 0;
-    cur.agyogyit += cmdsByDay[d].agyogyit || 0;
-    existing.commandsByDay[d] = cur;
+  Object.keys(cmdsForMonth).forEach(d => {
+    existing.commandsByDay[d] = {
+      fixveh: cmdsForMonth[d].fixveh || 0,
+      asegit: cmdsForMonth[d].asegit || 0,
+      agyogyit: cmdsForMonth[d].agyogyit || 0,
+      adminjail: cmdsForMonth[d].adminjail || 0,
+      kick: cmdsForMonth[d].kick || 0
+    };
   });
   globalData[currentUser].closedMonths[monthKey] = existing;
 
-  // Munkaterület nullázása - kezdődjön elölről
-  globalData[currentUser].duty = [];
-  globalData[currentUser].off = [];
-  globalData[currentUser].reports = {};
-  globalData[currentUser].commandsByDay = {};
+  // Munkaterület: CSAK a lezárt hónaphoz tartozó napokat távolítjuk el - minden más
+  // hónapba eső, nyitva maradt adat érintetlen marad.
+  globalData[currentUser].duty = dList.filter(x => !(x && x.date && x.date.substring(0, 7) === monthKey));
+  globalData[currentUser].off = oList.filter(x => !(x && x.date && x.date.substring(0, 7) === monthKey));
+  Object.keys(repsForMonth).forEach(d => { delete globalData[currentUser].reports[d]; });
+  Object.keys(cmdsForMonth).forEach(d => { delete globalData[currentUser].commandsByDay[d]; });
   selectedItems = { duty: {}, off: {}, reports: {} };
 
   const ok = await saveGlobal();
@@ -1387,16 +1423,20 @@ async function reopenMonth(monthKey) {
   globalData[currentUser].duty = (globalData[currentUser].duty || []).concat(arc.duty || []);
   globalData[currentUser].off = (globalData[currentUser].off || []).concat(arc.off || []);
   const reports = globalData[currentUser].reports || {};
-  Object.keys(arc.reports || {}).forEach(d => { reports[d] = (reports[d] || 0) + arc.reports[d]; });
+  // Felülírás, nem összeadás - lásd a closeCurrentMonth-nál lévő magyarázatot: egy adott
+  // nap értéke mindig a végleges, teljes napi összeg, sosem egy hozzáadandó részlet.
+  Object.keys(arc.reports || {}).forEach(d => { reports[d] = arc.reports[d]; });
   globalData[currentUser].reports = reports;
 
   const cmdsByDay = globalData[currentUser].commandsByDay || {};
   Object.keys(arc.commandsByDay || {}).forEach(d => {
-    const cur = cmdsByDay[d] || emptyCommandCounts();
-    cur.fixveh += arc.commandsByDay[d].fixveh || 0;
-    cur.asegit += arc.commandsByDay[d].asegit || 0;
-    cur.agyogyit += arc.commandsByDay[d].agyogyit || 0;
-    cmdsByDay[d] = cur;
+    cmdsByDay[d] = {
+      fixveh: arc.commandsByDay[d].fixveh || 0,
+      asegit: arc.commandsByDay[d].asegit || 0,
+      agyogyit: arc.commandsByDay[d].agyogyit || 0,
+      adminjail: arc.commandsByDay[d].adminjail || 0,
+      kick: arc.commandsByDay[d].kick || 0
+    };
   });
   globalData[currentUser].commandsByDay = cmdsByDay;
 
@@ -1491,6 +1531,8 @@ function renderMonthEdit() {
           <span>fixveh <strong style="color:#fff;">${c.fixveh || 0}</strong></span>
           <span>asegit <strong style="color:#fff;">${c.asegit || 0}</strong></span>
           <span>agyogyit <strong style="color:#fff;">${c.agyogyit || 0}</strong></span>
+          <span>adminjail <strong style="color:#fff;">${c.adminjail || 0}</strong></span>
+          <span>kick <strong style="color:#fff;">${c.kick || 0}</strong></span>
         </span>
         <div class="see-item-actions">
           <button class="see-action-btn" onclick="editMonthCommandDay('${d}')">✏</button>
@@ -1558,10 +1600,16 @@ async function editMonthCommandDay(date) {
   if (newAsegit === null) return;
   const newAgyogyit = prompt(`agyogyit parancsok száma (${date}):`, c.agyogyit || 0);
   if (newAgyogyit === null) return;
+  const newAdminjail = prompt(`adminjail parancsok száma (${date}):`, c.adminjail || 0);
+  if (newAdminjail === null) return;
+  const newKick = prompt(`kick parancsok száma (${date}):`, c.kick || 0);
+  if (newKick === null) return;
   arc.commandsByDay[date] = {
     fixveh: isNaN(newFixveh) || newFixveh.trim() === '' ? (c.fixveh || 0) : parseInt(newFixveh, 10),
     asegit: isNaN(newAsegit) || newAsegit.trim() === '' ? (c.asegit || 0) : parseInt(newAsegit, 10),
-    agyogyit: isNaN(newAgyogyit) || newAgyogyit.trim() === '' ? (c.agyogyit || 0) : parseInt(newAgyogyit, 10)
+    agyogyit: isNaN(newAgyogyit) || newAgyogyit.trim() === '' ? (c.agyogyit || 0) : parseInt(newAgyogyit, 10),
+    adminjail: isNaN(newAdminjail) || newAdminjail.trim() === '' ? (c.adminjail || 0) : parseInt(newAdminjail, 10),
+    kick: isNaN(newKick) || newKick.trim() === '' ? (c.kick || 0) : parseInt(newKick, 10)
   };
   await saveGlobal(); render(); renderMonthEdit();
 }
@@ -1711,12 +1759,12 @@ function extractDayCountsFromLogText(text) {
 // Napi bontásban tárolunk (a log sor saját dátuma alapján), hogy a "Hónap lezárása"
 // ugyanúgy tudja archiválni/nullázni, mint a reportoknál - lezárás után az adott napok
 // nem térnek vissza a nyitott munkaterületre, csak ha ténylegesen újra feltöltik a logot.
-function emptyCommandCounts() { return { fixveh: 0, asegit: 0, agyogyit: 0 }; }
+function emptyCommandCounts() { return { fixveh: 0, asegit: 0, agyogyit: 0, adminjail: 0, kick: 0 }; }
 
 function extractCommandCountsFromLogText(text) {
   const byDay = {};
   const lines = text.split(/\r?\n/);
-  const re = /^\[(\d{4}-\d{2}-\d{2})\s\d{2}:\d{2}:\d{2}\]\s\[INPUT\]\s\/(fixveh|asegit|agyogyit)\b/;
+  const re = /^\[(\d{4}-\d{2}-\d{2})\s\d{2}:\d{2}:\d{2}\]\s\[INPUT\]\s\/(fixveh|asegit|agyogyit|adminjail|kick)\b/;
   for (const line of lines) {
     const m = line.match(re);
     if (m) {
@@ -1995,8 +2043,27 @@ function sumCommandCounts(commandsByDay) {
     totals.fixveh += (c && c.fixveh) || 0;
     totals.asegit += (c && c.asegit) || 0;
     totals.agyogyit += (c && c.agyogyit) || 0;
+    totals.adminjail += (c && c.adminjail) || 0;
+    totals.kick += (c && c.kick) || 0;
   });
   return totals;
+}
+
+// Csak az AKTUÁLIS (a getCurrentOpenMonthKey által meghatározott, a "Hónap
+// lezárása" gombbal is felajánlott) nyitott hónapra szűrt
+// { date: {fixveh, asegit, agyogyit, adminjail, kick} } objektumból ad vissza
+// összesített totált. Ez biztosítja, hogy ha a nyitott munkaterületen véletlenül
+// több hónap napjai is szerepelnek (mert még nem zártad le a korábbit), a
+// kijelzésen NE keveredjenek össze - és a szám PONTOSAN egyezzen azzal, amit a
+// "Hónap lezárása" gomb ugyanerre a hónapra archiválna.
+function sumCommandCountsForCurrentMonth(commandsByDay) {
+  const monthKey = getCurrentOpenMonthKey();
+  if (!monthKey) return emptyCommandCounts();
+  const filtered = {};
+  Object.keys(commandsByDay || {}).forEach(date => {
+    if (date.substring(0, 7) === monthKey) filtered[date] = commandsByDay[date];
+  });
+  return sumCommandCounts(filtered);
 }
 
 // Az utolsó feltöltés-köteg elemzésének eredménye, amíg a felhasználó jóvá nem hagyja
@@ -2090,11 +2157,13 @@ function renderLogBreakdownModal(fileResults, latestUserData) {
           ${fr.dutyPeriods.map(p => `<div style="display:flex; justify-content:space-between; padding:3px 0;"><span>${p.date} (${p.on} - ${p.off})</span><span style="font-family:'Roboto Mono', monospace;">${p.perc} p</span></div>`).join('')}
         </div>`
       : `<div style="font-size:11px; color:var(--see-text-muted); padding-top:8px; margin-top:6px; border-top:1px solid var(--see-border);">Nem található "${latestUserData.logAdminName || ''}" nevű admin szolgálatba lépés/kilépés ebben a fájlban.</div>`;
-    const cmdRow = (cmdTotals.fixveh + cmdTotals.asegit + cmdTotals.agyogyit) > 0
+    const cmdRow = (cmdTotals.fixveh + cmdTotals.asegit + cmdTotals.agyogyit + cmdTotals.adminjail + cmdTotals.kick) > 0
       ? `<div style="display:flex; gap:14px; flex-wrap:wrap; font-size:11px; color:var(--see-text-muted); padding-top:8px; margin-top:6px; border-top:1px solid var(--see-border);">
           <span><i class="fa-solid fa-car-burst" style="color:var(--see-gold);"></i> fixveh: <strong style="color:#fff;">${cmdTotals.fixveh}</strong></span>
           <span><i class="fa-solid fa-hand-holding-medical" style="color:var(--see-gold);"></i> asegit: <strong style="color:#fff;">${cmdTotals.asegit}</strong></span>
           <span><i class="fa-solid fa-kit-medical" style="color:var(--see-gold);"></i> agyogyit: <strong style="color:#fff;">${cmdTotals.agyogyit}</strong></span>
+          <span><i class="fa-solid fa-jail" style="color:var(--see-gold);"></i> adminjail: <strong style="color:#fff;">${cmdTotals.adminjail}</strong></span>
+          <span><i class="fa-solid fa-boot" style="color:var(--see-gold);"></i> kick: <strong style="color:#fff;">${cmdTotals.kick}</strong></span>
         </div>`
       : '';
     return `
@@ -2145,7 +2214,13 @@ async function confirmLogBreakdown() {
   //    adott (vagy korábban adott). Az adott nap végső értéke MINDEN ismert log-forrás
   //    (fájl) aznapi hozzájárulásának összege - ez biztosítja, hogy egy új fájl sosem
   //    "vonhat le" egy másik, korábban feltöltött fájl adataiból.
+  //    FONTOS: ha egy érintett nap egy MÁR LEZÁRT hónapba esik, az adatait nem a nyitott
+  //    munkaterületre írjuk, hanem közvetlenül az adott lezárt hónap archívumába - így egy
+  //    utólag újratöltött/frissített log a lezárt hónap statisztikáját (fixveh / asegit /
+  //    agyogyit / adminjail / kick / reportok) is helyesen frissíti, anélkül hogy ezek az
+  //    adatok összekeverednének a jelenleg nyitott (még le nem zárt) időszak adataival.
   if (!latestUserData.commandsByDay) latestUserData.commandsByDay = {};
+  if (!latestUserData.closedMonths) latestUserData.closedMonths = {};
   touchedDates.forEach(date => {
     let total = 0;
     const cmdTotal = emptyCommandCounts();
@@ -2156,13 +2231,27 @@ async function confirmLogBreakdown() {
         cmdTotal.fixveh += src.cmdCounts[date].fixveh || 0;
         cmdTotal.asegit += src.cmdCounts[date].asegit || 0;
         cmdTotal.agyogyit += src.cmdCounts[date].agyogyit || 0;
+        cmdTotal.adminjail += src.cmdCounts[date].adminjail || 0;
+        cmdTotal.kick += src.cmdCounts[date].kick || 0;
       }
     });
-    latestUserData.reports[date] = total;
-    if (cmdTotal.fixveh || cmdTotal.asegit || cmdTotal.agyogyit) {
-      latestUserData.commandsByDay[date] = cmdTotal;
-    } else {
+
+    const monthKey = date.substring(0, 7);
+    const hasCmd = cmdTotal.fixveh || cmdTotal.asegit || cmdTotal.agyogyit || cmdTotal.adminjail || cmdTotal.kick;
+
+    if (latestUserData.closedMonths[monthKey]) {
+      // A nap egy már lezárt hónapba esik -> az archívumba írunk, a nyitott
+      // munkaterületen pedig biztosítjuk, hogy ne is szerepeljen ez a nap.
+      const arc = latestUserData.closedMonths[monthKey];
+      arc.reports = arc.reports || {};
+      arc.commandsByDay = arc.commandsByDay || {};
+      arc.reports[date] = total;
+      if (hasCmd) arc.commandsByDay[date] = cmdTotal; else delete arc.commandsByDay[date];
+      delete latestUserData.reports[date];
       delete latestUserData.commandsByDay[date];
+    } else {
+      latestUserData.reports[date] = total;
+      if (hasCmd) latestUserData.commandsByDay[date] = cmdTotal; else delete latestUserData.commandsByDay[date];
     }
   });
 
@@ -2183,6 +2272,14 @@ async function confirmLogBreakdown() {
   if (!latestUserData.off) latestUserData.off = [];
   latestUserData.duty = latestUserData.duty.filter(x => !(x && x.auto && touchedDates.has(x.date)));
   latestUserData.off = latestUserData.off.filter(x => !(x && x.auto && touchedDates.has(x.date)));
+  // Ugyanígy: ha egy érintett nap egy lezárt hónap archívumában szerepel, az ottani
+  // régi auto sorokat is el kell távolítani újraépítés előtt, különben duplázódnának.
+  Object.keys(latestUserData.closedMonths).forEach(mk => {
+    const arc = latestUserData.closedMonths[mk];
+    if (!arc) return;
+    if (arc.duty) arc.duty = arc.duty.filter(x => !(x && x.auto && touchedDates.has(x.date)));
+    if (arc.off) arc.off = arc.off.filter(x => !(x && x.auto && touchedDates.has(x.date)));
+  });
 
   let allEvents = [];
   let allConnectWindows = [];
@@ -2196,8 +2293,26 @@ async function confirmLogBreakdown() {
   // szerveren (bármelyik feltöltött log alapján) - a szerveren kívül töltött idő
   // (pl. nem játszottál aznap) sosem számít bele sem duty-ba, sem off dutyba.
   const offPeriods = clipOffPeriodsToConnectWindows(offPeriodsRaw, allConnectWindows);
-  dutyPeriods.filter(p => touchedDates.has(p.date)).forEach(p => latestUserData.duty.push({ ...p, auto: true }));
-  offPeriods.filter(p => touchedDates.has(p.date)).forEach(p => latestUserData.off.push({ ...p, auto: true }));
+  dutyPeriods.filter(p => touchedDates.has(p.date)).forEach(p => {
+    const mk = p.date.substring(0, 7);
+    if (latestUserData.closedMonths[mk]) {
+      const arc = latestUserData.closedMonths[mk];
+      arc.duty = arc.duty || [];
+      arc.duty.push({ ...p, auto: true });
+    } else {
+      latestUserData.duty.push({ ...p, auto: true });
+    }
+  });
+  offPeriods.filter(p => touchedDates.has(p.date)).forEach(p => {
+    const mk = p.date.substring(0, 7);
+    if (latestUserData.closedMonths[mk]) {
+      const arc = latestUserData.closedMonths[mk];
+      arc.off = arc.off || [];
+      arc.off.push({ ...p, auto: true });
+    } else {
+      latestUserData.off.push({ ...p, auto: true });
+    }
+  });
 
   latestUserData.duty.sort((a, b) => (a.date + a.on).localeCompare(b.date + b.on));
   latestUserData.off.sort((a, b) => (a.date + a.on).localeCompare(b.date + b.on));
@@ -2294,6 +2409,8 @@ function render() {
             <span><i class="fa-solid fa-car-burst" style="color:var(--see-gold);"></i> fixveh: <strong style="color:#fff; font-family:'Roboto Mono', monospace;">${mCmds.fixveh}</strong></span>
             <span><i class="fa-solid fa-hand-holding-medical" style="color:var(--see-gold);"></i> asegit: <strong style="color:#fff; font-family:'Roboto Mono', monospace;">${mCmds.asegit}</strong></span>
             <span><i class="fa-solid fa-kit-medical" style="color:var(--see-gold);"></i> agyogyit: <strong style="color:#fff; font-family:'Roboto Mono', monospace;">${mCmds.agyogyit}</strong></span>
+            <span><i class="fa-solid fa-jail" style="color:var(--see-gold);"></i> adminjail: <strong style="color:#fff; font-family:'Roboto Mono', monospace;">${mCmds.adminjail}</strong></span>
+            <span><i class="fa-solid fa-boot" style="color:var(--see-gold);"></i> kick: <strong style="color:#fff; font-family:'Roboto Mono', monospace;">${mCmds.kick}</strong></span>
           </div>
         </div>
       </div>`;
@@ -2308,15 +2425,27 @@ function render() {
   document.getElementById('offCount').textContent = oList.length + " sor";
   document.getElementById('reportDaysCount').textContent = sortedReportKeys.length + " nap";
 
-  // Nyitott időszak adminparancs-használata (fixveh / asegit / agyogyit) - ez kerül
-  // majd archiválásra a "Hónap lezárása" gombbal, ezért itt is látszik előre.
-  const openCmds = sumCommandCounts(globalData[currentUser].commandsByDay || {});
+  // Nyitott időszak adminparancs-használata (fixveh / asegit / agyogyit / adminjail / kick).
+  // FONTOS: itt szándékosan CSAK az aktuálisan futó naptári hónap napjait összesítjük
+  // (sumCommandCountsForCurrentMonth), nem a teljes nyitott commandsByDay-t - így ha a
+  // munkaterületen véletlenül egy korábbi, még le nem zárt hónap adatai is benne
+  // maradtak, azok nem keverednek bele a most aktuális hónap kijelzésébe. A teljes
+  // (minden nyitott napra vonatkozó) adat a "Hónap lezárása" gombbal továbbra is
+  // változatlanul archiválódik.
+  const openCmds = sumCommandCountsForCurrentMonth(globalData[currentUser].commandsByDay || {});
+  const openMonthKey = getCurrentOpenMonthKey();
   const cmdStatEl = document.getElementById('currentCommandStats');
   if (cmdStatEl) {
+    const monthLabel = openMonthKey
+      ? `<span class="cmd-stat-chip" style="color:var(--see-gold); font-weight:700;"><i class="fa-solid fa-calendar-days"></i> ${openMonthKey}</span>`
+      : '';
     cmdStatEl.innerHTML = `
+      ${monthLabel}
       <span class="cmd-stat-chip"><i class="fa-solid fa-car-burst"></i> fixveh <strong>${openCmds.fixveh}</strong></span>
       <span class="cmd-stat-chip"><i class="fa-solid fa-hand-holding-medical"></i> asegit <strong>${openCmds.asegit}</strong></span>
-      <span class="cmd-stat-chip"><i class="fa-solid fa-kit-medical"></i> agyogyit <strong>${openCmds.agyogyit}</strong></span>`;
+      <span class="cmd-stat-chip"><i class="fa-solid fa-kit-medical"></i> agyogyit <strong>${openCmds.agyogyit}</strong></span>
+      <span class="cmd-stat-chip"><i class="fa-solid fa-jail"></i> adminjail <strong>${openCmds.adminjail}</strong></span>
+      <span class="cmd-stat-chip"><i class="fa-solid fa-boot"></i> kick <strong>${openCmds.kick}</strong></span>`;
   }
 
   updateBulkDeleteButtonVisibility('duty');
