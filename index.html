@@ -2311,12 +2311,30 @@ function extractAdminActionEventsFromLogText(text, adminName) {
 
     m = line.match(banRe);
     if (m && nameEndRe.test(m[4].trim())) {
+      let expiry = (m[5] || '').trim();
       let reason = (m[6] || '').trim();
-      if (!reason && i + 1 < lines.length && !timestampRe.test(lines[i + 1])) {
-        const cont = lines[i + 1].match(indokContinuationRe);
+      // A gyakorlatban a "Lejárat:" (és utána az "Indok:") a legtöbbször NEM a
+      // fő "ki lett tiltva ... által." sor végéhez fűzve jelenik meg, hanem KÜLÖN,
+      // időbélyeg nélküli sor(ok)ban, pl.:
+      //   [2026-07-02 00:44:26] [CHAT] Escobard Russ ki lett tiltva a szerverről FőAdmin Justin által.
+      //   Lejárat: 2026. 07. 23. 00:44
+      //   Indok: PG, NonRP, Szándékos AFK
+      // Ha a Lejárat még nincs elmentve (a fő sorban nem szerepelt), megnézzük a
+      // következő, időbélyeg nélküli sort - ha az egy "Lejárat: ..." folytatás,
+      // onnan olvassuk ki, majd az UTÁNA következő sort nézzük az "Indok:"-hoz.
+      let nextIdx = i + 1;
+      if (!expiry && nextIdx < lines.length && !timestampRe.test(lines[nextIdx])) {
+        const lejMatch = lines[nextIdx].match(/^Lejárat:\s*(.*)$/);
+        if (lejMatch) {
+          expiry = lejMatch[1].trim();
+          nextIdx++;
+        }
+      }
+      if (!reason && nextIdx < lines.length && !timestampRe.test(lines[nextIdx])) {
+        const cont = lines[nextIdx].match(indokContinuationRe);
         if (cont) reason = cont[1].trim();
       }
-      events.push({ type: 'ban', date: m[1], time: m[2], admin: m[4].trim(), target: m[3].trim(), expiry: (m[5] || '').trim(), reason });
+      events.push({ type: 'ban', date: m[1], time: m[2], admin: m[4].trim(), target: m[3].trim(), expiry, reason });
       continue;
     }
   }
