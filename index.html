@@ -2270,14 +2270,18 @@ function extractAdminActionEventsFromLogText(text, adminName) {
   const timestampRe = /^\[\d{4}-\d{2}-\d{2}\s\d{2}:\d{2}:\d{2}\]/;
   const indokContinuationRe = /^Indok:\s*(.*)$/;
 
-  const jailRe = /^\[(\d{4}-\d{2}-\d{2})\s(\d{2}:\d{2}):\d{2}\]\s\[CHAT\]\s(.+?)\sAdminJailbe tette\s(.+?)\sjátékost\s(\d+)\spercre\.(?:Indok:\s*(.*))?$/;
-  const kickRe = /^\[(\d{4}-\d{2}-\d{2})\s(\d{2}:\d{2}):\d{2}\]\s\[CHAT\]\s(.+?)\ski lett rúgva a szerverről\s(.+?)\sáltal\.(?:Indok:\s*(.*))?$/;
+  const jailRe = /^\[(\d{4}-\d{2}-\d{2})\s(\d{2}:\d{2}):\d{2}\]\s\[CHAT\]\s(.+?)\sAdminJailbe tette\s(.+?)\sjátékost\s(\d+)\spercre\.\s*(?:Indok:\s*(.*))?$/;
+  const kickRe = /^\[(\d{4}-\d{2}-\d{2})\s(\d{2}:\d{2}):\d{2}\]\s\[CHAT\]\s(.+?)\ski lett rúgva a szerverről\s(.+?)\sáltal\.\s*(?:Indok:\s*(.*))?$/;
   // A tényleges kitiltás (ban) a szerveren NEM egy /ban konzolparancson keresztül
   // történik (ezért nincs is [INPUT] sora), hanem egy külső admin-felületről - a
   // logban EGYEDÜL ez a [CHAT] visszaigazoló üzenet árulkodik róla, pl.:
-  //   "Ayden Norton ki lett tiltva a szerverről FőAdmin Justin által.Lejárat: sohaIndok: FUN, NonRP @Taco"
-  // A "Lejárat:" és "Indok:" rész opcionális és szóköz nélkül követi egymást.
-  const banRe = /^\[(\d{4}-\d{2}-\d{2})\s(\d{2}:\d{2}):\d{2}\]\s\[CHAT\]\s(.+?)\ski lett tiltva a szerverről\s(.+?)\sáltal\.(?:Lejárat:\s*(.*?))?(?:Indok:\s*(.*))?$/;
+  //   "Ayden Norton ki lett tiltva a szerverről FőAdmin Justin által. Lejárat: soha Indok: FUN, NonRP @Taco"
+  // A "Lejárat:" és "Indok:" rész opcionális, és a gyakorlatban HOL szóköz NÉLKÜL,
+  // HOL szóközzel követi egymást (mindkét változat előfordul a logban) - ezért
+  // az "által." és a "Lejárat:"/"Indok:" közötti, illetve a "Lejárat:" értéke és az
+  // "Indok:" közötti szóköz(ök) is opcionálisak, hogy egyik forma se maradjon ki
+  // a feldolgozásból.
+  const banRe = /^\[(\d{4}-\d{2}-\d{2})\s(\d{2}:\d{2}):\d{2}\]\s\[CHAT\]\s(.+?)\ski lett tiltva a szerverről\s(.+?)\sáltal\.\s*(?:Lejárat:\s*(.*?)\s*)?(?:Indok:\s*(.*))?$/;
 
   const lines = text.split(/\r?\n/);
   for (let i = 0; i < lines.length; i++) {
