@@ -911,7 +911,7 @@ input[type="file"] { display: none; }
         <div class="see-list-container" id="monthEditReportLog" style="max-height: 260px;"></div>
       </div>
       <div>
-        <div style="font-size:12px; font-weight:700; text-transform:uppercase; margin-bottom:8px; color:var(--see-danger);">Adminjail / Kick előzmények</div>
+        <div style="font-size:12px; font-weight:700; text-transform:uppercase; margin-bottom:8px; color:var(--see-danger);">Adminjail / Kick / Ban előzmények</div>
         <div class="see-list-container" id="monthEditAdminActions" style="max-height: 260px;"></div>
       </div>
     </div>
@@ -1054,7 +1054,7 @@ input[type="file"] { display: none; }
       <div class="quick-jump">
         <a class="quick-jump-btn" href="#workPanelAnchor"><i class="fa-solid fa-user-clock"></i> Duty / Off Duty / Logok</a>
         <a class="quick-jump-btn" href="#reportLogAnchor"><i class="fa-solid fa-hashtag"></i> Report napló <span class="qcount" id="reportLogCountQuick">0</span></a>
-        <a class="quick-jump-btn" href="#adminActionAnchor"><i class="fa-solid fa-clock-rotate-left"></i> Adminjail / Kick <span class="qcount" id="adminActionCountQuick">0</span></a>
+        <a class="quick-jump-btn" href="#adminActionAnchor"><i class="fa-solid fa-clock-rotate-left"></i> Adminjail / Kick / Ban <span class="qcount" id="adminActionCountQuick">0</span></a>
       </div>
 
       <div class="dashboard-grid">
@@ -1139,7 +1139,7 @@ input[type="file"] { display: none; }
 
       <details class="see-details" style="margin-top:16px;" id="adminActionAnchor">
         <summary>
-          <span class="panel-title-text"><i class="fa-solid fa-clock-rotate-left"></i> Adminjail / Kick előzmények <span id="adminActionCount" style="font-size:11px;font-weight:600;color:var(--see-text-muted);text-transform:none;"></span></span>
+          <span class="panel-title-text"><i class="fa-solid fa-clock-rotate-left"></i> Adminjail / Kick / Ban előzmények <span id="adminActionCount" style="font-size:11px;font-weight:600;color:var(--see-text-muted);text-transform:none;"></span></span>
           <i class="fa-solid fa-chevron-down chevron"></i>
         </summary>
         <div class="see-details-body">
@@ -1152,20 +1152,6 @@ input[type="file"] { display: none; }
       </div>
 
       <aside class="dashboard-aside">
-        <div class="widget-card">
-          <div class="widget-card-title"><i class="fa-solid fa-folder-tree"></i> Automata mappa-szinkron</div>
-          <div id="folderSyncDesc" style="font-size:11px; color:var(--see-text-muted); margin-bottom:10px;">
-            Kösd be egyszer azt a mappát, ahova a szerver a log fájlokat menti - utána az oldal magától, kb. 30 másodpercenként újranézi a mappát, és minden új vagy módosult log fájlt automatikusan feldolgoz, kézi feltöltés nélkül.
-          </div>
-          <div id="folderSyncStatus" style="font-size:11px; color:var(--see-text-muted); margin-bottom:10px;">Nincs mappa bekötve.</div>
-          <div style="display:flex; gap:8px; flex-wrap:wrap;">
-            <button class="see-btn see-btn-compact" id="folderConnectBtn" onclick="connectLogsFolder()" style="margin-bottom:0;"><i class="fa-solid fa-folder-open"></i> Mappa bekötése</button>
-            <button class="see-btn see-btn-compact" id="folderSyncNowBtn" style="display:none; margin-bottom:0;" onclick="syncLogsFolderNow()"><i class="fa-solid fa-rotate"></i> Szinkron most</button>
-            <button class="see-btn see-btn-compact" id="folderReauthBtn" style="display:none; margin-bottom:0; background:var(--see-danger);" onclick="reauthorizeLogsFolder()"><i class="fa-solid fa-triangle-exclamation"></i> Engedély megerősítése</button>
-          </div>
-          <input type="file" id="logFolderFallbackInput" webkitdirectory multiple style="display:none;" onchange="handleFolderFallbackChange(event)">
-        </div>
-
         <div class="widget-card">
           <div class="widget-card-title"><i class="fa-solid fa-calendar-check"></i> Lezárt hónapok <span class="qcount" id="widgetClosedMonthsCount">0</span></div>
           <div id="widgetClosedMonths"><div class="widget-empty">Még nincs lezárt hónap.</div></div>
@@ -1258,7 +1244,7 @@ input[type="file"] { display: none; }
     <div id="guideSection" class="see-section">
       <div class="see-panel">
         <div class="see-panel-title">
-          <span class="panel-title-text"><i class="fa-solid fa-circle-question"></i> Útmutató - Automata log-beolvasás beállítása</span>
+          <span class="panel-title-text"><i class="fa-solid fa-circle-question"></i> Útmutató - Log fájlok beolvasása</span>
           <button class="bulk-btn" onclick="switchPage('main')"><i class="fa-solid fa-arrow-left"></i> Vissza a főoldalra</button>
         </div>
 
@@ -1266,63 +1252,18 @@ input[type="file"] { display: none; }
 
           <div class="guide-block">
             <div class="guide-block-title"><i class="fa-solid fa-circle-info"></i> Miről szól ez?</div>
-            <p>Alapból mindig kézzel kell behúznod / kiválasztanod a log fájlokat a "Logok beolvasása" panelben. Az alábbi lépésekkel elérheted, hogy az oldal <strong>egyetlen mappa-kiválasztással (vagy Chrome/Edge esetén akár teljesen automatikusan, időzítve)</strong> mindig a legfrissebb logokat dolgozza fel, anélkül hogy egyenként kellene fájlokat tallóznod.</p>
+            <p>A "Logok beolvasása" panelben tudod feldolgoztatni a szerver log fájljait - ebből ismeri fel a rendszer a Duty / Off Duty időt, a fixveh / asegit / agyogyit / adminjail / kick / ban parancsokat, és a lezárt reportok számát.</p>
           </div>
 
           <div class="guide-block">
-            <div class="guide-block-title"><i class="fa-solid fa-triangle-exclamation"></i> 1. lépés - Miért nem lehet közvetlenül a szerver log-mappáját bekötni?</div>
-            <p>A legtöbb szerver a logokat egy védett rendszermappába menti, pl.:</p>
-            <div class="guide-code">%ProgramData%\SeeRPG\logs</div>
-            <p>A böngészők (Brave, Chrome, Edge egyaránt) biztonsági okból <strong>nem engedik megnyitni</strong> a mappa-választóval a <code>ProgramData</code>, <code>Program Files</code>, <code>Windows</code> és hasonló rendszer-mappákat (vagy az ezek alatt lévő bármelyik almappát) - még akkor sem, ha egy mutatópontot (junction/symlink) hozol létre rájuk, mert a böngésző ezt is felismeri és blokkolja. Emiatt szükség van egy "áthidaló" megoldásra: a 2. lépésben leírtakkal a logokat egy <strong>valódi másolatban</strong> (nem mutatópontban) tesszük elérhetővé egy nem védett helyen (pl. Dokumentumok mappa).</p>
+            <div class="guide-block-title"><i class="fa-solid fa-user-pen"></i> 1. lépés - Admin név megadása</div>
+            <p>A "Logok beolvasása" panel tetején add meg, milyen néven szerepelsz adminként a logban - ez alapján ismeri fel a rendszer a logban, hogy MIKOR álltál adminszolgálatba / MIKOR léptél ki belőle, ebből automatikusan számolja a Duty és Off Duty időt, és ebből szűri ki a saját adminjail / kick / ban akcióidat a többi admin közül.</p>
           </div>
 
           <div class="guide-block">
-            <div class="guide-block-title"><i class="fa-solid fa-copy"></i> 2. lépés - Automata másolás beállítása (Robocopy + Ütemezett feladat)</div>
-            <p><strong>a) Hozz létre egy sima mappát a Dokumentumokban</strong> (Parancssorban / cmd-ben):</p>
-            <div class="guide-code">mkdir "%USERPROFILE%\Documents\SeeRPG_Logs"</div>
-            <p><strong>b) Teszteld le kézzel egyszer a másolást</strong>, hogy tényleg működik-e (cseréld ki az útvonalat, ha nálad máshol vannak a logok):</p>
-            <div class="guide-code">robocopy "%ProgramData%\SeeRPG\logs" "%USERPROFILE%\Documents\SeeRPG_Logs" /R:1 /W:1</div>
-            <p>Nyisd meg a Fájlkezelőben a <code>Dokumentumok\SeeRPG_Logs</code> mappát - ha látod benne a <code>.log</code> fájlokat, működik, mehetsz tovább.</p>
-            <p><strong>c) Állítsd be, hogy ez a másolás magától, rendszeresen lefusson</strong> (Windows Ütemezett feladatok):</p>
-            <ol class="guide-list">
-              <li>Nyomj <strong>Win + R</strong>, írd be: <code>taskschd.msc</code>, Enter</li>
-              <li>Jobb oldalt: <strong>"Alapfeladat létrehozása…"</strong>, adj neki nevet, pl. <code>SeeRPG Log Sync</code></li>
-              <li>Trigger: <strong>"Amikor a számítógép elindul"</strong></li>
-              <li>A varázsló végeztével nyisd meg újra a feladat tulajdonságait, a <strong>"Triggerek"</strong> fülön szerkeszd úgy, hogy <strong>ismétlődjön 1 percenként, korlátlan ideig</strong></li>
-              <li>Action (Művelet): <strong>"Program indítása"</strong>
-                <ul class="guide-sublist">
-                  <li>Program/parancsfájl: <code>robocopy</code></li>
-                  <li>Argumentumok hozzáadása: <div class="guide-code">"%ProgramData%\SeeRPG\logs" "%USERPROFILE%\Documents\SeeRPG_Logs" /MIR /R:1 /W:1</div></li>
-                </ul>
-              </li>
-            </ol>
-            <p style="color:var(--see-text-muted); font-size:12px;">Ettől kezdve a <code>Dokumentumok\SeeRPG_Logs</code> mindig automatikusan szinkronban lesz a valódi log-mappával - ezzel nem kell többé foglalkoznod.</p>
-          </div>
-
-          <div class="guide-block">
-            <div class="guide-block-title"><i class="fa-solid fa-folder-open"></i> 3. lépés - Mappa bekötése a dashboardon</div>
-            <p>Menj a főoldalon a <strong>"Logok beolvasása"</strong> panelhez, és az <strong>"Automata mappa-szinkron"</strong> dobozban kattints a <strong>"Mappa bekötése" / "Mappa kiválasztása"</strong> gombra, majd válaszd ki a <code>Dokumentumok\SeeRPG_Logs</code> mappát (ezt a böngésző már engedni fogja, mert nem esik a védett rendszer-mappák közé).</p>
-          </div>
-
-          <div class="guide-block">
-            <div class="guide-block-title"><i class="fa-solid fa-globe"></i> 4. lépés - Böngésző-függő eltérések</div>
-            <p><strong>Chrome / Edge</strong> esetén ez után az oldal <strong>teljesen automatikusan, kb. 30 másodpercenként</strong> újranézi a mappát és feldolgozza az új/módosult logokat - ezzel semmi további teendőd nincs, amíg a lap nyitva van a böngészőben.</p>
-            <p><strong>Brave</strong> esetén a böngésző adatvédelmi okból nem engedi az igazi, időzített háttér-szinkront (ez Brave-oldali korlátozás, egy weboldal ezt nem tudja megkerülni). Ehelyett a dashboard automatikusan egy tartalék módra vált: a <strong>"Mappa kiválasztása" / "Szinkron most"</strong> gombra kattintva egyetlen kattintással újraolvassa a teljes mappát. Ha szeretnéd megpróbálni feloldani ezt a korlátozást:</p>
-            <ol class="guide-list">
-              <li>Írd be a címsorba: <code>brave://flags/#file-system-access-api</code></li>
-              <li>Állítsd <strong>"Enabled"</strong>-re, majd indítsd újra a Brave-t</li>
-              <li>Próbáld meg újra a "Mappa bekötése" gombot - ha bejön, a teljes automatikus (30 mp-es) szinkron is elérhetővé válik nálad is</li>
-            </ol>
-            <p style="color:var(--see-text-muted); font-size:12px;">Ha a flag bekapcsolása után is elutasítja, ez Brave-verziófüggő és nem javítható az oldal részéről - ilyenkor a kézi "Szinkron most" gomb, vagy Chrome/Edge használata a legjobb megoldás.</p>
-          </div>
-
-          <div class="guide-block">
-            <div class="guide-block-title"><i class="fa-solid fa-list-check"></i> Összefoglalva</div>
-            <ol class="guide-list">
-              <li>Hozd létre a <code>Dokumentumok\SeeRPG_Logs</code> mappát, és állítsd be az automata Robocopy másolást (Ütemezett feladatok)</li>
-              <li>A dashboardon kösd be ezt a mappát a "Mappa bekötése" / "Mappa kiválasztása" gombbal</li>
-              <li>Chrome/Edge-ben ezután minden automatikus; Brave-ben időnként kattints a "Szinkron most" gombra</li>
-            </ol>
+            <div class="guide-block-title"><i class="fa-solid fa-cloud-arrow-up"></i> 2. lépés - Log fájl(ok) feltöltése</div>
+            <p>Tallózd be, vagy húzd rá a "Logok beolvasása" dobozra a szerver <code>.log</code> / <code>.txt</code> fájljait (akár egyszerre többet is). A "Betöltés és elemzés" gombra kattintva egy előnézet mutatja, mit ismert fel a rendszer az egyes fájlokból - ha ez rendben van, az "Adatok mentése" gombbal véglegesítheted.</p>
+            <p style="color:var(--see-text-muted); font-size:12px;">Ugyanazt a fájlt bátran feltöltheted újra (pl. ha egy nap közben frissült) - a rendszer felismeri és csak a változást dolgozza fel újra, nem duplázza az adatokat.</p>
           </div>
 
         </div>
@@ -1501,7 +1442,6 @@ async function showMainUcp() {
 
   switchPage('main');
   render();
-  tryResumeLogsFolderOnLoad();
 }
 
 // Elmenti, hogy a felhasználó milyen néven szerepel adminként a logokban -
@@ -1708,6 +1648,31 @@ async function closeCurrentMonth() {
   const monthKey = input.trim();
   if (!/^\d{4}-\d{2}$/.test(monthKey)) { alert('Érvénytelen formátum! Használd az ÉÉÉÉ-HH formát (pl. 2026-06).'); return; }
 
+  if (!confirm(`Biztosan lezárod a(z) "${monthKey}" hónapot?\n\nCsak az ehhez a hónaphoz tartozó Duty / Off Duty / Report / adminparancs adatok archiválásra kerülnek, ezek eltűnnek a munkaterületről. A más hónapba eső, esetleg még nyitva lévő adat változatlanul megmarad.`)) return;
+
+  const result = closeMonthByKey(monthKey);
+  if (result === 'empty') { alert(`Nincs "${monthKey}" hónaphoz tartozó adat a nyitott munkaterületen - ellenőrizd a hónap nevét.`); return; }
+
+  const ok = await saveGlobal();
+  if (ok) {
+    switchPage('monthly');
+    render();
+  } else {
+    alert('Hiba történt a hónap lezárása közben, próbáld újra!');
+  }
+}
+
+// A tényleges archiválási logika, prompt/confirm/mentés NÉLKÜL (ezt hívja a fenti,
+// interaktív closeCurrentMonth() ÉS a reopenMonth() is, amikor egy lezárt hónap
+// megnyitása előtt csendben le kell zárnia az éppen nyitva lévő időszakot, hogy a
+// két hónap adata sose keveredjen össze a munkaterületen). Visszatérési érték:
+// 'ok' ha sikeresen archivált, 'empty' ha nem volt mit archiválni erre a hónapra.
+// A hívó felelőssége a saveGlobal() elhívása.
+function closeMonthByKey(monthKey) {
+  const dList = globalData[currentUser].duty || [];
+  const oList = globalData[currentUser].off || [];
+  const reps = globalData[currentUser].reports || {};
+
   // CSAK a megadott hónaphoz (monthKey) tartozó napokat válogatjuk ki - minden más,
   // más hónapba eső nyitott adat VÁLTOZATLANUL a munkaterületen marad, hogy külön,
   // a saját nevével lezárható legyen később. Ez akadályozza meg, hogy két különböző
@@ -1727,11 +1692,8 @@ async function closeCurrentMonth() {
   const adminActionsForMonth = adminActionsList.filter(ev => ev && ev.date && ev.date.substring(0, 7) === monthKey);
 
   if (dutyForMonth.length === 0 && offForMonth.length === 0 && Object.keys(repsForMonth).length === 0 && Object.keys(cmdsForMonth).length === 0 && reportLogForMonth.length === 0 && adminActionsForMonth.length === 0) {
-    alert(`Nincs "${monthKey}" hónaphoz tartozó adat a nyitott munkaterületen - ellenőrizd a hónap nevét.`);
-    return;
+    return 'empty';
   }
-
-  if (!confirm(`Biztosan lezárod a(z) "${monthKey}" hónapot?\n\nCsak az ehhez a hónaphoz tartozó Duty / Off Duty / Report / adminparancs adatok archiválásra kerülnek, ezek eltűnnek a munkaterületről. A más hónapba eső, esetleg még nyitva lévő adat változatlanul megmarad.`)) return;
 
   if (!globalData[currentUser].closedMonths) globalData[currentUser].closedMonths = {};
   const existing = globalData[currentUser].closedMonths[monthKey] || { duty: [], off: [], reports: {}, commandsByDay: {}, reportLog: [], adminActions: [] };
@@ -1747,7 +1709,7 @@ async function closeCurrentMonth() {
   // már archivált nap adatait egy újabb log-feltöltés frissíti), ugyanaz a napi érték
   // duplán (vagy többszörösen) beszámítódna az archívumba.
   Object.keys(repsForMonth).forEach(d => { existing.reports[d] = repsForMonth[d]; });
-  // Adminparancsok (fixveh / asegit / agyogyit / adminjail / kick) napi bontásának
+  // Adminparancsok (fixveh / asegit / agyogyit / adminjail / kick / ban) napi bontásának
   // archiválása - ugyanezen okból FELÜLÍRÁSSAL, nem összeadással.
   existing.commandsByDay = existing.commandsByDay || {};
   Object.keys(cmdsForMonth).forEach(d => {
@@ -1756,7 +1718,8 @@ async function closeCurrentMonth() {
       asegit: cmdsForMonth[d].asegit || 0,
       agyogyit: cmdsForMonth[d].agyogyit || 0,
       adminjail: cmdsForMonth[d].adminjail || 0,
-      kick: cmdsForMonth[d].kick || 0
+      kick: cmdsForMonth[d].kick || 0,
+      ban: cmdsForMonth[d].ban || 0
     };
   });
   globalData[currentUser].closedMonths[monthKey] = existing;
@@ -1785,13 +1748,7 @@ async function closeCurrentMonth() {
   globalData[currentUser].adminActions = adminActionsList.filter(ev => !(ev && ev.date && ev.date.substring(0, 7) === monthKey));
   selectedItems = { duty: {}, off: {}, reports: {} };
 
-  const ok = await saveGlobal();
-  if (ok) {
-    switchPage('monthly');
-    render();
-  } else {
-    alert('Hiba történt a hónap lezárása közben, próbáld újra!');
-  }
+  return 'ok';
 }
 
 async function reopenMonth(monthKey) {
@@ -1804,11 +1761,29 @@ async function reopenMonth(monthKey) {
     || (globalData[currentUser].off || []).length > 0
     || Object.keys(globalData[currentUser].reports || {}).length > 0;
 
-  let msg = `Biztosan újra megnyitod a(z) ${monthKey} hónapot?\n\nA lezárt hónap adatai visszakerülnek a Munkaterületre szerkesztésre. Ez NEM indít automatikusan új hónapot.`;
+  let msg = `Biztosan újra megnyitod a(z) ${monthKey} hónapot?\n\nA lezárt hónap adatai visszakerülnek a Munkaterületre szerkesztésre.`;
   if (hasOpenData) {
-    msg += `\n\nFIGYELEM: a Munkaterületen jelenleg már van más, még le nem zárt adat! A megnyitott hónap adatai hozzáadódnak ezekhez. Lezáráskor ügyelj a helyes hónap névre, nehogy összekeveredjenek az adatok.`;
+    msg += `\n\nFIGYELEM: a Munkaterületen jelenleg más, még le nem zárt hónap adata is van - hogy ez sose keveredjen össze a(z) ${monthKey} adataival, előbb automatikusan lezárom (archiválom) a jelenleg nyitva lévő hónapo(ka)t a saját dátumaik alapján, és csak utána nyitom meg a(z) ${monthKey} hónapot egy tiszta munkaterületre.`;
   }
   if (!confirm(msg)) return;
+
+  // Ha van bármilyen még nyitott (le nem zárt) adat a munkaterületen, azt ELŐSZÖR
+  // csendben (prompt/megerősítés nélkül) lezárjuk - a saját hónapja(i) alapján -,
+  // hogy a most megnyitandó lezárt hónap adatai SOSE keveredjenek össze egy másik,
+  // még nyitva lévő hónap adataival. Ciklust használunk, mert elméletileg több
+  // különböző hónap adata is keveredhet a munkaterületen egyszerre.
+  let safetyCounter = 0;
+  while (
+    ((globalData[currentUser].duty || []).length > 0
+      || (globalData[currentUser].off || []).length > 0
+      || Object.keys(globalData[currentUser].reports || {}).length > 0)
+    && safetyCounter < 24
+  ) {
+    const openKey = getCurrentOpenMonthKey();
+    if (!openKey || openKey === monthKey) break;
+    closeMonthByKey(openKey);
+    safetyCounter++;
+  }
 
   globalData[currentUser].duty = (globalData[currentUser].duty || []).concat(arc.duty || []);
   globalData[currentUser].off = (globalData[currentUser].off || []).concat(arc.off || []);
@@ -1825,12 +1800,13 @@ async function reopenMonth(monthKey) {
       asegit: arc.commandsByDay[d].asegit || 0,
       agyogyit: arc.commandsByDay[d].agyogyit || 0,
       adminjail: arc.commandsByDay[d].adminjail || 0,
-      kick: arc.commandsByDay[d].kick || 0
+      kick: arc.commandsByDay[d].kick || 0,
+      ban: arc.commandsByDay[d].ban || 0
     };
   });
   globalData[currentUser].commandsByDay = cmdsByDay;
 
-  // Report napló és Adminjail/Kick előzmények visszahozása a nyitott munkaterületre -
+  // Report napló és Adminjail/Kick/Ban előzmények visszahozása a nyitott munkaterületre -
   // dedup, hogy ha esetleg már lenne ott azonos bejegyzés, ne duplázódjon.
   const reportLogMap = new Map();
   (globalData[currentUser].reportLog || []).forEach(ev => reportLogMap.set(ev.id, ev));
@@ -1934,6 +1910,7 @@ function renderMonthEdit() {
           <span>agyogyit <strong style="color:#fff;">${c.agyogyit || 0}</strong></span>
           <span>adminjail <strong style="color:#fff;">${c.adminjail || 0}</strong></span>
           <span>kick <strong style="color:#fff;">${c.kick || 0}</strong></span>
+          <span>ban <strong style="color:#fff;">${c.ban || 0}</strong></span>
         </span>
         <div class="see-item-actions">
           <button class="see-action-btn" onclick="editMonthCommandDay('${d}')">✏</button>
@@ -1958,10 +1935,11 @@ function renderMonthEdit() {
   const arcAdminActions = arc.adminActions || [];
   document.getElementById('monthEditAdminActions').innerHTML = arcAdminActions.map(ev => {
     const isJail = ev.type === 'adminjail';
-    const icon = isJail ? 'fa-jail' : 'fa-boot';
-    const label = isJail ? 'AdminJail' : 'Kick';
-    const color = isJail ? 'var(--see-gold)' : 'var(--see-danger)';
-    const detail = isJail ? `${ev.minutes} perc` : '';
+    const isBan = ev.type === 'ban';
+    const icon = isJail ? 'fa-jail' : (isBan ? 'fa-ban' : 'fa-boot');
+    const label = isJail ? 'AdminJail' : (isBan ? 'Ban' : 'Kick');
+    const color = isJail ? 'var(--see-gold)' : (isBan ? '#f472b6' : 'var(--see-danger)');
+    const detail = isJail ? `${ev.minutes} perc` : (isBan && ev.expiry ? ev.expiry : '');
     const reasonHtml = ev.reason ? `<div style="font-size:10px; color:var(--see-text-muted); margin-top:2px;">Indok: ${ev.reason}</div>` : '';
     const evKey = `${ev.date}|${ev.time}|${ev.type}|${ev.target}`;
     return `
@@ -2045,12 +2023,15 @@ async function editMonthCommandDay(date) {
   if (newAdminjail === null) return;
   const newKick = prompt(`kick parancsok száma (${date}):`, c.kick || 0);
   if (newKick === null) return;
+  const newBan = prompt(`ban (kitiltás) száma (${date}):`, c.ban || 0);
+  if (newBan === null) return;
   arc.commandsByDay[date] = {
     fixveh: isNaN(newFixveh) || newFixveh.trim() === '' ? (c.fixveh || 0) : parseInt(newFixveh, 10),
     asegit: isNaN(newAsegit) || newAsegit.trim() === '' ? (c.asegit || 0) : parseInt(newAsegit, 10),
     agyogyit: isNaN(newAgyogyit) || newAgyogyit.trim() === '' ? (c.agyogyit || 0) : parseInt(newAgyogyit, 10),
     adminjail: isNaN(newAdminjail) || newAdminjail.trim() === '' ? (c.adminjail || 0) : parseInt(newAdminjail, 10),
-    kick: isNaN(newKick) || newKick.trim() === '' ? (c.kick || 0) : parseInt(newKick, 10)
+    kick: isNaN(newKick) || newKick.trim() === '' ? (c.kick || 0) : parseInt(newKick, 10),
+    ban: isNaN(newBan) || newBan.trim() === '' ? (c.ban || 0) : parseInt(newBan, 10)
   };
   await saveGlobal(); render(); renderMonthEdit();
 }
@@ -2226,7 +2207,7 @@ function extractDayCountsFromLogText(text) {
 // Napi bontásban tárolunk (a log sor saját dátuma alapján), hogy a "Hónap lezárása"
 // ugyanúgy tudja archiválni/nullázni, mint a reportoknál - lezárás után az adott napok
 // nem térnek vissza a nyitott munkaterületre, csak ha ténylegesen újra feltöltik a logot.
-function emptyCommandCounts() { return { fixveh: 0, asegit: 0, agyogyit: 0, adminjail: 0, kick: 0 }; }
+function emptyCommandCounts() { return { fixveh: 0, asegit: 0, agyogyit: 0, adminjail: 0, kick: 0, ban: 0 }; }
 
 function extractCommandCountsFromLogText(text) {
   const byDay = {};
@@ -2291,6 +2272,12 @@ function extractAdminActionEventsFromLogText(text, adminName) {
 
   const jailRe = /^\[(\d{4}-\d{2}-\d{2})\s(\d{2}:\d{2}):\d{2}\]\s\[CHAT\]\s(.+?)\sAdminJailbe tette\s(.+?)\sjátékost\s(\d+)\spercre\.(?:Indok:\s*(.*))?$/;
   const kickRe = /^\[(\d{4}-\d{2}-\d{2})\s(\d{2}:\d{2}):\d{2}\]\s\[CHAT\]\s(.+?)\ski lett rúgva a szerverről\s(.+?)\sáltal\.(?:Indok:\s*(.*))?$/;
+  // A tényleges kitiltás (ban) a szerveren NEM egy /ban konzolparancson keresztül
+  // történik (ezért nincs is [INPUT] sora), hanem egy külső admin-felületről - a
+  // logban EGYEDÜL ez a [CHAT] visszaigazoló üzenet árulkodik róla, pl.:
+  //   "Ayden Norton ki lett tiltva a szerverről FőAdmin Justin által.Lejárat: sohaIndok: FUN, NonRP @Taco"
+  // A "Lejárat:" és "Indok:" rész opcionális és szóköz nélkül követi egymást.
+  const banRe = /^\[(\d{4}-\d{2}-\d{2})\s(\d{2}:\d{2}):\d{2}\]\s\[CHAT\]\s(.+?)\ski lett tiltva a szerverről\s(.+?)\sáltal\.(?:Lejárat:\s*(.*?))?(?:Indok:\s*(.*))?$/;
 
   const lines = text.split(/\r?\n/);
   for (let i = 0; i < lines.length; i++) {
@@ -2315,6 +2302,17 @@ function extractAdminActionEventsFromLogText(text, adminName) {
         if (cont) reason = cont[1].trim();
       }
       events.push({ type: 'kick', date: m[1], time: m[2], admin: m[4].trim(), target: m[3].trim(), reason });
+      continue;
+    }
+
+    m = line.match(banRe);
+    if (m && nameEndRe.test(m[4].trim())) {
+      let reason = (m[6] || '').trim();
+      if (!reason && i + 1 < lines.length && !timestampRe.test(lines[i + 1])) {
+        const cont = lines[i + 1].match(indokContinuationRe);
+        if (cont) reason = cont[1].trim();
+      }
+      events.push({ type: 'ban', date: m[1], time: m[2], admin: m[4].trim(), target: m[3].trim(), expiry: (m[5] || '').trim(), reason });
       continue;
     }
   }
@@ -2589,6 +2587,7 @@ function sumCommandCounts(commandsByDay) {
     totals.agyogyit += (c && c.agyogyit) || 0;
     totals.adminjail += (c && c.adminjail) || 0;
     totals.kick += (c && c.kick) || 0;
+    totals.ban += (c && c.ban) || 0;
   });
   return totals;
 }
@@ -2623,273 +2622,6 @@ function showToast(message, isError) {
   el.textContent = message;
   container.appendChild(el);
   setTimeout(() => { el.style.transition = 'opacity 0.3s'; el.style.opacity = '0'; setTimeout(() => el.remove(), 300); }, 6000);
-}
-
-// ============================================================
-// AUTOMATA MAPPA-SZINKRON (File System Access API - Chrome/Edge/Brave)
-// ============================================================
-// Egyszeri engedéllyel bekötött mappát (log fájlok tárolási helye) az oldal
-// magától, időzítve újranézi, és minden ÚJ vagy MÓDOSULT log fájlt automatikusan
-// feldolgoz - kézi behúzás/feltöltés nélkül. A mappa "handle"-jét az IndexedDB-ben
-// tároljuk (a böngésző engedélye ehhez van kötve, oldal-újratöltés után is
-// megpróbáljuk csendben visszaállítani; ha a böngésző időközben visszavonta az
-// engedélyt, egy gombbal ("Engedély megerősítése") egy kattintással újra meg
-// lehet erősíteni - ezt böngésző-biztonsági okokból mindig egy user-kattintás
-// kell elindítania, automatikusan nem kérhető újra).
-let currentDirHandle = null;
-let folderAutoSyncTimer = null;
-const FOLDER_AUTO_SYNC_INTERVAL_MS = 30000; // 30 másodperc
-const HAS_FS_ACCESS_API = typeof window.showDirectoryPicker === 'function';
-
-// A Brave böngésző adatvédelmi okokból alapból LETILTJA a File System Access API-t
-// (window.showDirectoryPicker), ezért ott az igazi, időzített háttér-szinkron nem
-// megvalósítható - ezt egy weboldal nem tudja megkerülni. Ilyenkor automatikusan egy
-// tartalék módra váltunk: egy régebbi, minden Chromium-alapú böngészőben (Brave-ben is)
-// működő <input type="file" webkitdirectory> mezővel egy kattintással be lehet tölteni
-// a teljes mappa tartalmát, és csak az ÚJ / MÓDOSULT fájlokat dolgozzuk fel - viszont ezt
-// (időzített automatikus háttérfrissítés helyett) minden alkalommal egy kattintással
-// újra el kell indítani, amikor új log kerül a mappába.
-function initFolderSyncUI() {
-  const descEl = document.getElementById('folderSyncDesc');
-  const connectBtn = document.getElementById('folderConnectBtn');
-  if (!descEl || !connectBtn) return;
-  if (HAS_FS_ACCESS_API) {
-    descEl.innerHTML = 'Kösd be egyszer azt a mappát, ahova a szerver a log fájlokat menti - utána az oldal magától, kb. 30 másodpercenként újranézi a mappát, és minden új vagy módosult log fájlt automatikusan feldolgoz, kézi feltöltés nélkül.';
-    connectBtn.innerHTML = '<i class="fa-solid fa-folder-open"></i> Mappa bekötése';
-  } else {
-    descEl.innerHTML = 'A böngésződ (pl. Brave) adatvédelmi okokból nem engedi az igazi, időzített háttér-szinkront. Helyette itt egyetlen kattintással betöltheted a teljes mappa tartalmát - csak az új/módosult fájlokat dolgozzuk fel. Ha új log kerül a mappába, csak kattints újra a gombra. (A teljes automatikus, kattintás nélküli működéshez próbáld meg engedélyezni a <code>brave://flags/#file-system-access-api</code> beállítást, majd indítsd újra a böngészőt, vagy használj Chrome / Edge böngészőt.)';
-    connectBtn.innerHTML = '<i class="fa-solid fa-folder-open"></i> Mappa kiválasztása';
-  }
-}
-document.addEventListener('DOMContentLoaded', initFolderSyncUI);
-
-
-function handleDbKey() { return `dir_${currentUser}`; }
-
-function openHandleDB() {
-  return new Promise((resolve, reject) => {
-    const req = indexedDB.open('seerpg_dashboard_handles', 1);
-    req.onupgradeneeded = () => { req.result.createObjectStore('handles'); };
-    req.onsuccess = () => resolve(req.result);
-    req.onerror = () => reject(req.error);
-  });
-}
-
-async function saveDirHandleToDB(handle) {
-  const db = await openHandleDB();
-  return new Promise((resolve, reject) => {
-    const tx = db.transaction('handles', 'readwrite');
-    tx.objectStore('handles').put(handle, handleDbKey());
-    tx.oncomplete = () => resolve();
-    tx.onerror = () => reject(tx.error);
-  });
-}
-
-async function loadDirHandleFromDB() {
-  const db = await openHandleDB();
-  return new Promise((resolve, reject) => {
-    const tx = db.transaction('handles', 'readonly');
-    const req = tx.objectStore('handles').get(handleDbKey());
-    req.onsuccess = () => resolve(req.result || null);
-    req.onerror = () => reject(req.error);
-  });
-}
-
-async function verifyDirPermission(handle, requestIfNeeded) {
-  const opts = { mode: 'read' };
-  try {
-    if ((await handle.queryPermission(opts)) === 'granted') return true;
-    if (requestIfNeeded && (await handle.requestPermission(opts)) === 'granted') return true;
-  } catch (e) { console.error('Jogosultság-ellenőrzés hiba:', e); }
-  return false;
-}
-
-function updateFolderSyncStatus(text) {
-  const el = document.getElementById('folderSyncStatus');
-  if (el) el.textContent = text;
-}
-
-function syncedFilesMetaKey() { return `seerpg_syncedFiles_${currentUser}`; }
-function loadSyncedFilesMeta() {
-  try { return JSON.parse(localStorage.getItem(syncedFilesMetaKey()) || '{}'); } catch (e) { return {}; }
-}
-function saveSyncedFilesMeta(meta) {
-  try { localStorage.setItem(syncedFilesMetaKey(), JSON.stringify(meta)); } catch (e) { console.error(e); }
-}
-
-async function listLogFilesInDir(handle) {
-  const files = [];
-  for await (const entry of handle.values()) {
-    if (entry.kind === 'file' && /\.(log|txt)$/i.test(entry.name)) {
-      try { files.push(await entry.getFile()); } catch (e) { console.error('Nem sikerült megnyitni:', entry.name, e); }
-    }
-  }
-  return files;
-}
-
-async function connectLogsFolder() {
-  if (!HAS_FS_ACCESS_API) {
-    // A böngésző (pl. Brave) nem támogatja az igazi mappa-bekötést - tartalék
-    // megoldásként megnyitjuk a natív mappa-választót (webkitdirectory), ami
-    // egy kattintással beolvassa a teljes mappa tartalmát.
-    document.getElementById('logFolderFallbackInput').click();
-    return;
-  }
-  try {
-    const handle = await window.showDirectoryPicker({ id: 'seerpgLogs', mode: 'read' });
-    const granted = await verifyDirPermission(handle, true);
-    if (!granted) { alert('Engedély nélkül nem tudom beolvasni a mappa tartalmát.'); return; }
-    currentDirHandle = handle;
-    await saveDirHandleToDB(handle);
-    document.getElementById('folderSyncNowBtn').style.display = '';
-    document.getElementById('folderReauthBtn').style.display = 'none';
-    updateFolderSyncStatus(`Bekötve: "${handle.name}" - első szinkronizálás folyamatban...`);
-    startFolderAutoSyncTimer();
-    await autoSyncLogsFolder(false);
-  } catch (e) {
-    if (e && e.name === 'AbortError') return; // a felhasználó bezárta a mappa-választót
-    console.error(e);
-    alert('Nem sikerült bekötni a mappát: ' + (e && e.message ? e.message : e));
-  }
-}
-
-// Tartalék útvonal (Brave és más, File System Access API-t nem támogató böngészők):
-// a <input type="file" webkitdirectory> mező egy kattintással visszaadja a teljes
-// mappa tartalmát (FileList-ként), amit ugyanúgy - csak új/módosult fájlokra szűrve -
-// dolgozunk fel, mint az automata szinkron esetén. Élő mappa-handle hiányában ezt a
-// böngésző nem tudja saját magától időzítve újrafuttatni - ehhez mindig egy kattintás
-// kell, amikor új log kerül a mappába.
-async function handleFolderFallbackChange(event) {
-  const fileList = Array.from(event.target.files || []);
-  const relevant = fileList.filter(f => /\.(log|txt)$/i.test(f.name));
-  event.target.value = ''; // hogy ugyanazt a mappát újra ki lehessen választani később
-
-  if (relevant.length === 0) {
-    updateFolderSyncStatus('A kiválasztott mappában nem található .log / .txt fájl.');
-    return;
-  }
-
-  const folderLabel = relevant[0].webkitRelativePath ? relevant[0].webkitRelativePath.split('/')[0] : 'kiválasztott mappa';
-  document.getElementById('folderSyncNowBtn').style.display = '';
-  updateFolderSyncStatus(`Mappa: "${folderLabel}" - feldolgozás folyamatban...`);
-
-  // FONTOS: mivel ez a mód (Brave és más, File System Access API-t nem támogató
-  // böngészők tartalék útvonala) mindig egy kézi kattintással jár, itt NEM szűrünk
-  // "csak a változott fájlokra" - minden alkalommal az ÖSSZES, mappában talált log
-  // fájlt újraolvassuk, hogy biztosan a legfrissebb tartalmat dolgozzuk fel akkor is,
-  // ha egy fájl módosulási ideje/mérete valamiért nem változott érzékelhetően
-  // (pl. egy másoló eszköz miatt).
-  const meta = loadSyncedFilesMeta();
-  const result = await buildLogFileResults(relevant, { silent: true });
-  if (!result) { updateFolderSyncStatus(`Mappa: "${folderLabel}" - hiányzó admin név, lásd fenti figyelmeztetés.`); return; }
-
-  pendingLogBatch = result;
-  const ok = await confirmLogBreakdown(true);
-
-  if (ok) {
-    relevant.forEach(f => { meta[f.name] = { lastModified: f.lastModified, size: f.size }; });
-    saveSyncedFilesMeta(meta);
-    updateFolderSyncStatus(`Mappa: "${folderLabel}" - ${relevant.length} fájl újraolvasva (${new Date().toLocaleTimeString('hu-HU')}). Ha új log kerül a mappába, kattints újra a gombra a frissítéshez.`);
-    showToast(`${relevant.length} log fájl feldolgozva.`);
-  } else {
-    updateFolderSyncStatus(`Mappa: "${folderLabel}" - hiba a mentés közben, próbáld újra.`);
-  }
-}
-
-function syncLogsFolderNow() {
-  if (HAS_FS_ACCESS_API) { autoSyncLogsFolder(false, true); }
-  else { document.getElementById('logFolderFallbackInput').click(); }
-}
-
-async function reauthorizeLogsFolder() {
-  if (!currentDirHandle) return;
-  const granted = await verifyDirPermission(currentDirHandle, true);
-  if (granted) {
-    document.getElementById('folderReauthBtn').style.display = 'none';
-    updateFolderSyncStatus(`Bekötve: "${currentDirHandle.name}" - engedély megerősítve.`);
-    startFolderAutoSyncTimer();
-    await autoSyncLogsFolder(false);
-  } else {
-    alert('Az engedélyt nem sikerült megadni.');
-  }
-}
-
-function startFolderAutoSyncTimer() {
-  if (folderAutoSyncTimer) clearInterval(folderAutoSyncTimer);
-  folderAutoSyncTimer = setInterval(() => { autoSyncLogsFolder(true); }, FOLDER_AUTO_SYNC_INTERVAL_MS);
-}
-
-// Belépéskor megpróbáljuk csendben visszaállítani a korábban bekötött mappát -
-// ha a böngésző még mindig megadja rá az engedélyt (kérés/user-gesture nélkül),
-// az automata szinkron azonnal újraindul; ha nem, egy gombbal (user-kattintás)
-// egyszerűen megerősíthető.
-async function tryResumeLogsFolderOnLoad() {
-  if (!window.showDirectoryPicker) return;
-  try {
-    const handle = await loadDirHandleFromDB();
-    if (!handle) return;
-    currentDirHandle = handle;
-    const granted = await verifyDirPermission(handle, false);
-    if (granted) {
-      updateFolderSyncStatus(`Bekötve: "${handle.name}" - automata szinkron aktív.`);
-      document.getElementById('folderSyncNowBtn').style.display = '';
-      startFolderAutoSyncTimer();
-      await autoSyncLogsFolder(true);
-    } else {
-      updateFolderSyncStatus(`Korábban bekötött mappa: "${handle.name}" - az engedély megerősítése szükséges a folytatáshoz.`);
-      document.getElementById('folderReauthBtn').style.display = '';
-    }
-  } catch (e) {
-    console.error('Mappa visszaállítása sikertelen:', e);
-  }
-}
-
-async function autoSyncLogsFolder(silent, force) {
-  if (!currentDirHandle) { if (!silent) alert('Előbb köss be egy mappát a "Mappa bekötése" gombbal!'); return; }
-
-  const granted = await verifyDirPermission(currentDirHandle, false);
-  if (!granted) {
-    document.getElementById('folderReauthBtn').style.display = '';
-    if (!silent) alert('Az engedély lejárt - kattints az "Engedély megerősítése" gombra.');
-    return;
-  }
-  document.getElementById('folderReauthBtn').style.display = 'none';
-
-  let allFiles;
-  try {
-    allFiles = await listLogFilesInDir(currentDirHandle);
-  } catch (e) {
-    console.error(e);
-    if (!silent) alert('Nem sikerült beolvasni a mappa tartalmát.');
-    return;
-  }
-
-  const meta = loadSyncedFilesMeta();
-  const toProcess = force ? allFiles : allFiles.filter(f => {
-    const prev = meta[f.name];
-    return !prev || prev.lastModified !== f.lastModified || prev.size !== f.size;
-  });
-
-  if (toProcess.length === 0) {
-    updateFolderSyncStatus(`Bekötve: "${currentDirHandle.name}" - minden log naprakész (ellenőrizve: ${new Date().toLocaleTimeString('hu-HU')}).`);
-    if (!silent) showToast('Nincs új vagy módosult log fájl a mappában.');
-    return;
-  }
-
-  const result = await buildLogFileResults(toProcess, { silent: true });
-  if (!result) return; // hiányzó admin név esetén már jeleztünk (showToast)
-
-  pendingLogBatch = result;
-  const ok = await confirmLogBreakdown(true);
-
-  if (ok) {
-    toProcess.forEach(f => { meta[f.name] = { lastModified: f.lastModified, size: f.size }; });
-    saveSyncedFilesMeta(meta);
-    updateFolderSyncStatus(`Bekötve: "${currentDirHandle.name}" - ${toProcess.length} fájl ${force ? 'újraolvasva' : 'feldolgozva'} (${new Date().toLocaleTimeString('hu-HU')}).`);
-    showToast(`${toProcess.length} log fájl ${force ? 'újraolvasva' : 'automatikusan feldolgozva'}.`);
-  } else {
-    updateFolderSyncStatus(`Bekötve: "${currentDirHandle.name}" - hiba a mentés közben, próbálkozás később megismétlődik.`);
-  }
 }
 
 let pendingLogBatch = null;
@@ -2989,6 +2721,7 @@ function renderLogBreakdownModal(fileResults, latestUserData) {
       : `<div style="font-size:12px; color:var(--see-text-muted); padding:6px 0;">Nem található beszámítható report ebben a fájlban.</div>`;
     const updateBadge = fr.isUpdate ? ` <span style="font-size:10px; font-weight:700; color:var(--see-text-muted); text-transform:uppercase; background:rgba(255,255,255,0.06); padding:2px 8px; border-radius:6px;">Ismételt feltöltés - frissíti a fájl korábbi adatait</span>` : '';
     const cmdTotals = sumCommandCounts(fr.cmdCounts);
+    const banCountPreview = (fr.adminActionEvents || []).filter(ev => ev.type === 'ban').length;
     const dutySum = (fr.dutyPeriods || []).reduce((s, x) => s + x.perc, 0);
     const offSum = (fr.offPeriods || []).reduce((s, x) => s + x.perc, 0);
     const dutyRow = (fr.dutyPeriods && fr.dutyPeriods.length > 0)
@@ -2997,19 +2730,20 @@ function renderLogBreakdownModal(fileResults, latestUserData) {
           ${fr.dutyPeriods.map(p => `<div style="display:flex; justify-content:space-between; padding:3px 0;"><span>${p.date} (${p.on} - ${p.off})</span><span style="font-family:'Roboto Mono', monospace;">${p.perc} p</span></div>`).join('')}
         </div>`
       : `<div style="font-size:11px; color:var(--see-text-muted); padding-top:8px; margin-top:6px; border-top:1px solid var(--see-border);">Nem található "${latestUserData.logAdminName || ''}" nevű admin szolgálatba lépés/kilépés ebben a fájlban.</div>`;
-    const cmdRow = (cmdTotals.fixveh + cmdTotals.asegit + cmdTotals.agyogyit + cmdTotals.adminjail + cmdTotals.kick) > 0
+    const cmdRow = (cmdTotals.fixveh + cmdTotals.asegit + cmdTotals.agyogyit + cmdTotals.adminjail + cmdTotals.kick + banCountPreview) > 0
       ? `<div style="display:flex; gap:14px; flex-wrap:wrap; font-size:11px; color:var(--see-text-muted); padding-top:8px; margin-top:6px; border-top:1px solid var(--see-border);">
           <span><i class="fa-solid fa-car-burst" style="color:var(--see-gold);"></i> fixveh: <strong style="color:#fff;">${cmdTotals.fixveh}</strong></span>
           <span><i class="fa-solid fa-hand-holding-medical" style="color:var(--see-gold);"></i> asegit: <strong style="color:#fff;">${cmdTotals.asegit}</strong></span>
           <span><i class="fa-solid fa-kit-medical" style="color:var(--see-gold);"></i> agyogyit: <strong style="color:#fff;">${cmdTotals.agyogyit}</strong></span>
           <span><i class="fa-solid fa-jail" style="color:var(--see-gold);"></i> adminjail: <strong style="color:#fff;">${cmdTotals.adminjail}</strong></span>
           <span><i class="fa-solid fa-boot" style="color:var(--see-gold);"></i> kick: <strong style="color:#fff;">${cmdTotals.kick}</strong></span>
+          <span><i class="fa-solid fa-ban" style="color:var(--see-danger);"></i> ban: <strong style="color:#fff;">${banCountPreview}</strong></span>
         </div>`
       : '';
     const adminActionRow = (fr.adminActionEvents && fr.adminActionEvents.length > 0)
       ? `<div style="font-size:11px; color:var(--see-text-muted); padding-top:8px; margin-top:6px; border-top:1px solid var(--see-border);">
-          <div style="font-weight:700; margin-bottom:6px;"><i class="fa-solid fa-clock-rotate-left" style="color:var(--see-gold);"></i> Adminjail/Kick események ebből a fájlból: <strong style="color:#fff;">${fr.adminActionEvents.length} db</strong></div>
-          ${fr.adminActionEvents.map(ev => `<div style="display:flex; justify-content:space-between; padding:3px 0;"><span>${ev.date} ${ev.time} · ${ev.type === 'adminjail' ? 'AdminJail' : 'Kick'} · ${ev.target}</span></div>`).join('')}
+          <div style="font-weight:700; margin-bottom:6px;"><i class="fa-solid fa-clock-rotate-left" style="color:var(--see-gold);"></i> Adminjail/Kick/Ban események ebből a fájlból: <strong style="color:#fff;">${fr.adminActionEvents.length} db</strong></div>
+          ${fr.adminActionEvents.map(ev => `<div style="display:flex; justify-content:space-between; padding:3px 0;"><span>${ev.date} ${ev.time} · ${ev.type === 'adminjail' ? 'AdminJail' : (ev.type === 'ban' ? 'Ban' : 'Kick')} · ${ev.target}</span></div>`).join('')}
         </div>`
       : '';
     return `
@@ -3186,6 +2920,24 @@ async function confirmLogBreakdown(silent) {
     });
   });
 
+  // A "ban" számláló (a felső FIXVEH/ASEGIT/AGYOGYIT/ADMINJAIL/KICK/BAN sávban)
+  // nem /INPUT parancsból, hanem a fenti, duplikátummentes admin-akció listából
+  // származik (mivel a kitiltásnak nincs konzolparancsa) - ezért ezt itt, naponta
+  // összesítve külön írjuk bele a commandsByDay-be (a megfelelő nyitott vagy már
+  // lezárt hónap archívumába, ugyanazzal a logikával, mint a többi mező).
+  const banCountByDate = {};
+  adminActionMap.forEach(ev => {
+    if (ev.type !== 'ban') return;
+    banCountByDate[ev.date] = (banCountByDate[ev.date] || 0) + 1;
+  });
+  Object.keys(banCountByDate).forEach(date => {
+    const mk = date.substring(0, 7);
+    const target = latestUserData.closedMonths[mk] ? latestUserData.closedMonths[mk] : latestUserData;
+    target.commandsByDay = target.commandsByDay || {};
+    if (!target.commandsByDay[date]) target.commandsByDay[date] = emptyCommandCounts();
+    target.commandsByDay[date].ban = banCountByDate[date];
+  });
+
   const openReportLog = [];
   const reportLogByClosedMonth = {};
   reportLogMap.forEach(ev => {
@@ -3314,6 +3066,7 @@ function render() {
             <span><i class="fa-solid fa-kit-medical" style="color:var(--see-gold);"></i> agyogyit: <strong style="color:#fff; font-family:'Roboto Mono', monospace;">${mCmds.agyogyit}</strong></span>
             <span><i class="fa-solid fa-jail" style="color:var(--see-gold);"></i> adminjail: <strong style="color:#fff; font-family:'Roboto Mono', monospace;">${mCmds.adminjail}</strong></span>
             <span><i class="fa-solid fa-boot" style="color:var(--see-gold);"></i> kick: <strong style="color:#fff; font-family:'Roboto Mono', monospace;">${mCmds.kick}</strong></span>
+            <span><i class="fa-solid fa-ban" style="color:var(--see-danger);"></i> ban: <strong style="color:#fff; font-family:'Roboto Mono', monospace;">${mCmds.ban}</strong></span>
           </div>
         </div>
       </div>`;
@@ -3343,10 +3096,11 @@ function render() {
   const adminActions = openMonthKeyForLogs ? adminActionsAll.filter(ev => ev && ev.date && ev.date.substring(0, 7) === openMonthKeyForLogs) : adminActionsAll;
   adminActionStream.innerHTML = adminActions.map((ev) => {
     const isJail = ev.type === 'adminjail';
-    const icon = isJail ? 'fa-jail' : 'fa-boot';
-    const label = isJail ? 'AdminJail' : 'Kick';
-    const color = isJail ? 'var(--see-gold)' : 'var(--see-danger)';
-    const detail = isJail ? `${ev.minutes} perc` : '';
+    const isBan = ev.type === 'ban';
+    const icon = isJail ? 'fa-jail' : (isBan ? 'fa-ban' : 'fa-boot');
+    const label = isJail ? 'AdminJail' : (isBan ? 'Ban' : 'Kick');
+    const color = isJail ? 'var(--see-gold)' : (isBan ? '#f472b6' : 'var(--see-danger)');
+    const detail = isJail ? `${ev.minutes} perc` : (isBan && ev.expiry ? ev.expiry : '');
     const reasonHtml = ev.reason ? `<span style="font-size:11px; color:var(--see-text-muted);"> · Indok: ${ev.reason}</span>` : '';
     const evKey = `${ev.date}|${ev.time}|${ev.type}|${ev.target}`;
     return `
@@ -3360,7 +3114,7 @@ function render() {
         <span class="see-item-value" style="color:#fff;">${detail}</span>
         <div class="see-item-actions"><button class="see-action-btn del" onclick="delAdminActionEntry('${evKey.replace(/'/g, "\\'")}')">✕</button></div>
       </div>`;
-  }).join('') || '<div style="font-size:13px;color:var(--see-text-muted); text-align:center; padding:16px;">Még nincs log-forrásból beolvasott adminjail/kick esemény ebben a nyitott hónapban.</div>';
+  }).join('') || '<div style="font-size:13px;color:var(--see-text-muted); text-align:center; padding:16px;">Még nincs log-forrásból beolvasott adminjail/kick/ban esemény ebben a nyitott hónapban.</div>';
   document.getElementById('adminActionCount').textContent = adminActions.length ? `${adminActions.length} db` : '';
   const adminActionCountQuickEl = document.getElementById('adminActionCountQuick');
   if (adminActionCountQuickEl) adminActionCountQuickEl.textContent = adminActions.length;
@@ -3394,7 +3148,8 @@ function render() {
       <span class="cmd-stat-chip"><i class="fa-solid fa-hand-holding-medical"></i> asegit <strong>${openCmds.asegit}</strong></span>
       <span class="cmd-stat-chip"><i class="fa-solid fa-kit-medical"></i> agyogyit <strong>${openCmds.agyogyit}</strong></span>
       <span class="cmd-stat-chip"><i class="fa-solid fa-jail"></i> adminjail <strong>${openCmds.adminjail}</strong></span>
-      <span class="cmd-stat-chip"><i class="fa-solid fa-boot"></i> kick <strong>${openCmds.kick}</strong></span>`;
+      <span class="cmd-stat-chip"><i class="fa-solid fa-boot"></i> kick <strong>${openCmds.kick}</strong></span>
+      <span class="cmd-stat-chip"><i class="fa-solid fa-ban"></i> ban <strong>${openCmds.ban}</strong></span>`;
   }
 
   updateBulkDeleteButtonVisibility('duty');
