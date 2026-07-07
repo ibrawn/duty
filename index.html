@@ -668,6 +668,78 @@ input[type="file"] { display: none; }
   .see-dropdown-btn span { display: none; }
   .overview-metric { flex-basis: 100%; }
 }
+/* "Útmutató" oldal stílusai */
+.guide-content { display: flex; flex-direction: column; gap: 20px; }
+.guide-block {
+  background: var(--see-card-inner, #1c1f27);
+  border: 1px solid var(--see-border, #333);
+  border-radius: 10px;
+  padding: 16px 20px;
+}
+.guide-block-title {
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--see-gold, #d4af37);
+  margin-bottom: 10px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.guide-block p { font-size: 13px; line-height: 1.6; margin: 8px 0; color: #e6e6e6; }
+.guide-block code {
+  background: rgba(255,255,255,0.08);
+  padding: 2px 6px;
+  border-radius: 4px;
+  font-family: 'Roboto Mono', monospace;
+  font-size: 12px;
+  color: var(--see-success, #2ecc71);
+}
+.guide-code {
+  background: #11131a;
+  border: 1px solid var(--see-border, #333);
+  border-radius: 6px;
+  padding: 10px 14px;
+  font-family: 'Roboto Mono', monospace;
+  font-size: 12.5px;
+  color: var(--see-success, #2ecc71);
+  margin: 8px 0;
+  overflow-x: auto;
+  white-space: pre-wrap;
+  word-break: break-all;
+}
+.guide-list { margin: 8px 0 8px 20px; font-size: 13px; line-height: 1.7; color: #e6e6e6; }
+.guide-list li { margin-bottom: 6px; }
+.guide-sublist { margin: 6px 0 6px 18px; font-size: 12.5px; color: #e6e6e6; }
+.guide-sublist li { margin-bottom: 4px; }
+
+/* Toast értesítések (pl. automata mappa-szinkron visszajelzései) */
+#seeToastContainer {
+  position: fixed;
+  bottom: 24px;
+  right: 24px;
+  z-index: 99999;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  max-width: 360px;
+}
+.see-toast {
+  background: var(--see-card-inner, #1c1f27);
+  border: 1px solid var(--see-border, #333);
+  border-left: 4px solid var(--see-success, #2ecc71);
+  color: #fff;
+  padding: 12px 16px;
+  border-radius: 8px;
+  font-size: 12.5px;
+  line-height: 1.4;
+  box-shadow: 0 6px 18px rgba(0,0,0,0.35);
+  animation: seeToastIn 0.25s ease-out;
+}
+.see-toast.error { border-left-color: var(--see-danger, #e74c3c); }
+@keyframes seeToastIn {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
 </style>
 </head>
 <body>
@@ -765,6 +837,7 @@ input[type="file"] { display: none; }
       <button class="side-nav-item" id="navMonthlyBtn" onclick="switchPage('monthly')"><i class="fa-regular fa-calendar-days"></i><span>Havi összesítések</span></button>
       <button class="side-nav-item side-nav-item-stats" id="devStatsBtn" style="display:none;" onclick="openDevStatsPage()"><i class="fa-solid fa-chart-line"></i><span>Statisztikák</span></button>
       <button class="side-nav-item side-nav-item-dev" id="devPanelBtn" style="display:none;" onclick="openDevPage()"><i class="fa-solid fa-gear"></i><span>Fejlesztő</span></button>
+      <button class="side-nav-item" id="navGuideBtn" onclick="switchPage('guide')"><i class="fa-solid fa-circle-question"></i><span>Útmutató</span></button>
     </div>
     <div class="side-nav-footer">
       <button class="side-nav-item side-nav-item-logout" onclick="logout()"><i class="fa-solid fa-right-from-bracket"></i><span>Kijelentkezés</span></button>
@@ -889,6 +962,22 @@ input[type="file"] { display: none; }
             <input type="file" id="logFiles" multiple accept=".txt,.log" onchange="updateFileLabel()">
           </div>
           <button class="see-btn see-btn-compact" onclick="processLogs()"><i class="fa-solid fa-magnifying-glass-chart"></i> Betöltés és elemzés</button>
+
+          <div class="see-panel" style="margin-top:14px; padding:14px 16px; background:var(--see-card-inner);">
+            <div style="font-weight:700; font-size:12px; text-transform:uppercase; margin-bottom:6px; display:flex; align-items:center; gap:8px;">
+              <i class="fa-solid fa-folder-tree" style="color:var(--see-gold);"></i> Automata mappa-szinkron
+            </div>
+            <div id="folderSyncDesc" style="font-size:11px; color:var(--see-text-muted); margin-bottom:10px;">
+              Kösd be egyszer azt a mappát, ahova a szerver a log fájlokat menti - utána az oldal magától, kb. 30 másodpercenként újranézi a mappát, és minden új vagy módosult log fájlt automatikusan feldolgoz, kézi feltöltés nélkül.
+            </div>
+            <div id="folderSyncStatus" style="font-size:11px; color:var(--see-text-muted); margin-bottom:10px;">Nincs mappa bekötve.</div>
+            <div style="display:flex; gap:8px; flex-wrap:wrap;">
+              <button class="see-btn see-btn-compact" id="folderConnectBtn" onclick="connectLogsFolder()"><i class="fa-solid fa-folder-open"></i> Mappa bekötése</button>
+              <button class="see-btn see-btn-compact" id="folderSyncNowBtn" style="display:none;" onclick="syncLogsFolderNow()"><i class="fa-solid fa-rotate"></i> Szinkron most</button>
+              <button class="see-btn see-btn-compact" id="folderReauthBtn" style="display:none; background:var(--see-danger);" onclick="reauthorizeLogsFolder()"><i class="fa-solid fa-triangle-exclamation"></i> Engedély megerősítése</button>
+            </div>
+            <input type="file" id="logFolderFallbackInput" webkitdirectory multiple style="display:none;" onchange="handleFolderFallbackChange(event)">
+          </div>
           <div class="panel-bulk-actions">
             <button class="bulk-btn" onclick="toggleSelectAll('reports')"><i class="fa-regular fa-square-check"></i> Összes kijelölése</button>
             <button class="bulk-btn danger-bulk" id="bulkDelBtn-reports" onclick="deleteSelected('reports')">Kijelöltek törlése</button>
@@ -999,6 +1088,80 @@ input[type="file"] { display: none; }
       </div>
     </div>
 
+    <div id="guideSection" class="see-section">
+      <div class="see-panel">
+        <div class="see-panel-title">
+          <span class="panel-title-text"><i class="fa-solid fa-circle-question"></i> Útmutató - Automata log-beolvasás beállítása</span>
+          <button class="bulk-btn" onclick="switchPage('main')"><i class="fa-solid fa-arrow-left"></i> Vissza a főoldalra</button>
+        </div>
+
+        <div class="guide-content">
+
+          <div class="guide-block">
+            <div class="guide-block-title"><i class="fa-solid fa-circle-info"></i> Miről szól ez?</div>
+            <p>Alapból mindig kézzel kell behúznod / kiválasztanod a log fájlokat a "Logok beolvasása" panelben. Az alábbi lépésekkel elérheted, hogy az oldal <strong>egyetlen mappa-kiválasztással (vagy Chrome/Edge esetén akár teljesen automatikusan, időzítve)</strong> mindig a legfrissebb logokat dolgozza fel, anélkül hogy egyenként kellene fájlokat tallóznod.</p>
+          </div>
+
+          <div class="guide-block">
+            <div class="guide-block-title"><i class="fa-solid fa-triangle-exclamation"></i> 1. lépés - Miért nem lehet közvetlenül a szerver log-mappáját bekötni?</div>
+            <p>A legtöbb szerver a logokat egy védett rendszermappába menti, pl.:</p>
+            <div class="guide-code">%ProgramData%\SeeRPG\logs</div>
+            <p>A böngészők (Brave, Chrome, Edge egyaránt) biztonsági okból <strong>nem engedik megnyitni</strong> a mappa-választóval a <code>ProgramData</code>, <code>Program Files</code>, <code>Windows</code> és hasonló rendszer-mappákat (vagy az ezek alatt lévő bármelyik almappát) - még akkor sem, ha egy mutatópontot (junction/symlink) hozol létre rájuk, mert a böngésző ezt is felismeri és blokkolja. Emiatt szükség van egy "áthidaló" megoldásra: a 2. lépésben leírtakkal a logokat egy <strong>valódi másolatban</strong> (nem mutatópontban) tesszük elérhetővé egy nem védett helyen (pl. Dokumentumok mappa).</p>
+          </div>
+
+          <div class="guide-block">
+            <div class="guide-block-title"><i class="fa-solid fa-copy"></i> 2. lépés - Automata másolás beállítása (Robocopy + Ütemezett feladat)</div>
+            <p><strong>a) Hozz létre egy sima mappát a Dokumentumokban</strong> (Parancssorban / cmd-ben):</p>
+            <div class="guide-code">mkdir "%USERPROFILE%\Documents\SeeRPG_Logs"</div>
+            <p><strong>b) Teszteld le kézzel egyszer a másolást</strong>, hogy tényleg működik-e (cseréld ki az útvonalat, ha nálad máshol vannak a logok):</p>
+            <div class="guide-code">robocopy "%ProgramData%\SeeRPG\logs" "%USERPROFILE%\Documents\SeeRPG_Logs" /R:1 /W:1</div>
+            <p>Nyisd meg a Fájlkezelőben a <code>Dokumentumok\SeeRPG_Logs</code> mappát - ha látod benne a <code>.log</code> fájlokat, működik, mehetsz tovább.</p>
+            <p><strong>c) Állítsd be, hogy ez a másolás magától, rendszeresen lefusson</strong> (Windows Ütemezett feladatok):</p>
+            <ol class="guide-list">
+              <li>Nyomj <strong>Win + R</strong>, írd be: <code>taskschd.msc</code>, Enter</li>
+              <li>Jobb oldalt: <strong>"Alapfeladat létrehozása…"</strong>, adj neki nevet, pl. <code>SeeRPG Log Sync</code></li>
+              <li>Trigger: <strong>"Amikor a számítógép elindul"</strong></li>
+              <li>A varázsló végeztével nyisd meg újra a feladat tulajdonságait, a <strong>"Triggerek"</strong> fülön szerkeszd úgy, hogy <strong>ismétlődjön 1 percenként, korlátlan ideig</strong></li>
+              <li>Action (Művelet): <strong>"Program indítása"</strong>
+                <ul class="guide-sublist">
+                  <li>Program/parancsfájl: <code>robocopy</code></li>
+                  <li>Argumentumok hozzáadása: <div class="guide-code">"%ProgramData%\SeeRPG\logs" "%USERPROFILE%\Documents\SeeRPG_Logs" /MIR /R:1 /W:1</div></li>
+                </ul>
+              </li>
+            </ol>
+            <p style="color:var(--see-text-muted); font-size:12px;">Ettől kezdve a <code>Dokumentumok\SeeRPG_Logs</code> mindig automatikusan szinkronban lesz a valódi log-mappával - ezzel nem kell többé foglalkoznod.</p>
+          </div>
+
+          <div class="guide-block">
+            <div class="guide-block-title"><i class="fa-solid fa-folder-open"></i> 3. lépés - Mappa bekötése a dashboardon</div>
+            <p>Menj a főoldalon a <strong>"Logok beolvasása"</strong> panelhez, és az <strong>"Automata mappa-szinkron"</strong> dobozban kattints a <strong>"Mappa bekötése" / "Mappa kiválasztása"</strong> gombra, majd válaszd ki a <code>Dokumentumok\SeeRPG_Logs</code> mappát (ezt a böngésző már engedni fogja, mert nem esik a védett rendszer-mappák közé).</p>
+          </div>
+
+          <div class="guide-block">
+            <div class="guide-block-title"><i class="fa-solid fa-globe"></i> 4. lépés - Böngésző-függő eltérések</div>
+            <p><strong>Chrome / Edge</strong> esetén ez után az oldal <strong>teljesen automatikusan, kb. 30 másodpercenként</strong> újranézi a mappát és feldolgozza az új/módosult logokat - ezzel semmi további teendőd nincs, amíg a lap nyitva van a böngészőben.</p>
+            <p><strong>Brave</strong> esetén a böngésző adatvédelmi okból nem engedi az igazi, időzített háttér-szinkront (ez Brave-oldali korlátozás, egy weboldal ezt nem tudja megkerülni). Ehelyett a dashboard automatikusan egy tartalék módra vált: a <strong>"Mappa kiválasztása" / "Szinkron most"</strong> gombra kattintva egyetlen kattintással újraolvassa a teljes mappát. Ha szeretnéd megpróbálni feloldani ezt a korlátozást:</p>
+            <ol class="guide-list">
+              <li>Írd be a címsorba: <code>brave://flags/#file-system-access-api</code></li>
+              <li>Állítsd <strong>"Enabled"</strong>-re, majd indítsd újra a Brave-t</li>
+              <li>Próbáld meg újra a "Mappa bekötése" gombot - ha bejön, a teljes automatikus (30 mp-es) szinkron is elérhetővé válik nálad is</li>
+            </ol>
+            <p style="color:var(--see-text-muted); font-size:12px;">Ha a flag bekapcsolása után is elutasítja, ez Brave-verziófüggő és nem javítható az oldal részéről - ilyenkor a kézi "Szinkron most" gomb, vagy Chrome/Edge használata a legjobb megoldás.</p>
+          </div>
+
+          <div class="guide-block">
+            <div class="guide-block-title"><i class="fa-solid fa-list-check"></i> Összefoglalva</div>
+            <ol class="guide-list">
+              <li>Hozd létre a <code>Dokumentumok\SeeRPG_Logs</code> mappát, és állítsd be az automata Robocopy másolást (Ütemezett feladatok)</li>
+              <li>A dashboardon kösd be ezt a mappát a "Mappa bekötése" / "Mappa kiválasztása" gombbal</li>
+              <li>Chrome/Edge-ben ezután minden automatikus; Brave-ben időnként kattints a "Szinkron most" gombra</li>
+            </ol>
+          </div>
+
+        </div>
+      </div>
+    </div>
+
   </div>
 </div>
 
@@ -1060,6 +1223,9 @@ function switchPage(pageId) {
   } else if (pageId === 'devstats') {
     document.getElementById('devStatsSection').classList.add('active');
     document.getElementById('devStatsBtn').classList.add('active');
+  } else if (pageId === 'guide') {
+    document.getElementById('guideSection').classList.add('active');
+    document.getElementById('navGuideBtn').classList.add('active');
   }
   closeSideNav();
 }
@@ -1168,6 +1334,7 @@ async function showMainUcp() {
 
   switchPage('main');
   render();
+  tryResumeLogsFolderOnLoad();
 }
 
 // Elmenti, hogy a felhasználó milyen néven szerepel adminként a logokban -
@@ -2278,9 +2445,294 @@ function sumCommandCountsForCurrentMonth(commandsByDay) {
 
 // Az utolsó feltöltés-köteg elemzésének eredménye, amíg a felhasználó jóvá nem hagyja
 // a modális ablakban. Csak a "Adatok mentése" gombra kerül ténylegesen mentésre.
+// ============================================================
+// TOAST ÉRTESÍTÉSEK
+// ============================================================
+function showToast(message, isError) {
+  const container = document.getElementById('seeToastContainer');
+  if (!container) { console.log(message); return; }
+  const el = document.createElement('div');
+  el.className = 'see-toast' + (isError ? ' error' : '');
+  el.textContent = message;
+  container.appendChild(el);
+  setTimeout(() => { el.style.transition = 'opacity 0.3s'; el.style.opacity = '0'; setTimeout(() => el.remove(), 300); }, 6000);
+}
+
+// ============================================================
+// AUTOMATA MAPPA-SZINKRON (File System Access API - Chrome/Edge/Brave)
+// ============================================================
+// Egyszeri engedéllyel bekötött mappát (log fájlok tárolási helye) az oldal
+// magától, időzítve újranézi, és minden ÚJ vagy MÓDOSULT log fájlt automatikusan
+// feldolgoz - kézi behúzás/feltöltés nélkül. A mappa "handle"-jét az IndexedDB-ben
+// tároljuk (a böngésző engedélye ehhez van kötve, oldal-újratöltés után is
+// megpróbáljuk csendben visszaállítani; ha a böngésző időközben visszavonta az
+// engedélyt, egy gombbal ("Engedély megerősítése") egy kattintással újra meg
+// lehet erősíteni - ezt böngésző-biztonsági okokból mindig egy user-kattintás
+// kell elindítania, automatikusan nem kérhető újra).
+let currentDirHandle = null;
+let folderAutoSyncTimer = null;
+const FOLDER_AUTO_SYNC_INTERVAL_MS = 30000; // 30 másodperc
+const HAS_FS_ACCESS_API = typeof window.showDirectoryPicker === 'function';
+
+// A Brave böngésző adatvédelmi okokból alapból LETILTJA a File System Access API-t
+// (window.showDirectoryPicker), ezért ott az igazi, időzített háttér-szinkron nem
+// megvalósítható - ezt egy weboldal nem tudja megkerülni. Ilyenkor automatikusan egy
+// tartalék módra váltunk: egy régebbi, minden Chromium-alapú böngészőben (Brave-ben is)
+// működő <input type="file" webkitdirectory> mezővel egy kattintással be lehet tölteni
+// a teljes mappa tartalmát, és csak az ÚJ / MÓDOSULT fájlokat dolgozzuk fel - viszont ezt
+// (időzített automatikus háttérfrissítés helyett) minden alkalommal egy kattintással
+// újra el kell indítani, amikor új log kerül a mappába.
+function initFolderSyncUI() {
+  const descEl = document.getElementById('folderSyncDesc');
+  const connectBtn = document.getElementById('folderConnectBtn');
+  if (!descEl || !connectBtn) return;
+  if (HAS_FS_ACCESS_API) {
+    descEl.innerHTML = 'Kösd be egyszer azt a mappát, ahova a szerver a log fájlokat menti - utána az oldal magától, kb. 30 másodpercenként újranézi a mappát, és minden új vagy módosult log fájlt automatikusan feldolgoz, kézi feltöltés nélkül.';
+    connectBtn.innerHTML = '<i class="fa-solid fa-folder-open"></i> Mappa bekötése';
+  } else {
+    descEl.innerHTML = 'A böngésződ (pl. Brave) adatvédelmi okokból nem engedi az igazi, időzített háttér-szinkront. Helyette itt egyetlen kattintással betöltheted a teljes mappa tartalmát - csak az új/módosult fájlokat dolgozzuk fel. Ha új log kerül a mappába, csak kattints újra a gombra. (A teljes automatikus, kattintás nélküli működéshez próbáld meg engedélyezni a <code>brave://flags/#file-system-access-api</code> beállítást, majd indítsd újra a böngészőt, vagy használj Chrome / Edge böngészőt.)';
+    connectBtn.innerHTML = '<i class="fa-solid fa-folder-open"></i> Mappa kiválasztása';
+  }
+}
+document.addEventListener('DOMContentLoaded', initFolderSyncUI);
+
+
+function handleDbKey() { return `dir_${currentUser}`; }
+
+function openHandleDB() {
+  return new Promise((resolve, reject) => {
+    const req = indexedDB.open('seerpg_dashboard_handles', 1);
+    req.onupgradeneeded = () => { req.result.createObjectStore('handles'); };
+    req.onsuccess = () => resolve(req.result);
+    req.onerror = () => reject(req.error);
+  });
+}
+
+async function saveDirHandleToDB(handle) {
+  const db = await openHandleDB();
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction('handles', 'readwrite');
+    tx.objectStore('handles').put(handle, handleDbKey());
+    tx.oncomplete = () => resolve();
+    tx.onerror = () => reject(tx.error);
+  });
+}
+
+async function loadDirHandleFromDB() {
+  const db = await openHandleDB();
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction('handles', 'readonly');
+    const req = tx.objectStore('handles').get(handleDbKey());
+    req.onsuccess = () => resolve(req.result || null);
+    req.onerror = () => reject(req.error);
+  });
+}
+
+async function verifyDirPermission(handle, requestIfNeeded) {
+  const opts = { mode: 'read' };
+  try {
+    if ((await handle.queryPermission(opts)) === 'granted') return true;
+    if (requestIfNeeded && (await handle.requestPermission(opts)) === 'granted') return true;
+  } catch (e) { console.error('Jogosultság-ellenőrzés hiba:', e); }
+  return false;
+}
+
+function updateFolderSyncStatus(text) {
+  const el = document.getElementById('folderSyncStatus');
+  if (el) el.textContent = text;
+}
+
+function syncedFilesMetaKey() { return `seerpg_syncedFiles_${currentUser}`; }
+function loadSyncedFilesMeta() {
+  try { return JSON.parse(localStorage.getItem(syncedFilesMetaKey()) || '{}'); } catch (e) { return {}; }
+}
+function saveSyncedFilesMeta(meta) {
+  try { localStorage.setItem(syncedFilesMetaKey(), JSON.stringify(meta)); } catch (e) { console.error(e); }
+}
+
+async function listLogFilesInDir(handle) {
+  const files = [];
+  for await (const entry of handle.values()) {
+    if (entry.kind === 'file' && /\.(log|txt)$/i.test(entry.name)) {
+      try { files.push(await entry.getFile()); } catch (e) { console.error('Nem sikerült megnyitni:', entry.name, e); }
+    }
+  }
+  return files;
+}
+
+async function connectLogsFolder() {
+  if (!HAS_FS_ACCESS_API) {
+    // A böngésző (pl. Brave) nem támogatja az igazi mappa-bekötést - tartalék
+    // megoldásként megnyitjuk a natív mappa-választót (webkitdirectory), ami
+    // egy kattintással beolvassa a teljes mappa tartalmát.
+    document.getElementById('logFolderFallbackInput').click();
+    return;
+  }
+  try {
+    const handle = await window.showDirectoryPicker({ id: 'seerpgLogs', mode: 'read' });
+    const granted = await verifyDirPermission(handle, true);
+    if (!granted) { alert('Engedély nélkül nem tudom beolvasni a mappa tartalmát.'); return; }
+    currentDirHandle = handle;
+    await saveDirHandleToDB(handle);
+    document.getElementById('folderSyncNowBtn').style.display = '';
+    document.getElementById('folderReauthBtn').style.display = 'none';
+    updateFolderSyncStatus(`Bekötve: "${handle.name}" - első szinkronizálás folyamatban...`);
+    startFolderAutoSyncTimer();
+    await autoSyncLogsFolder(false);
+  } catch (e) {
+    if (e && e.name === 'AbortError') return; // a felhasználó bezárta a mappa-választót
+    console.error(e);
+    alert('Nem sikerült bekötni a mappát: ' + (e && e.message ? e.message : e));
+  }
+}
+
+// Tartalék útvonal (Brave és más, File System Access API-t nem támogató böngészők):
+// a <input type="file" webkitdirectory> mező egy kattintással visszaadja a teljes
+// mappa tartalmát (FileList-ként), amit ugyanúgy - csak új/módosult fájlokra szűrve -
+// dolgozunk fel, mint az automata szinkron esetén. Élő mappa-handle hiányában ezt a
+// böngésző nem tudja saját magától időzítve újrafuttatni - ehhez mindig egy kattintás
+// kell, amikor új log kerül a mappába.
+async function handleFolderFallbackChange(event) {
+  const fileList = Array.from(event.target.files || []);
+  const relevant = fileList.filter(f => /\.(log|txt)$/i.test(f.name));
+  event.target.value = ''; // hogy ugyanazt a mappát újra ki lehessen választani később
+
+  if (relevant.length === 0) {
+    updateFolderSyncStatus('A kiválasztott mappában nem található .log / .txt fájl.');
+    return;
+  }
+
+  const folderLabel = relevant[0].webkitRelativePath ? relevant[0].webkitRelativePath.split('/')[0] : 'kiválasztott mappa';
+  document.getElementById('folderSyncNowBtn').style.display = '';
+  updateFolderSyncStatus(`Mappa: "${folderLabel}" - feldolgozás folyamatban...`);
+
+  // FONTOS: mivel ez a mód (Brave és más, File System Access API-t nem támogató
+  // böngészők tartalék útvonala) mindig egy kézi kattintással jár, itt NEM szűrünk
+  // "csak a változott fájlokra" - minden alkalommal az ÖSSZES, mappában talált log
+  // fájlt újraolvassuk, hogy biztosan a legfrissebb tartalmat dolgozzuk fel akkor is,
+  // ha egy fájl módosulási ideje/mérete valamiért nem változott érzékelhetően
+  // (pl. egy másoló eszköz miatt).
+  const meta = loadSyncedFilesMeta();
+  const result = await buildLogFileResults(relevant, { silent: true });
+  if (!result) { updateFolderSyncStatus(`Mappa: "${folderLabel}" - hiányzó admin név, lásd fenti figyelmeztetés.`); return; }
+
+  pendingLogBatch = result;
+  const ok = await confirmLogBreakdown(true);
+
+  if (ok) {
+    relevant.forEach(f => { meta[f.name] = { lastModified: f.lastModified, size: f.size }; });
+    saveSyncedFilesMeta(meta);
+    updateFolderSyncStatus(`Mappa: "${folderLabel}" - ${relevant.length} fájl újraolvasva (${new Date().toLocaleTimeString('hu-HU')}). Ha új log kerül a mappába, kattints újra a gombra a frissítéshez.`);
+    showToast(`${relevant.length} log fájl feldolgozva.`);
+  } else {
+    updateFolderSyncStatus(`Mappa: "${folderLabel}" - hiba a mentés közben, próbáld újra.`);
+  }
+}
+
+function syncLogsFolderNow() {
+  if (HAS_FS_ACCESS_API) { autoSyncLogsFolder(false, true); }
+  else { document.getElementById('logFolderFallbackInput').click(); }
+}
+
+async function reauthorizeLogsFolder() {
+  if (!currentDirHandle) return;
+  const granted = await verifyDirPermission(currentDirHandle, true);
+  if (granted) {
+    document.getElementById('folderReauthBtn').style.display = 'none';
+    updateFolderSyncStatus(`Bekötve: "${currentDirHandle.name}" - engedély megerősítve.`);
+    startFolderAutoSyncTimer();
+    await autoSyncLogsFolder(false);
+  } else {
+    alert('Az engedélyt nem sikerült megadni.');
+  }
+}
+
+function startFolderAutoSyncTimer() {
+  if (folderAutoSyncTimer) clearInterval(folderAutoSyncTimer);
+  folderAutoSyncTimer = setInterval(() => { autoSyncLogsFolder(true); }, FOLDER_AUTO_SYNC_INTERVAL_MS);
+}
+
+// Belépéskor megpróbáljuk csendben visszaállítani a korábban bekötött mappát -
+// ha a böngésző még mindig megadja rá az engedélyt (kérés/user-gesture nélkül),
+// az automata szinkron azonnal újraindul; ha nem, egy gombbal (user-kattintás)
+// egyszerűen megerősíthető.
+async function tryResumeLogsFolderOnLoad() {
+  if (!window.showDirectoryPicker) return;
+  try {
+    const handle = await loadDirHandleFromDB();
+    if (!handle) return;
+    currentDirHandle = handle;
+    const granted = await verifyDirPermission(handle, false);
+    if (granted) {
+      updateFolderSyncStatus(`Bekötve: "${handle.name}" - automata szinkron aktív.`);
+      document.getElementById('folderSyncNowBtn').style.display = '';
+      startFolderAutoSyncTimer();
+      await autoSyncLogsFolder(true);
+    } else {
+      updateFolderSyncStatus(`Korábban bekötött mappa: "${handle.name}" - az engedély megerősítése szükséges a folytatáshoz.`);
+      document.getElementById('folderReauthBtn').style.display = '';
+    }
+  } catch (e) {
+    console.error('Mappa visszaállítása sikertelen:', e);
+  }
+}
+
+async function autoSyncLogsFolder(silent, force) {
+  if (!currentDirHandle) { if (!silent) alert('Előbb köss be egy mappát a "Mappa bekötése" gombbal!'); return; }
+
+  const granted = await verifyDirPermission(currentDirHandle, false);
+  if (!granted) {
+    document.getElementById('folderReauthBtn').style.display = '';
+    if (!silent) alert('Az engedély lejárt - kattints az "Engedély megerősítése" gombra.');
+    return;
+  }
+  document.getElementById('folderReauthBtn').style.display = 'none';
+
+  let allFiles;
+  try {
+    allFiles = await listLogFilesInDir(currentDirHandle);
+  } catch (e) {
+    console.error(e);
+    if (!silent) alert('Nem sikerült beolvasni a mappa tartalmát.');
+    return;
+  }
+
+  const meta = loadSyncedFilesMeta();
+  const toProcess = force ? allFiles : allFiles.filter(f => {
+    const prev = meta[f.name];
+    return !prev || prev.lastModified !== f.lastModified || prev.size !== f.size;
+  });
+
+  if (toProcess.length === 0) {
+    updateFolderSyncStatus(`Bekötve: "${currentDirHandle.name}" - minden log naprakész (ellenőrizve: ${new Date().toLocaleTimeString('hu-HU')}).`);
+    if (!silent) showToast('Nincs új vagy módosult log fájl a mappában.');
+    return;
+  }
+
+  const result = await buildLogFileResults(toProcess, { silent: true });
+  if (!result) return; // hiányzó admin név esetén már jeleztünk (showToast)
+
+  pendingLogBatch = result;
+  const ok = await confirmLogBreakdown(true);
+
+  if (ok) {
+    toProcess.forEach(f => { meta[f.name] = { lastModified: f.lastModified, size: f.size }; });
+    saveSyncedFilesMeta(meta);
+    updateFolderSyncStatus(`Bekötve: "${currentDirHandle.name}" - ${toProcess.length} fájl ${force ? 'újraolvasva' : 'feldolgozva'} (${new Date().toLocaleTimeString('hu-HU')}).`);
+    showToast(`${toProcess.length} log fájl ${force ? 'újraolvasva' : 'automatikusan feldolgozva'}.`);
+  } else {
+    updateFolderSyncStatus(`Bekötve: "${currentDirHandle.name}" - hiba a mentés közben, próbálkozás később megismétlődik.`);
+  }
+}
+
 let pendingLogBatch = null;
 
-async function processFileList(files) {
+// Közös mag-logika: egy File[] tömbből felépíti a fileResults + latestUserData
+// párost, amit MIND a kézi feltöltés (modal + megerősítés), MIND az automata
+// mappa-szinkron (közvetlen mentés, modal nélkül) ugyanúgy felhasznál.
+// Visszatér null-lal, ha nincs beállítva admin név (ez esetben már jelzett is).
+async function buildLogFileResults(files, opts) {
+  opts = opts || {};
   const latestUserData = await fbFetch(`data/${currentUser}`) || {};
   if (!latestUserData.duty) latestUserData.duty = [];
   if (!latestUserData.off) latestUserData.off = [];
@@ -2302,10 +2754,11 @@ async function processFileList(files) {
   if (!latestUserData.adminActions) latestUserData.adminActions = [];
 
   const adminNameInput = document.getElementById('logAdminName');
-  const adminName = (adminNameInput ? adminNameInput.value : (latestUserData.logAdminName || '')).trim();
+  const adminName = (adminNameInput ? adminNameInput.value : (latestUserData.logAdminName || '')).trim() || (latestUserData.logAdminName || '').trim();
   if (!adminName) {
-    alert('Előbb add meg, hogy milyen néven szerepelsz adminként a logban (a "Logok beolvasása" panel tetején), különben a Duty/Off Duty nem ismerhető fel automatikusan!');
-    return;
+    if (!opts.silent) alert('Előbb add meg, hogy milyen néven szerepelsz adminként a logban (a "Logok beolvasása" panel tetején), különben a Duty/Off Duty nem ismerhető fel automatikusan!');
+    else showToast('Az automata szinkronhoz előbb add meg az admin neved a "Logok beolvasása" panelen!', true);
+    return null;
   }
   latestUserData.logAdminName = adminName;
 
@@ -2329,8 +2782,14 @@ async function processFileList(files) {
     fileResults.push({ filename: file.name, key, dayCounts, cmdCounts, dutyEvents, dutyPeriods, offPeriods, connectWindows, reportEvents, adminActionEvents, isUpdate });
   }
 
-  pendingLogBatch = { fileResults, latestUserData };
-  renderLogBreakdownModal(fileResults, latestUserData);
+  return { fileResults, latestUserData };
+}
+
+async function processFileList(files) {
+  const result = await buildLogFileResults(files, { silent: false });
+  if (!result) return;
+  pendingLogBatch = result;
+  renderLogBreakdownModal(result.fileResults, result.latestUserData);
   document.getElementById('logBreakdownModal').style.display = 'flex';
 }
 
@@ -2410,7 +2869,7 @@ function closeLogBreakdownModal() {
   pendingLogBatch = null;
 }
 
-async function confirmLogBreakdown() {
+async function confirmLogBreakdown(silent) {
   if (!pendingLogBatch) { closeLogBreakdownModal(); return; }
   const { fileResults, latestUserData } = pendingLogBatch;
 
@@ -2595,11 +3054,14 @@ async function confirmLogBreakdown() {
   const ok = await saveGlobal();
   render();
   closeLogBreakdownModal();
-  if (ok) {
-    alert('Logok feldolgozva! Az érintett napok report-száma, a fixveh / asegit / agyogyit parancshasználat, a Duty / Off Duty idő, valamint a Report napló és az Adminjail/Kick előzmények is frissültek az összes ismert log fájl adatai alapján.');
-  } else {
-    alert('Hiba történt a mentés közben — az adatok NEM kerültek elmentve a szerverre. Próbáld újra, és ellenőrizd a hálózati kapcsolatot.');
+  const successMsg = 'Logok feldolgozva! Az érintett napok report-száma, a fixveh / asegit / agyogyit parancshasználat, a Duty / Off Duty idő, valamint a Report napló és az Adminjail/Kick előzmények is frissültek az összes ismert log fájl adatai alapján.';
+  const errorMsg = 'Hiba történt a mentés közben — az adatok NEM kerültek elmentve a szerverre. Próbáld újra, és ellenőrizd a hálózati kapcsolatot.';
+  if (!silent) {
+    if (ok) alert(successMsg); else alert(errorMsg);
+  } else if (!ok) {
+    showToast(errorMsg, true);
   }
+  return ok;
 }
 
 
@@ -2811,5 +3273,6 @@ render = function() {
 
 window.onload = function() { initAuth(); };
 </script>
+<div id="seeToastContainer"></div>
 </body>
 </html>
