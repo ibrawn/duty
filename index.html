@@ -950,6 +950,13 @@ input[type="file"] { display: none; }
         <input type="password" id="authPass" placeholder="••••••••" onkeydown="if(event.key==='Enter'){ event.preventDefault(); handleAuth(); }">
       </div>
     </div>
+    <div class="auth-form-group" id="authAdminNameGroup" style="display:none;">
+      <label>Admin név (logban)</label>
+      <div class="input-icon-wrap">
+        <i class="fa-solid fa-user-tag"></i>
+        <input type="text" id="authAdminName" placeholder="Milyen néven szerepelsz adminként a logban" onkeydown="if(event.key==='Enter'){ event.preventDefault(); handleAuth(); }">
+      </div>
+    </div>
     <button class="see-btn" id="authBtn" onclick="handleAuth()">Bejelentkezés</button>
     <div class="auth-switch" id="authSwitchRow">
       Nincs még fiókod? <span onclick="toggleAuthMode(true)">Regisztráció</span>
@@ -1186,18 +1193,21 @@ input[type="file"] { display: none; }
           <span class="panel-title-text"><i class="fa-solid fa-chart-line"></i> Admin Statisztikák Áttekintése</span>
           <button class="bulk-btn" onclick="switchPage('main')"><i class="fa-solid fa-arrow-left"></i> Vissza a főoldalra</button>
         </div>
-        <div class="see-workspace" style="grid-template-columns: 280px 1fr; gap: 25px;">
-          <div>
+        <div class="see-workspace" style="grid-template-columns: 280px 1fr; gap: 25px; border-radius: var(--radius-md); overflow: visible;">
+          <div style="padding:22px 18px; overflow:hidden;">
             <div style="font-size:11px; font-weight:700; text-transform:uppercase; color:var(--see-text-muted); margin-bottom:10px;">Admin kiválasztása</div>
             <div class="see-list-container" id="devStatsUserList" style="max-height: 550px;"></div>
           </div>
-          <div>
+          <div style="padding:22px 18px; overflow:hidden;">
             <div id="devStatsEmptyState" style="font-size:13px; color:var(--see-text-muted); text-align:center; padding:60px 20px; border:1px dashed var(--see-border); border-radius:var(--radius-md);">
               <i class="fa-solid fa-hand-point-left" style="margin-right:8px;"></i> Válassz egy felhasználót a listából a statisztikái megtekintéséhez.
             </div>
             <div id="devStatsDashboard" style="display: none;">
-              <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
-                <div style="font-size:13px; font-weight:700; text-transform:uppercase; color:var(--see-gold);" id="devStatsSelectedName"></div>
+              <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px; flex-wrap:wrap; gap:10px;">
+                <div style="display:flex; align-items:center; gap:10px; flex-wrap:wrap;">
+                  <div style="font-size:13px; font-weight:700; text-transform:uppercase; color:var(--see-gold);" id="devStatsSelectedName"></div>
+                  <span class="cmd-stat-chip" id="devStatsLogAdminNameChip"><i class="fa-solid fa-user-tag"></i> Log-keresési admin név: <strong id="devStatsLogAdminNameVal">–</strong></span>
+                </div>
                 <div style="display:flex; align-items:center; gap:10px;">
                   <span style="font-size:10px; color:var(--see-text-muted);" id="devStatsLastRefresh"></span>
                   <button class="bulk-btn" onclick="refreshStatsUserData(selectedStatsUser)"><i class="fa-solid fa-arrow-rotate-right"></i> Frissítés</button>
@@ -1221,16 +1231,16 @@ input[type="file"] { display: none; }
                   <div class="val" id="miniReports" style="color: var(--see-success);">0 db</div>
                 </div>
               </div>
-              <div class="see-workspace" style="grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 15px; margin-top: 15px;">
-                <div>
+              <div class="see-workspace" style="grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 15px; margin-top: 15px; border-radius: var(--radius-md); overflow: visible;">
+                <div style="padding:16px 14px; overflow:hidden;">
                   <div style="font-size:12px; font-weight:700; text-transform:uppercase; margin-bottom:5px; color:var(--see-gold);">Duty</div>
                   <div class="see-list-container" id="miniDutyStream" style="max-height: 200px;"></div>
                 </div>
-                <div>
+                <div style="padding:16px 14px; overflow:hidden;">
                   <div style="font-size:12px; font-weight:700; text-transform:uppercase; margin-bottom:5px; color:#fff;">Off Duty</div>
                   <div class="see-list-container" id="miniOffStream" style="max-height: 200px;"></div>
                 </div>
-                <div>
+                <div style="padding:16px 14px; overflow:hidden;">
                   <div style="font-size:12px; font-weight:700; text-transform:uppercase; margin-bottom:5px; color:var(--see-success);">Reportok</div>
                   <div class="see-list-container" id="miniReportsStream" style="max-height: 200px;"></div>
                 </div>
@@ -1370,14 +1380,18 @@ function toggleAuthMode(toRegister) {
   const title = document.getElementById("authTitle");
   const btn = document.getElementById("authBtn");
   const switchRow = document.getElementById("authSwitchRow");
+  const adminNameGroup = document.getElementById("authAdminNameGroup");
   if (toRegister) {
     title.innerHTML = "<span>SeeRPG</span> - Regisztráció";
     btn.textContent = "Regisztráció";
     switchRow.innerHTML = 'Már van fiókod? <span onclick="toggleAuthMode(false)">Bejelentkezés</span>';
+    adminNameGroup.style.display = "block";
   } else {
     title.innerHTML = "<span>SeeRPG</span> - Belépés";
     btn.textContent = "Bejelentkezés";
     switchRow.innerHTML = 'Nincs még fiókod? <span onclick="toggleAuthMode(true)">Regisztráció</span>';
+    adminNameGroup.style.display = "none";
+    document.getElementById("authAdminName").value = "";
   }
 }
 
@@ -1385,20 +1399,39 @@ async function handleAuth() {
   const user = document.getElementById("authUser").value.trim();
   const lowerUser = user.toLowerCase();
   const pass = document.getElementById("authPass").value;
+  const adminNameInputEl = document.getElementById("authAdminName");
+  const adminName = adminNameInputEl ? adminNameInputEl.value.trim() : "";
 
   if (!user || !pass) { alert("Kérlek töltsd ki az összes mezőt!"); return; }
+  if (isRegisterMode && !adminName) { alert("Kérlek add meg, milyen néven szerepelsz adminként a logban!"); return; }
 
   usersDB = await fbFetch("users") || {};
 
   if (isRegisterMode) {
     if (usersDB[lowerUser]) { alert("Ez a felhasználónév már foglalt!"); return; }
-    usersDB[lowerUser] = { display: user, pass: pass, role: (lowerUser === DEVELOPER_USERNAME ? "dev" : "user") };
+    const isDeveloperAccount = (lowerUser === DEVELOPER_USERNAME);
+    usersDB[lowerUser] = { display: user, pass: pass, role: (isDeveloperAccount ? "dev" : "user"), approved: isDeveloperAccount, adminName: adminName };
     await fbSave("users", usersDB);
-    alert("Sikeres online regisztráció! Most már bejelentkezhetsz.");
+
+    globalData = await fbFetch("data") || {};
+    if (!globalData[lowerUser]) { globalData[lowerUser] = { duty: [], off: [], reports: {}, commandsByDay: {}, reportLog: [], adminActions: [] }; }
+    globalData[lowerUser].logAdminName = adminName;
+    await fbSave("data", globalData);
+
+    if (isDeveloperAccount) {
+      alert("Sikeres online regisztráció! Most már bejelentkezhetsz.");
+    } else {
+      alert("Sikeres regisztráció! A fiókodat egy fejlesztőnek jóvá kell hagynia, mielőtt be tudsz jelentkezni.");
+    }
     document.getElementById("authPass").value = "";
+    document.getElementById("authAdminName").value = "";
     toggleAuthMode(false);
   } else {
     if (usersDB[lowerUser] && usersDB[lowerUser].pass === pass) {
+      if (usersDB[lowerUser].approved === false) {
+        alert("A fiókodat még nem hagyta jóvá egy fejlesztő. Kérlek várj, amíg jóváhagyják a regisztrációdat.");
+        return;
+      }
       sessionStorage.setItem("adminCurrentSessionUser", lowerUser);
       currentUser = lowerUser;
       showMainUcp();
@@ -1489,11 +1522,16 @@ function renderDevStatsUserList() {
     const u = usersDB[username];
     const isDev = u.role === "dev";
     const isSelected = selectedStatsUser === username ? 'selected' : '';
+    const logAdminName = (globalData[username] && globalData[username].logAdminName) ? globalData[username].logAdminName : '';
+    const logAdminNameHtml = logAdminName
+      ? `<span style="font-size:10px; color:var(--see-text-muted); display:block; margin-top:2px;"><i class="fa-solid fa-user-tag"></i> Log név: <span style="color:var(--see-text);">${logAdminName}</span></span>`
+      : `<span style="font-size:10px; color:var(--see-text-muted); display:block; margin-top:2px; opacity:0.6;"><i class="fa-solid fa-user-tag"></i> Log név: nincs beállítva</span>`;
     return `
        <div class="see-list-item clickable ${isSelected}" id="statsrow-${username}" onclick="selectStatsUser('${username}')">
          <div>
            <span class="see-item-date" style="color:${isDev ? 'var(--see-dev)' : '#fff'}; font-weight:700;">${u.display}</span>
            <span style="font-size:11px; color:var(--see-text-muted); margin-left:10px;">${isDev ? 'Fejlesztő' : 'Admin'}</span>
+           ${logAdminNameHtml}
          </div>
        </div>`;
   }).join('') || '<div style="font-size:13px;color:var(--see-text-muted);">Nincs regisztrált felhasználó.</div>';
@@ -1533,7 +1571,10 @@ function renderStatsDashboard(username) {
   const dList = uData.duty || [];
   const oList = uData.off || [];
   const reps = uData.reports || {};
-  
+
+  const logAdminNameVal = document.getElementById("devStatsLogAdminNameVal");
+  if (logAdminNameVal) logAdminNameVal.textContent = uData.logAdminName ? uData.logAdminName : 'nincs beállítva';
+
   let totalDutyMin = 0, totalOffMin = 0, totalRepCount = 0;
   
   document.getElementById("miniDutyStream").innerHTML = dList.map(x => {
@@ -1559,14 +1600,47 @@ function renderStatsDashboard(username) {
 
 function renderDevUsers() {
   const container = document.getElementById("devUserList");
-  container.innerHTML = Object.keys(usersDB).map(username => {
+  const usernames = Object.keys(usersDB);
+  const pending = usernames.filter(u => usersDB[u].approved === false);
+  const approvedUsers = usernames.filter(u => usersDB[u].approved !== false);
+
+  const pendingHtml = pending.length ? `
+    <div style="font-size:11px; font-weight:700; text-transform:uppercase; color:var(--see-danger); margin:4px 0 10px;">
+      <i class="fa-solid fa-clock"></i> Jóváhagyásra váró regisztrációk (${pending.length})
+    </div>
+    ${pending.map(username => {
+      const u = usersDB[username];
+      const adminNameHtml = u.adminName
+        ? `<span style="font-size:10px; color:var(--see-text-muted); display:block; margin-top:2px;"><i class="fa-solid fa-user-tag"></i> Admin név: <span style="color:var(--see-text);">${u.adminName}</span></span>`
+        : '';
+      return `
+       <div class="see-list-item" style="border-color: rgba(251,113,133,0.35);">
+         <div>
+           <span class="see-item-date" style="color:#fff; font-weight:700;">${u.display}</span>
+           <span style="font-size:10px; font-weight:700; color:var(--see-danger); background:rgba(251,113,133,0.12); padding:1px 7px; border-radius:5px; text-transform:uppercase; margin-left:10px;">Jóváhagyásra vár</span>
+           ${adminNameHtml}
+         </div>
+         <div class="see-item-actions">
+           <button class="see-action-btn" style="color:var(--see-success);" onclick="devApproveUser('${username}')" title="Jóváhagyás"><i class="fa-solid fa-check"></i></button>
+           <button class="see-action-btn del" onclick="devRejectUser('${username}')" title="Elutasítás / Törlés">✕</button>
+         </div>
+       </div>`;
+    }).join('')}
+    <div style="height:8px;"></div>
+  ` : '';
+
+  const approvedHtml = approvedUsers.map(username => {
     const u = usersDB[username];
     const isDev = u.role === "dev";
+    const adminNameHtml = u.adminName
+      ? `<span style="font-size:11px; color:var(--see-text-muted); margin-left:10px;"><i class="fa-solid fa-user-tag"></i> ${u.adminName}</span>`
+      : '';
     return `
        <div class="see-list-item">
          <div>
            <span class="see-item-date" style="color:${isDev ? 'var(--see-dev)' : '#fff'}; font-weight:700;">${u.display}</span>
            <span style="font-size:11px; color:var(--see-text-muted); margin-left:10px;">Rang: ${isDev ? 'Fejlesztő' : 'Admin'}</span>
+           ${adminNameHtml}
          </div>
          <div class="see-item-actions">
            <button class="see-action-btn" onclick="devEditUser('${username}')" title="Jelszó módosítása">✏</button>
@@ -1574,6 +1648,27 @@ function renderDevUsers() {
          </div>
        </div>`;
   }).join('');
+
+  container.innerHTML = pendingHtml + approvedHtml || '<div style="font-size:13px;color:var(--see-text-muted);">Nincs regisztrált felhasználó.</div>';
+}
+
+async function devApproveUser(username) {
+  if (!usersDB[username]) return;
+  usersDB[username].approved = true;
+  await fbSave(`users/${username}`, usersDB[username]);
+  const adminNamePart = usersDB[username].adminName ? ` (admin név a logban: ${usersDB[username].adminName})` : '';
+  alert(`${usersDB[username].display} regisztrációja jóváhagyva${adminNamePart}! Mostantól be tud jelentkezni.`);
+  renderDevUsers();
+}
+
+async function devRejectUser(username) {
+  if (!usersDB[username]) return;
+  if (confirm(`Biztosan elutasítod és törlöd ${usersDB[username].display} jóváhagyásra váró regisztrációját?`)) {
+    await fetch(`${FIREBASE_DB_URL}/users/${username}.json`, { method: 'DELETE' });
+    await fetch(`${FIREBASE_DB_URL}/data/${username}.json`, { method: 'DELETE' });
+    delete usersDB[username];
+    renderDevUsers();
+  }
 }
 
 async function devEditUser(username) {
