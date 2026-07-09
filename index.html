@@ -25,6 +25,7 @@
   --see-success: #4ade80;
   --see-dev: #a78bfa;
   --see-stats-view: #f472b6;
+  --see-admin-yellow: #facc15;
 
   --sidebar-w: 260px;
   --radius-lg: 18px;
@@ -249,6 +250,21 @@ body {
 .see-dropdown-btn i { font-size: 10px; transition: transform 0.2s; }
 .see-dropdown.open .see-dropdown-btn i { transform: rotate(180deg); }
 .see-dropdown-btn:hover { color: var(--see-gold); background: rgba(99,102,241,0.14); }
+.header-link-btn {
+  background: rgba(255,255,255,0.06);
+  border: none;
+  color: #fff;
+  padding: 10px 16px;
+  border-radius: var(--radius-sm);
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.3px;
+  cursor: pointer;
+  transition: all 0.2s;
+  display: flex; align-items: center; gap: 8px;
+  text-decoration: none;
+}
+.header-link-btn:hover { color: var(--see-gold); background: rgba(99,102,241,0.14); }
 .see-dropdown-content {
   display: none;
   position: absolute;
@@ -285,6 +301,7 @@ body {
   white-space: nowrap;
 }
 .ucp-logo-badge.dev { background: linear-gradient(135deg, var(--see-dev), #0891b2); color: #04222a; }
+.ucp-logo-badge.admin-rank { background: linear-gradient(135deg, var(--see-admin-yellow), #ca8a04); color: #2b2100; }
 
 .logout-btn {
   background: rgba(239,68,68,0.12);
@@ -801,7 +818,7 @@ input[type="file"] { display: none; }
 @media (max-width: 520px) {
   .header-right { gap: 7px; }
   .ucp-logo-badge { display: none; }
-  .see-dropdown-btn span { display: none; }
+  .header-link-btn span { display: none; }
   .overview-metric { flex-basis: 100%; }
 }
 /* "Útmutató" oldal stílusai */
@@ -916,6 +933,50 @@ input[type="file"] { display: none; }
 .chat-msg.own { align-self: flex-end; align-items: flex-end; }
 .chat-msg-meta { font-size: 10px; color: var(--see-text-muted); margin-bottom: 3px; display: flex; align-items: center; gap: 6px; }
 .chat-msg-meta .dev-tag { color: var(--see-dev); font-weight: 700; }
+.chat-msg-meta .admin-rank-tag { color: var(--see-admin-yellow); font-weight: 700; font-size: 9px; background: rgba(250,204,21,0.12); padding: 1px 6px; border-radius: 5px; text-transform: uppercase; letter-spacing: 0.3px; }
+.rank-dropdown { position: relative; display: inline-block; margin-left: 10px; }
+.rank-dropdown-btn {
+  background: rgba(250,204,21,0.1);
+  border: 1px solid rgba(250,204,21,0.4);
+  color: var(--see-admin-yellow);
+  padding: 4px 10px;
+  border-radius: 6px;
+  font-size: 11px;
+  font-weight: 700;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  transition: all 0.15s;
+}
+.rank-dropdown-btn i { font-size: 9px; transition: transform 0.2s; }
+.rank-dropdown.open .rank-dropdown-btn i { transform: rotate(180deg); }
+.rank-dropdown-btn:hover { background: rgba(250,204,21,0.18); }
+.rank-dropdown-menu {
+  display: none;
+  position: absolute;
+  left: 0;
+  top: 100%;
+  margin-top: 6px;
+  background: #23252b;
+  border: 1px solid var(--see-border-strong);
+  border-radius: 8px;
+  min-width: 110px;
+  box-shadow: 0 16px 32px rgba(0,0,0,0.6);
+  z-index: 999;
+  overflow: hidden;
+}
+.rank-dropdown.open .rank-dropdown-menu { display: block; }
+.rank-dropdown-item {
+  padding: 9px 14px;
+  font-size: 12px;
+  font-weight: 600;
+  color: #ffffff;
+  cursor: pointer;
+  transition: background 0.12s;
+}
+.rank-dropdown-item:hover { background: rgba(250,204,21,0.16); }
+.rank-dropdown-item.active { color: var(--see-admin-yellow); background: rgba(250,204,21,0.1); }
 .chat-bubble {
   background: var(--see-card-inner); color: #fff; font-size: 12.5px; line-height: 1.4;
   padding: 8px 12px; border-radius: 12px; word-break: break-word; position: relative;
@@ -1060,14 +1121,9 @@ input[type="file"] { display: none; }
         </div>
       </div>
       <div class="header-right">
-        <div class="see-dropdown" id="linksDropdown">
-          <button class="see-dropdown-btn" onclick="toggleDropdown()"><span>Linkek</span> <i class="fa-solid fa-chevron-down"></i></button>
-          <div class="see-dropdown-content">
-            <a href="https://forum.see-rpg.com/" target="_blank"><i class="fa-solid fa-comments"></i> Fórum</a>
-            <a href="https://ucp.see-rpg.com/seerpg" target="_blank"><i class="fa-solid fa-user-gear"></i> UCP</a>
-            <a href="https://rules.see-rpg.com/rpg/" target="_blank"><i class="fa-solid fa-scroll"></i> Szabályzat</a>
-          </div>
-        </div>
+        <a class="header-link-btn" href="https://forum.see-rpg.com/" target="_blank"><i class="fa-solid fa-comments"></i> <span>Fórum</span></a>
+        <a class="header-link-btn" href="https://ucp.see-rpg.com/seerpg" target="_blank"><i class="fa-solid fa-user-gear"></i> <span>UCP</span></a>
+        <a class="header-link-btn" href="https://rules.see-rpg.com/rpg/" target="_blank"><i class="fa-solid fa-scroll"></i> <span>Szabályzat</span></a>
         <div class="ucp-logo-badge" id="welcomeUser">v4 UCP</div>
         <button class="logout-btn" onclick="logout()" title="Kijelentkezés"><i class="fa-solid fa-right-from-bracket"></i></button>
       </div>
@@ -1469,13 +1525,15 @@ function renderChatMessages(forceScroll) {
     if (!m) return '';
     const isOwn = m.user === currentUser;
     const isMsgDev = m.role === "dev";
+    const nameColor = isMsgDev ? 'var(--see-dev)' : 'var(--see-admin-yellow)';
+    const rankTag = isMsgDev ? '<span class="dev-tag">FEJLESZTŐ</span>' : `<span class="admin-rank-tag">ADMIN ${m.rank || 1}</span>`;
     const canDelete = isDevCurrentUser();
     const delBtn = canDelete ? `<button class="chat-msg-del" onclick="deleteChatMessage('${key}')"><i class="fa-solid fa-trash"></i> Törlés</button>` : '';
     return `
       <div class="chat-msg ${isOwn ? 'own' : ''}">
         <div class="chat-msg-meta">
-          <span style="${isMsgDev ? 'color:var(--see-dev); font-weight:700;' : ''}">${escapeChatText(m.display || m.user)}</span>
-          ${isMsgDev ? '<span class="dev-tag">FEJLESZTŐ</span>' : ''}
+          <span style="color:${nameColor}; font-weight:700;">${escapeChatText(m.display || m.user)}</span>
+          ${rankTag}
           <span>${m.time || ''}</span>
         </div>
         <div class="chat-bubble">${escapeChatText(m.text || '')}</div>
@@ -1506,6 +1564,7 @@ async function sendChatMessage() {
     user: currentUser,
     display: uData.display || currentUser,
     role: uData.role || "user",
+    rank: uData.rank || 1,
     text: text,
     time: now.toLocaleString('hu-HU', { hour: '2-digit', minute: '2-digit', day: '2-digit', month: '2-digit' })
   };
@@ -1563,16 +1622,17 @@ function closeSideNav() {
   document.getElementById('sideNavOverlay').classList.remove('open');
 }
 
-function toggleDropdown() {
-  document.getElementById("linksDropdown").classList.toggle("open");
+function toggleRankDropdown(username) {
+  const el = document.getElementById(`rankDropdown-${username}`);
+  if (!el) return;
+  const isOpen = el.classList.contains("open");
+  document.querySelectorAll('.rank-dropdown.open').forEach(d => d.classList.remove('open'));
+  if (!isOpen) el.classList.add('open');
 }
 function setupDropdownCloseListener() {
   window.addEventListener("click", function(event) {
-    if (!event.target.matches('.see-dropdown-btn')) {
-      const dropdown = document.getElementById("linksDropdown");
-      if (dropdown && dropdown.classList.contains("open")) {
-        dropdown.classList.remove("open");
-      }
+    if (!event.target.closest('.rank-dropdown')) {
+      document.querySelectorAll('.rank-dropdown.open').forEach(d => d.classList.remove('open'));
     }
   });
 }
@@ -1612,7 +1672,7 @@ async function handleAuth() {
   if (isRegisterMode) {
     if (usersDB[lowerUser]) { alert("Ez a felhasználónév már foglalt!"); return; }
     const isDeveloperAccount = (lowerUser === DEVELOPER_USERNAME);
-    usersDB[lowerUser] = { display: user, pass: pass, role: (isDeveloperAccount ? "dev" : "user"), approved: isDeveloperAccount, adminName: adminName };
+    usersDB[lowerUser] = { display: user, pass: pass, role: (isDeveloperAccount ? "dev" : "user"), approved: isDeveloperAccount, adminName: adminName, rank: 1 };
     await fbSave("users", usersDB);
 
     globalData = await fbFetch("data") || {};
@@ -1653,11 +1713,14 @@ async function showMainUcp() {
 
   if (uData.role === "dev") {
     badge.classList.add("dev");
+    badge.classList.remove("admin-rank");
     badge.textContent = uData.display + " [FEJLESZTŐ]";
     document.getElementById("devPanelBtn").style.display = "inline-block";
     document.getElementById("devStatsBtn").style.display = "inline-block";
   } else {
     badge.classList.remove("dev");
+    badge.classList.add("admin-rank");
+    badge.textContent = uData.display + " [ADMIN " + (uData.rank || 1) + "]";
     document.getElementById("devPanelBtn").style.display = "none";
     document.getElementById("devStatsBtn").style.display = "none";
   }
@@ -1724,9 +1787,20 @@ async function openDevStatsPage() {
   renderDevStatsUserList();
 }
 
+function sortUsersByRank(usernames) {
+  return usernames.slice().sort((a, b) => {
+    const ua = usersDB[a] || {}, ub = usersDB[b] || {};
+    const aDev = ua.role === "dev", bDev = ub.role === "dev";
+    if (aDev && !bDev) return -1;
+    if (!aDev && bDev) return 1;
+    if (aDev && bDev) return 0;
+    return (ub.rank || 1) - (ua.rank || 1);
+  });
+}
+
 function renderDevStatsUserList() {
   const container = document.getElementById("devStatsUserList");
-  container.innerHTML = Object.keys(usersDB).map(username => {
+  container.innerHTML = sortUsersByRank(Object.keys(usersDB)).map(username => {
     const u = usersDB[username];
     const isDev = u.role === "dev";
     const isSelected = selectedStatsUser === username ? 'selected' : '';
@@ -1738,7 +1812,7 @@ function renderDevStatsUserList() {
        <div class="see-list-item clickable ${isSelected}" id="statsrow-${username}" onclick="selectStatsUser('${username}')">
          <div>
            <span class="see-item-date" style="color:${isDev ? 'var(--see-dev)' : '#fff'}; font-weight:700;">${u.display}</span>
-           <span style="font-size:11px; color:var(--see-text-muted); margin-left:10px;">${isDev ? 'Fejlesztő' : 'Admin'}</span>
+           <span style="font-size:11px; color:var(--see-text-muted); margin-left:10px;">${isDev ? 'Fejlesztő' : 'Admin ' + (u.rank || 1)}</span>
            ${logAdminNameHtml}
          </div>
        </div>`;
@@ -1840,7 +1914,7 @@ function renderDevUsers() {
   const container = document.getElementById("devUserList");
   const usernames = Object.keys(usersDB);
   const pending = usernames.filter(u => usersDB[u].approved === false);
-  const approvedUsers = usernames.filter(u => usersDB[u].approved !== false);
+  const approvedUsers = sortUsersByRank(usernames.filter(u => usersDB[u].approved !== false));
 
   const pendingHtml = pending.length ? `
     <div style="font-size:11px; font-weight:700; text-transform:uppercase; color:var(--see-danger); margin:4px 0 10px;">
@@ -1873,15 +1947,24 @@ function renderDevUsers() {
     const adminNameHtml = u.adminName
       ? `<span style="font-size:11px; color:var(--see-text-muted); margin-left:10px;"><i class="fa-solid fa-user-tag"></i> ${u.adminName}</span>`
       : '';
+    const rankSelectHtml = isDev ? '' : `
+      <div class="rank-dropdown" id="rankDropdown-${username}">
+        <button class="rank-dropdown-btn" onclick="toggleRankDropdown('${username}')" title="Admin rang beállítása">Admin ${u.rank || 1} <i class="fa-solid fa-chevron-down"></i></button>
+        <div class="rank-dropdown-menu">
+          ${[1,2,3,4,5].map(r => `<div class="rank-dropdown-item ${(u.rank || 1) == r ? 'active' : ''}" onclick="devSetRank('${username}', ${r}); toggleRankDropdown('${username}');">Admin ${r}</div>`).join('')}
+        </div>
+      </div>`;
     return `
        <div class="see-list-item">
          <div>
            <span class="see-item-date" style="color:${isDev ? 'var(--see-dev)' : '#fff'}; font-weight:700;">${u.display}</span>
-           <span style="font-size:11px; color:var(--see-text-muted); margin-left:10px;">Rang: ${isDev ? 'Fejlesztő' : 'Admin'}</span>
+           <span style="font-size:11px; color:var(--see-text-muted); margin-left:10px;">Rang: ${isDev ? 'Fejlesztő' : 'Admin ' + (u.rank || 1)}</span>
+           ${rankSelectHtml}
            ${adminNameHtml}
          </div>
          <div class="see-item-actions">
            <button class="see-action-btn" onclick="devEditUser('${username}')" title="Jelszó módosítása">✏</button>
+           <button class="see-action-btn" style="color:var(--see-admin-yellow);" onclick="devEditAdminName('${username}')" title="Admin nick beállítása / módosítása"><i class="fa-solid fa-user-tag"></i></button>
            ${isDev ? '' : `<button class="see-action-btn del" onclick="devDeleteUser('${username}')" title="Kirúgás / Felhasználó törlése">✕</button>`}
          </div>
        </div>`;
@@ -1917,6 +2000,23 @@ async function devEditUser(username) {
     alert("Jelszó módosítva!");
     renderDevUsers();
   }
+}
+
+async function devEditAdminName(username) {
+  const current = usersDB[username].adminName || "";
+  const newAdminName = prompt(`Add meg / módosítsd ${usersDB[username].display} admin nickjét (ezzel a névvel szerepel a logokban):`, current);
+  if (newAdminName === null) return; // megszakítva
+  usersDB[username].adminName = newAdminName.trim();
+  await fbSave(`users/${username}`, usersDB[username]);
+  alert("Admin nick elmentve!");
+  renderDevUsers();
+}
+
+async function devSetRank(username, newRank) {
+  if (!usersDB[username]) return;
+  usersDB[username].rank = parseInt(newRank, 10) || 1;
+  await fbSave(`users/${username}`, usersDB[username]);
+  renderDevUsers();
 }
 
 async function devDeleteUser(username) {
@@ -1980,8 +2080,6 @@ async function closeCurrentMonth() {
   if (input === null) return;
   const monthKey = input.trim();
   if (!/^\d{4}-\d{2}$/.test(monthKey)) { alert('Érvénytelen formátum! Használd az ÉÉÉÉ-HH formát (pl. 2026-06).'); return; }
-
-  if (!confirm(`Biztosan lezárod a(z) "${monthKey}" hónapot?\n\nCsak az ehhez a hónaphoz tartozó Duty / Off Duty / Report / adminparancs adatok archiválásra kerülnek, ezek eltűnnek a munkaterületről. A más hónapba eső, esetleg még nyitva lévő adat változatlanul megmarad.`)) return;
 
   const result = closeMonthByKey(monthKey);
   if (result === 'empty') { alert(`Nincs "${monthKey}" hónaphoz tartozó adat a nyitott munkaterületen - ellenőrizd a hónap nevét.`); return; }
@@ -2090,15 +2188,8 @@ async function reopenMonth(monthKey) {
   const arc = closedMonths[monthKey];
   if (!arc) return;
 
-  const hasOpenData = (globalData[currentUser].duty || []).length > 0
-    || (globalData[currentUser].off || []).length > 0
-    || Object.keys(globalData[currentUser].reports || {}).length > 0;
-
-  let msg = `Biztosan újra megnyitod a(z) ${monthKey} hónapot?\n\nA lezárt hónap adatai visszakerülnek a Munkaterületre szerkesztésre.`;
-  if (hasOpenData) {
-    msg += `\n\nFIGYELEM: a Munkaterületen jelenleg más, még le nem zárt hónap adata is van - hogy ez sose keveredjen össze a(z) ${monthKey} adataival, előbb automatikusan lezárom (archiválom) a jelenleg nyitva lévő hónapo(ka)t a saját dátumaik alapján, és csak utána nyitom meg a(z) ${monthKey} hónapot egy tiszta munkaterületre.`;
-  }
-  if (!confirm(msg)) return;
+  // A megerősítő ablakot itt szándékosan nem jelenítjük meg - a "Hónap megnyitása"
+  // gombra kattintás önmagában elég, nincs szükség további rákattintásra.
 
   // Ha van bármilyen még nyitott (le nem zárt) adat a munkaterületen, azt ELŐSZÖR
   // csendben (prompt/megerősítés nélkül) lezárjuk - a saját hónapja(i) alapján -,
@@ -3356,8 +3447,13 @@ async function confirmLogBreakdown(silent) {
   closeLogBreakdownModal();
   const successMsg = 'Logok feldolgozva! Az érintett napok report-száma, a fixveh / asegit / agyogyit parancshasználat, a Duty / Off Duty idő, valamint a Report napló és az Adminjail/Kick előzmények is frissültek az összes ismert log fájl adatai alapján.';
   const errorMsg = 'Hiba történt a mentés közben — az adatok NEM kerültek elmentve a szerverre. Próbáld újra, és ellenőrizd a hálózati kapcsolatot.';
+  // A részletes bontást megmutató modal (és az ott megnyomott "Adatok mentése" gomb) már
+  // maga az elsődleges megerősítés - ezután nincs szükség egy második, blokkoló alert()-re.
+  // Sikeres kézi feltöltésnél ezért csak egy nem-blokkoló toast jelzi az eredményt;
+  // hiba esetén (mivel az kritikus) marad a jól látható alert. Néma (automata) szinkronnál
+  // a viselkedés változatlan: siker esetén nincs értesítés, hiba esetén toast jelez.
   if (!silent) {
-    if (ok) alert(successMsg); else alert(errorMsg);
+    if (ok) showToast(successMsg); else alert(errorMsg);
   } else if (!ok) {
     showToast(errorMsg, true);
   }
@@ -3381,7 +3477,7 @@ function render() {
           ${x.auto ? '<span style="font-size:9px; font-weight:700; color:var(--see-gold); background:rgba(99,102,241,0.12); padding:1px 6px; border-radius:5px; text-transform:uppercase; letter-spacing:0.3px;">Log</span>' : ''}
         </div>
         <span class="see-item-value" style="color:var(--see-gold)">${x.perc} perc</span>
-        <div class="see-item-actions"><button class="see-action-btn" onclick="editItem('duty',${i})">✏</button><button class="see-action-btn del" onclick="delItem('duty',${i})">✕</button></div>
+        <div class="see-item-actions"><button class="see-action-btn del" onclick="delItem('duty',${i})">✕</button></div>
       </div>`;
   }).join('');
 
@@ -3398,7 +3494,7 @@ function render() {
           ${x.auto ? '<span style="font-size:9px; font-weight:700; color:var(--see-gold); background:rgba(99,102,241,0.12); padding:1px 6px; border-radius:5px; text-transform:uppercase; letter-spacing:0.3px;">Log</span>' : ''}
         </div>
         <span class="see-item-value" style="color:#fff">${x.perc} perc</span>
-        <div class="see-item-actions"><button class="see-action-btn" onclick="editItem('off',${i})">✏</button><button class="see-action-btn del" onclick="delItem('off',${i})">✕</button></div>
+        <div class="see-item-actions"><button class="see-action-btn del" onclick="delItem('off',${i})">✕</button></div>
       </div>`;
   }).join('');
 
