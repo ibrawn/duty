@@ -1699,6 +1699,11 @@ async function handleAuth() {
       }
       sessionStorage.setItem("adminCurrentSessionUser", lowerUser);
       currentUser = lowerUser;
+      // Utolsó bejelentkezés időpontjának rögzítése (csak tényleges bejelentkezéskor,
+      // nem az oldal-frissítés miatti session-visszaállításnál) - ezt a Fejlesztő
+      // panelen látja a fejlesztő minden felhasználónál.
+      usersDB[lowerUser].lastLogin = Date.now();
+      fbSave(`users/${lowerUser}`, usersDB[lowerUser]);
       showMainUcp();
     } else { 
       alert("Hibás felhasználónév vagy jelszó!");
@@ -1931,6 +1936,15 @@ function renderStatsDashboard(username) {
   }).join('') || '<div style="font-size:12px;color:var(--see-text-muted);grid-column: 1 / -1; text-align:center; padding:16px;">Ennek a felhasználónak még nincs lezárt hónapja.</div>';
 }
 
+// Az "utolsó bejelentkezés" időpontját formázza olvasható, magyar formátumra.
+// A "lastLogin" mező csak tényleges (jelszavas) bejelentkezéskor frissül -
+// egy sima oldal-frissítés (session-visszaállítás) nem számít új belépésnek.
+function formatLastLogin(ts) {
+  if (!ts) return 'Még sosem jelentkezett be';
+  const d = new Date(ts);
+  return d.toLocaleString('hu-HU', { year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' });
+}
+
 function renderDevUsers() {
   const container = document.getElementById("devUserList");
   const usernames = Object.keys(usersDB);
@@ -1975,6 +1989,7 @@ function renderDevUsers() {
           ${[1,2,3,4,5].map(r => `<div class="rank-dropdown-item ${(u.rank || 1) == r ? 'active' : ''}" onclick="devSetRank('${username}', ${r}); toggleRankDropdown('${username}');">Admin ${r}</div>`).join('')}
         </div>
       </div>`;
+    const lastLoginHtml = `<span style="font-size:10px; color:var(--see-text-muted); display:block; margin-top:2px;"><i class="fa-solid fa-clock-rotate-left"></i> Utolsó bejelentkezés: <span style="color:var(--see-text);">${formatLastLogin(u.lastLogin)}</span></span>`;
     return `
        <div class="see-list-item">
          <div>
@@ -1982,6 +1997,7 @@ function renderDevUsers() {
            <span style="font-size:11px; color:var(--see-text-muted); margin-left:10px;">Rang: ${isDev ? 'Fejlesztő' : 'Admin ' + (u.rank || 1)}</span>
            ${rankSelectHtml}
            ${adminNameHtml}
+           ${lastLoginHtml}
          </div>
          <div class="see-item-actions">
            <button class="see-action-btn" onclick="devEditUser('${username}')" title="Jelszó módosítása">✏</button>
