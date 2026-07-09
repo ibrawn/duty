@@ -1607,6 +1607,9 @@ function switchPage(pageId) {
     document.getElementById('navGuideBtn').classList.add('active');
   }
   closeSideNav();
+  // Elmentjük, melyik oldalon jársz, hogy egy oldal-frissítés (F5) után ugyanide
+  // térhessünk vissza a főoldalra dobás helyett.
+  try { sessionStorage.setItem("adminLastPage", pageId); } catch (e) {}
 }
 
 function toggleSideNav() {
@@ -1738,8 +1741,25 @@ async function showMainUcp() {
   const logAdminNameInput = document.getElementById('logAdminName');
   if (logAdminNameInput) logAdminNameInput.value = globalData[currentUser].logAdminName || '';
 
+  // FONTOS: a mentett oldalt MÉG a switchPage('main') hívás ELŐTT ki kell olvasnunk,
+  // különben az felülírná ("main"-re) a sessionStorage-ban tárolt korábbi oldalt,
+  // mielőtt visszaállíthatnánk azt.
+  let lastPage = 'main';
+  try { lastPage = sessionStorage.getItem("adminLastPage") || 'main'; } catch (e) {}
+
   switchPage('main');
   render();
+
+  // Ha oldal-frissítés (F5) történt, visszaállítjuk, hogy melyik oldalon jártál -
+  // hogy ne dobjon vissza mindig a főoldalra. Fejlesztői aloldalakat (dev /
+  // devstats) csak akkor állítjuk vissza, ha a felhasználó valóban fejlesztő.
+  if (lastPage === 'dev' && uData.role === 'dev') {
+    await openDevPage();
+  } else if (lastPage === 'devstats' && uData.role === 'dev') {
+    await openDevStatsPage();
+  } else if (lastPage === 'monthly' || lastPage === 'guide') {
+    switchPage(lastPage);
+  }
 
   document.getElementById("chatToggleBtn").style.display = "flex";
   startChatPolling();
@@ -1756,6 +1776,7 @@ async function saveLogAdminNameField() {
 
 function logout() {
   sessionStorage.removeItem("adminCurrentSessionUser");
+  sessionStorage.removeItem("adminLastPage");
   currentUser = "";
   document.getElementById("mainUcpSection").style.display = "none";
   document.getElementById("authSection").style.display = "flex";
