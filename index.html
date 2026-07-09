@@ -1423,9 +1423,44 @@ input[type="file"] { display: none; }
   </div>
 </div>
 
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
 <script>
 const FIREBASE_DB_URL = "https://adminduty-1fafd-default-rtdb.firebaseio.com";
-const DEVELOPER_USERNAME = "ibrawn"; 
+const DEVELOPER_USERNAME = "ibrawn";
+
+// ============================================================
+// FIREBASE AUTH (névtelen bejelentkeztetés a háttérben)
+// ============================================================
+// Ez NEM a saját felhasználónév/jelszó rendszeredet váltja ki - az továbbra is
+// változatlanul működik. Ez csak egy "láthatatlan" Firebase-szintű auth réteg,
+// hogy a Realtime Database szabályaiban használható legyen az "auth != null"
+// feltétel (különben a nyitott, "auth != null" nélküli szabály miatt a Firebase
+// folyamatosan figyelmeztető emaileket küld a nyilvánosan írható/olvasható
+// adatbázis miatt).
+const firebaseConfig = {
+  apiKey: "AIzaSyAzI3ijh5_7PiiZcFbVGMT7c_u-GPk8Ilw",
+  authDomain: "adminduty-1fafd.firebaseapp.com",
+  databaseURL: "https://adminduty-1fafd-default-rtdb.firebaseio.com",
+  projectId: "adminduty-1fafd",
+  storageBucket: "adminduty-1fafd.firebasestorage.app",
+  messagingSenderId: "986563126538",
+  appId: "1:986563126538:web:eb93175c8b91ceb48046f3",
+  measurementId: "G-P6GET29LGP"
+};
+firebase.initializeApp(firebaseConfig);
+
+function ensureFirebaseAuth() {
+  return new Promise((resolve) => {
+    firebase.auth().onAuthStateChanged(user => {
+      if (user) {
+        resolve(user);
+      } else {
+        firebase.auth().signInAnonymously().catch(e => console.error('Firebase anonymous auth error:', e));
+      }
+    });
+  });
+}
 
 let usersDB = {};
 let globalData = {};
@@ -3748,7 +3783,10 @@ render = function() {
   try { renderSidebarWidgets(); } catch (e) { console.error('Widget render error:', e); }
 };
 
-window.onload = function() { initAuth(); };
+window.onload = async function() {
+  await ensureFirebaseAuth();
+  initAuth();
+};
 </script>
 <div id="seeToastContainer"></div>
 </body>
