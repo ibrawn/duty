@@ -1469,17 +1469,37 @@ let editType = null, editIndex = null;
 let isRegisterMode = false;
 let selectedItems = { duty: {}, off: {}, reports: {} };
 
+async function getIdToken() {
+  const user = firebase.auth().currentUser;
+  if (!user) return null;
+  try { return await user.getIdToken(); } catch(e) { console.error('getIdToken error:', e); return null; }
+}
+
 async function fbFetch(path) {
   try {
-    const res = await fetch(`${FIREBASE_DB_URL}/${path}.json`);
+    const token = await getIdToken();
+    const url = `${FIREBASE_DB_URL}/${path}.json` + (token ? `?auth=${token}` : '');
+    const res = await fetch(url);
     return await res.json();
   } catch(e) { console.error(e); return null; }
 }
 
 async function fbSave(path, data) {
   try {
-    const res = await fetch(`${FIREBASE_DB_URL}/${path}.json`, { method: 'PUT', body: JSON.stringify(data) });
+    const token = await getIdToken();
+    const url = `${FIREBASE_DB_URL}/${path}.json` + (token ? `?auth=${token}` : '');
+    const res = await fetch(url, { method: 'PUT', body: JSON.stringify(data) });
     if (!res.ok) { console.error('fbSave failed', path, res.status); return false; }
+    return true;
+  } catch(e) { console.error(e); return false; }
+}
+
+async function fbDelete(path) {
+  try {
+    const token = await getIdToken();
+    const url = `${FIREBASE_DB_URL}/${path}.json` + (token ? `?auth=${token}` : '');
+    const res = await fetch(url, { method: 'DELETE' });
+    if (!res.ok) { console.error('fbDelete failed', path, res.status); return false; }
     return true;
   } catch(e) { console.error(e); return false; }
 }
@@ -1611,7 +1631,7 @@ async function sendChatMessage() {
 async function deleteChatMessage(key) {
   if (!isDevCurrentUser()) return;
   if (!confirm("Biztosan törlöd ezt az üzenetet a chatből?")) return;
-  await fetch(`${FIREBASE_DB_URL}/chat/${key}.json`, { method: 'DELETE' });
+  await fbDelete(`chat/${key}`);
   await loadChatMessages(true);
 }
 
@@ -2057,8 +2077,8 @@ async function devApproveUser(username) {
 async function devRejectUser(username) {
   if (!usersDB[username]) return;
   if (confirm(`Biztosan elutasítod és törlöd ${usersDB[username].display} jóváhagyásra váró regisztrációját?`)) {
-    await fetch(`${FIREBASE_DB_URL}/users/${username}.json`, { method: 'DELETE' });
-    await fetch(`${FIREBASE_DB_URL}/data/${username}.json`, { method: 'DELETE' });
+    await fbDelete(`users/${username}`);
+    await fbDelete(`data/${username}`);
     delete usersDB[username];
     renderDevUsers();
   }
@@ -2093,8 +2113,8 @@ async function devSetRank(username, newRank) {
 
 async function devDeleteUser(username) {
   if (confirm(`Biztosan törlöd ${usersDB[username].display} fiókját?`)) {
-    await fetch(`${FIREBASE_DB_URL}/users/${username}.json`, { method: 'DELETE' });
-    await fetch(`${FIREBASE_DB_URL}/data/${username}.json`, { method: 'DELETE' });
+    await fbDelete(`users/${username}`);
+    await fbDelete(`data/${username}`);
     delete usersDB[username];
     renderDevUsers();
   }
