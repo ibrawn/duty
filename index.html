@@ -876,6 +876,68 @@ input[type="file"] { display: none; }
   from { opacity: 0; transform: translateY(8px); }
   to { opacity: 1; transform: translateY(0); }
 }
+/* ============ GLOBÁLIS CHAT WIDGET ============ */
+.chat-toggle-btn {
+  position: fixed; bottom: 24px; right: 24px; z-index: 500;
+  width: 56px; height: 56px; border-radius: 50%;
+  background: linear-gradient(135deg, var(--see-gold), #4f46e5);
+  color: #fff; border: none; cursor: pointer;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 22px; box-shadow: 0 10px 26px -8px rgba(99,102,241,0.6);
+  transition: transform 0.18s;
+}
+.chat-toggle-btn:hover { transform: scale(1.06); }
+.chat-toggle-btn .chat-badge {
+  position: absolute; top: -4px; right: -4px;
+  background: var(--see-danger); color: #fff; font-size: 10px; font-weight: 800;
+  min-width: 18px; height: 18px; border-radius: 999px;
+  display: flex; align-items: center; justify-content: center; padding: 0 4px;
+}
+.chat-window {
+  position: fixed; bottom: 92px; right: 24px; z-index: 500;
+  width: 340px; max-width: calc(100vw - 32px);
+  height: 460px; max-height: calc(100vh - 130px);
+  background: var(--see-card); border: 1px solid var(--see-border);
+  border-radius: var(--radius-lg); box-shadow: var(--shadow-soft);
+  display: none; flex-direction: column; overflow: hidden;
+  animation: fadeIn 0.2s ease;
+}
+.chat-window.open { display: flex; }
+.chat-window-head {
+  padding: 14px 16px; display: flex; align-items: center; justify-content: space-between;
+  border-bottom: 1px solid var(--see-border); background: var(--see-card-inner); flex-shrink: 0;
+}
+.chat-window-head .title { font-size: 13px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.3px; color: #fff; display: flex; align-items: center; gap: 8px; }
+.chat-window-head .title i { color: var(--see-gold); }
+.chat-close-x { background: rgba(255,255,255,0.06); border: none; color: var(--see-text-muted); width: 26px; height: 26px; border-radius: 8px; cursor: pointer; }
+.chat-close-x:hover { background: rgba(239,68,68,0.16); color: var(--see-danger); }
+.chat-messages { flex: 1; overflow-y: auto; padding: 12px 14px; display: flex; flex-direction: column; gap: 10px; }
+.chat-msg { display: flex; flex-direction: column; align-items: flex-start; max-width: 88%; }
+.chat-msg.own { align-self: flex-end; align-items: flex-end; }
+.chat-msg-meta { font-size: 10px; color: var(--see-text-muted); margin-bottom: 3px; display: flex; align-items: center; gap: 6px; }
+.chat-msg-meta .dev-tag { color: var(--see-dev); font-weight: 700; }
+.chat-bubble {
+  background: var(--see-card-inner); color: #fff; font-size: 12.5px; line-height: 1.4;
+  padding: 8px 12px; border-radius: 12px; word-break: break-word; position: relative;
+}
+.chat-msg.own .chat-bubble { background: rgba(99,102,241,0.22); }
+.chat-msg-del {
+  background: none; border: none; color: var(--see-text-muted); font-size: 10px; cursor: pointer;
+  margin-top: 3px; padding: 0; opacity: 0.7;
+}
+.chat-msg-del:hover { color: var(--see-danger); opacity: 1; }
+.chat-input-row { display: flex; gap: 8px; padding: 12px 14px; border-top: 1px solid var(--see-border); flex-shrink: 0; }
+.chat-input-row input {
+  flex: 1; background: rgba(255,255,255,0.045); border: none; border-radius: 10px;
+  padding: 10px 12px; color: #fff; font-size: 12.5px;
+}
+.chat-input-row input::placeholder { color: var(--see-text-muted); }
+.chat-input-row button {
+  background: var(--see-gold); border: none; color: #fff; width: 38px; height: 38px;
+  border-radius: 10px; cursor: pointer; display: flex; align-items: center; justify-content: center;
+  flex-shrink: 0; transition: transform 0.15s;
+}
+.chat-input-row button:hover { transform: translateY(-1px); }
 </style>
 </head>
 <body>
@@ -889,28 +951,29 @@ input[type="file"] { display: none; }
         <button class="dev-close" onclick="closeMonthEdit()"><i class="fa-solid fa-xmark"></i></button>
       </div>
     </div>
-    <div class="see-workspace" style="grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));">
-      <div>
+    <div class="stats-grid-mini" id="monthEditSummary" style="grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); margin-bottom: 18px;"></div>
+    <div class="see-workspace" style="grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 14px; border-radius: 0; overflow: visible; background: transparent; border: none; box-shadow: none;">
+      <div style="background: var(--see-card-inner); border-radius: var(--radius-md); padding: 16px;">
         <div style="font-size:12px; font-weight:700; text-transform:uppercase; margin-bottom:8px; color:var(--see-gold);">Duty</div>
         <div class="see-list-container" id="monthEditDuty" style="max-height: 260px;"></div>
       </div>
-      <div>
+      <div style="background: var(--see-card-inner); border-radius: var(--radius-md); padding: 16px;">
         <div style="font-size:12px; font-weight:700; text-transform:uppercase; margin-bottom:8px; color:#fff;">Off Duty</div>
         <div class="see-list-container" id="monthEditOff" style="max-height: 260px;"></div>
       </div>
-      <div>
+      <div style="background: var(--see-card-inner); border-radius: var(--radius-md); padding: 16px;">
         <div style="font-size:12px; font-weight:700; text-transform:uppercase; margin-bottom:8px; color:var(--see-success);">Reportok</div>
         <div class="see-list-container" id="monthEditReports" style="max-height: 260px;"></div>
       </div>
-      <div>
+      <div style="background: var(--see-card-inner); border-radius: var(--radius-md); padding: 16px;">
         <div style="font-size:12px; font-weight:700; text-transform:uppercase; margin-bottom:8px; color:var(--see-gold);">Admin parancsok</div>
         <div class="see-list-container" id="monthEditCommands" style="max-height: 260px;"></div>
       </div>
-      <div>
+      <div style="background: var(--see-card-inner); border-radius: var(--radius-md); padding: 16px;">
         <div style="font-size:12px; font-weight:700; text-transform:uppercase; margin-bottom:8px; color:var(--see-success);">Report napló</div>
         <div class="see-list-container" id="monthEditReportLog" style="max-height: 260px;"></div>
       </div>
-      <div>
+      <div style="background: var(--see-card-inner); border-radius: var(--radius-md); padding: 16px;">
         <div style="font-size:12px; font-weight:700; text-transform:uppercase; margin-bottom:8px; color:var(--see-danger);">Adminjail / Kick / Ban előzmények</div>
         <div class="see-list-container" id="monthEditAdminActions" style="max-height: 260px;"></div>
       </div>
@@ -1059,9 +1122,9 @@ input[type="file"] { display: none; }
       </div>
 
       <div class="quick-jump">
-        <a class="quick-jump-btn" href="#workPanelAnchor"><i class="fa-solid fa-user-clock"></i> Duty / Off Duty / Logok</a>
-        <a class="quick-jump-btn" href="#reportLogAnchor"><i class="fa-solid fa-hashtag"></i> Report napló <span class="qcount" id="reportLogCountQuick">0</span></a>
-        <a class="quick-jump-btn" href="#adminActionAnchor"><i class="fa-solid fa-clock-rotate-left"></i> Adminjail / Kick / Ban <span class="qcount" id="adminActionCountQuick">0</span></a>
+        <a class="quick-jump-btn" href="javascript:void(0)" onclick="document.getElementById('workPanelAnchor').scrollIntoView({behavior:'smooth', block:'start'});"><i class="fa-solid fa-user-clock"></i> Duty / Off Duty / Logok</a>
+        <a class="quick-jump-btn" href="javascript:void(0)" onclick="document.getElementById('reportLogAnchor').scrollIntoView({behavior:'smooth', block:'start'});"><i class="fa-solid fa-hashtag"></i> Report napló <span class="qcount" id="reportLogCountQuick">0</span></a>
+        <a class="quick-jump-btn" href="javascript:void(0)" onclick="document.getElementById('adminActionAnchor').scrollIntoView({behavior:'smooth', block:'start'});"><i class="fa-solid fa-clock-rotate-left"></i> Adminjail / Kick / Ban <span class="qcount" id="adminActionCountQuick">0</span></a>
       </div>
 
       <div class="dashboard-grid">
@@ -1245,6 +1308,10 @@ input[type="file"] { display: none; }
                   <div class="see-list-container" id="miniReportsStream" style="max-height: 200px;"></div>
                 </div>
               </div>
+              <div style="margin-top:22px;">
+                <div style="font-size:12px; font-weight:700; text-transform:uppercase; margin-bottom:10px; color:var(--see-gold); display:flex; align-items:center; gap:8px;"><i class="fa-solid fa-calendar-days"></i> Havi statisztikák (lezárt hónapok)</div>
+                <div class="monthly-page-container" id="devStatsMonthlyContainer" style="margin-top:0;"></div>
+              </div>
             </div>
           </div>
         </div>
@@ -1283,6 +1350,23 @@ input[type="file"] { display: none; }
   </div>
 </div>
 
+<button class="chat-toggle-btn" id="chatToggleBtn" style="display:none;" onclick="toggleChatWindow()">
+  <i class="fa-solid fa-comments"></i>
+  <span class="chat-badge" id="chatUnreadBadge" style="display:none;">0</span>
+</button>
+
+<div class="chat-window" id="chatWindow">
+  <div class="chat-window-head">
+    <div class="title"><i class="fa-solid fa-comments"></i> Csapat chat</div>
+    <button class="chat-close-x" onclick="toggleChatWindow()"><i class="fa-solid fa-xmark"></i></button>
+  </div>
+  <div class="chat-messages" id="chatMessages"></div>
+  <div class="chat-input-row">
+    <input type="text" id="chatInput" placeholder="Írj üzenetet..." maxlength="500" onkeydown="if(event.key==='Enter'){ event.preventDefault(); sendChatMessage(); }">
+    <button onclick="sendChatMessage()"><i class="fa-solid fa-paper-plane"></i></button>
+  </div>
+</div>
+
 <script>
 const FIREBASE_DB_URL = "https://adminduty-1fafd-default-rtdb.firebaseio.com";
 const DEVELOPER_USERNAME = "ibrawn"; 
@@ -1317,6 +1401,124 @@ async function initAuth() {
   } else {
     toggleAuthMode(Object.keys(usersDB).length === 0);
   }
+}
+
+/* ============ CSAPAT CHAT (mindenki látja, fejlesztő törölhet) ============ */
+let chatPollInterval = null;
+let chatIsOpen = false;
+let chatLastMsgCount = 0;
+let chatUnreadCount = 0;
+let chatMessagesCache = {};
+
+function isDevCurrentUser() {
+  return !!(usersDB[currentUser] && usersDB[currentUser].role === "dev");
+}
+
+function toggleChatWindow() {
+  chatIsOpen = !chatIsOpen;
+  const win = document.getElementById("chatWindow");
+  win.classList.toggle("open", chatIsOpen);
+  if (chatIsOpen) {
+    chatUnreadCount = 0;
+    updateChatBadge();
+    loadChatMessages(true);
+    document.getElementById("chatInput").focus();
+  }
+}
+
+function startChatPolling() {
+  stopChatPolling();
+  loadChatMessages(true);
+  chatPollInterval = setInterval(() => loadChatMessages(false), 4000);
+}
+function stopChatPolling() {
+  if (chatPollInterval) { clearInterval(chatPollInterval); chatPollInterval = null; }
+}
+
+async function loadChatMessages(forceScroll) {
+  const data = await fbFetch("chat");
+  chatMessagesCache = data || {};
+  const keys = Object.keys(chatMessagesCache);
+
+  if (keys.length > chatLastMsgCount && chatLastMsgCount !== 0 && !chatIsOpen) {
+    chatUnreadCount += (keys.length - chatLastMsgCount);
+    updateChatBadge();
+  }
+  chatLastMsgCount = keys.length;
+
+  if (chatIsOpen) renderChatMessages(forceScroll);
+}
+
+function updateChatBadge() {
+  const badge = document.getElementById("chatUnreadBadge");
+  if (chatUnreadCount > 0) {
+    badge.style.display = "flex";
+    badge.textContent = chatUnreadCount > 9 ? "9+" : chatUnreadCount;
+  } else {
+    badge.style.display = "none";
+  }
+}
+
+function renderChatMessages(forceScroll) {
+  const container = document.getElementById("chatMessages");
+  const keys = Object.keys(chatMessagesCache).sort();
+  const wasScrolledToBottom = container.scrollTop + container.clientHeight >= container.scrollHeight - 30;
+
+  container.innerHTML = keys.map(key => {
+    const m = chatMessagesCache[key];
+    if (!m) return '';
+    const isOwn = m.user === currentUser;
+    const isMsgDev = m.role === "dev";
+    const canDelete = isDevCurrentUser();
+    const delBtn = canDelete ? `<button class="chat-msg-del" onclick="deleteChatMessage('${key}')"><i class="fa-solid fa-trash"></i> Törlés</button>` : '';
+    return `
+      <div class="chat-msg ${isOwn ? 'own' : ''}">
+        <div class="chat-msg-meta">
+          <span style="${isMsgDev ? 'color:var(--see-dev); font-weight:700;' : ''}">${escapeChatText(m.display || m.user)}</span>
+          ${isMsgDev ? '<span class="dev-tag">FEJLESZTŐ</span>' : ''}
+          <span>${m.time || ''}</span>
+        </div>
+        <div class="chat-bubble">${escapeChatText(m.text || '')}</div>
+        ${delBtn}
+      </div>`;
+  }).join('') || '<div style="font-size:12px;color:var(--see-text-muted); text-align:center; padding:20px;">Még nincs üzenet. Írd meg az elsőt!</div>';
+
+  if (forceScroll || wasScrolledToBottom) {
+    container.scrollTop = container.scrollHeight;
+  }
+}
+
+function escapeChatText(str) {
+  const div = document.createElement('div');
+  div.textContent = str;
+  return div.innerHTML;
+}
+
+async function sendChatMessage() {
+  const input = document.getElementById("chatInput");
+  const text = input.value.trim();
+  if (!text || !currentUser) return;
+
+  const uData = usersDB[currentUser] || {};
+  const key = `${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
+  const now = new Date();
+  const msg = {
+    user: currentUser,
+    display: uData.display || currentUser,
+    role: uData.role || "user",
+    text: text,
+    time: now.toLocaleString('hu-HU', { hour: '2-digit', minute: '2-digit', day: '2-digit', month: '2-digit' })
+  };
+  input.value = "";
+  await fbSave(`chat/${key}`, msg);
+  await loadChatMessages(true);
+}
+
+async function deleteChatMessage(key) {
+  if (!isDevCurrentUser()) return;
+  if (!confirm("Biztosan törlöd ezt az üzenetet a chatből?")) return;
+  await fetch(`${FIREBASE_DB_URL}/chat/${key}.json`, { method: 'DELETE' });
+  await loadChatMessages(true);
 }
 
 /* OLDALAK KÖZÖTTI VÁLTÁS */
@@ -1475,6 +1677,9 @@ async function showMainUcp() {
 
   switchPage('main');
   render();
+
+  document.getElementById("chatToggleBtn").style.display = "flex";
+  startChatPolling();
 }
 
 // Elmenti, hogy a felhasználó milyen néven szerepel adminként a logokban -
@@ -1494,6 +1699,9 @@ function logout() {
   document.getElementById("authUser").value = "";
   document.getElementById("authPass").value = "";
   toggleAuthMode(false);
+  document.getElementById("chatToggleBtn").style.display = "none";
+  document.getElementById("chatWindow").classList.remove("open");
+  stopChatPolling();
 }
 
 async function openDevPage() {
@@ -1596,6 +1804,36 @@ function renderStatsDashboard(username) {
   document.getElementById("miniOff").textContent = totalOffMin + " p";
   document.getElementById("miniTotal").textContent = (totalDutyMin + totalOffMin) + " p";
   document.getElementById("miniReports").textContent = totalRepCount + " db";
+
+  const closedMonths = uData.closedMonths || {};
+  const sortedMonths = Object.keys(closedMonths).sort().reverse();
+  document.getElementById("devStatsMonthlyContainer").innerHTML = sortedMonths.map(m => {
+    const arc = closedMonths[m] || { duty: [], off: [], reports: {}, commandsByDay: {}, reportLog: [], adminActions: [] };
+    const mDuty = (arc.duty || []).reduce((s, x) => s + (Number(x.perc) || 0), 0);
+    const mOff = (arc.off || []).reduce((s, x) => s + (Number(x.perc) || 0), 0);
+    const mReports = Object.values(arc.reports || {}).reduce((s, v) => s + (Number(v) || 0), 0);
+    const mCmds = sumCommandCounts(arc.commandsByDay);
+    return `
+      <div class="see-panel month-card-clickable" style="background: var(--see-card-inner); padding: 18px;" onclick="openDevMonthView('${username}', '${m}')">
+        <div style="font-weight: 800; color: var(--see-gold); font-size: 13px; text-transform: uppercase; margin-bottom: 12px; display:flex; justify-content:space-between; align-items:center;">
+          <span>📅 ${m} <span style="color:var(--see-danger); font-size:10px; margin-left:6px; text-transform:none;">🔒 Lezárva</span></span>
+          <span style="font-size:10px; font-weight:600; color:var(--see-text-muted); text-transform:none;">Megtekintés</span>
+        </div>
+        <div style="font-size: 12px; display: flex; flex-direction: column; gap: 8px; color: var(--see-text-muted);">
+          <div style="display:flex; justify-content:space-between;"><span>Duty idő:</span><strong style="color:#fff; font-family:'Roboto Mono', monospace;">${mDuty} p</strong></div>
+          <div style="display:flex; justify-content:space-between;"><span>Off Duty idő:</span><strong style="color:#fff; font-family:'Roboto Mono', monospace;">${mOff} p</strong></div>
+          <div style="display:flex; justify-content:space-between;"><span>Reportok:</span><strong style="color:var(--see-success); font-family:'Roboto Mono', monospace;">${mReports} db</strong></div>
+        </div>
+        <div style="margin-top:12px; padding-top:10px; border-top:1px solid var(--see-border); font-size: 10.5px; display:flex; flex-wrap:wrap; gap:8px; color: var(--see-text-muted);">
+          <span>fixveh <strong style="color:#fff;">${mCmds.fixveh}</strong></span>
+          <span>asegit <strong style="color:#fff;">${mCmds.asegit}</strong></span>
+          <span>agyogyit <strong style="color:#fff;">${mCmds.agyogyit}</strong></span>
+          <span>adminjail <strong style="color:#fff;">${mCmds.adminjail}</strong></span>
+          <span>kick <strong style="color:#fff;">${mCmds.kick}</strong></span>
+          <span>ban <strong style="color:#fff;">${mCmds.ban}</strong></span>
+        </div>
+      </div>`;
+  }).join('') || '<div style="font-size:12px;color:var(--see-text-muted);grid-column: 1 / -1; text-align:center; padding:16px;">Ennek a felhasználónak még nincs lezárt hónapja.</div>';
 }
 
 function renderDevUsers() {
@@ -1922,24 +2160,42 @@ async function reopenMonth(monthKey) {
 }
 
 let currentEditMonth = null;
+let currentEditMonthUser = null; // ha be van állítva, a modal ennek a (más) felhasználónak az adatait mutatja, csak megtekintésre
 
 function openMonthEdit(monthKey) {
   currentEditMonth = monthKey;
+  currentEditMonthUser = null;
   document.getElementById('monthEditTitle').textContent = `📅 ${monthKey} szerkesztése (🔒 Lezárva)`;
   document.getElementById('monthReopenBtn').style.display = 'inline-block';
   document.getElementById('monthEditModal').style.display = 'flex';
   renderMonthEdit();
 }
+
+// Fejlesztői statisztika nézetből: egy KIVÁLASZTOTT admin adott lezárt hónapját nézi meg
+// a fejlesztő, csak megtekintésre (nem a saját currentUser adatait).
+function openDevMonthView(username, monthKey) {
+  currentEditMonth = monthKey;
+  currentEditMonthUser = username;
+  const displayName = usersDB[username] ? usersDB[username].display : username;
+  document.getElementById('monthEditTitle').textContent = `📅 ${displayName} - ${monthKey} (🔒 Lezárva, csak megtekintés)`;
+  document.getElementById('monthReopenBtn').style.display = 'none';
+  document.getElementById('monthEditModal').style.display = 'flex';
+  renderMonthEdit();
+}
+
 function closeMonthEdit() {
   document.getElementById('monthEditModal').style.display = 'none';
   currentEditMonth = null;
+  currentEditMonthUser = null;
 }
 
 // A lezárt hónapok saját, archivált duty/off/reports tömbökkel rendelkeznek
-// (globalData[currentUser].closedMonths[monthKey]), függetlenül a munkaterület
-// jelenlegi (még nyitott) adataitól.
+// (globalData[user].closedMonths[monthKey]), függetlenül a munkaterület
+// jelenlegi (még nyitott) adataitól. Alapértelmezetten a bejelentkezett currentUser
+// adatait nézi, de fejlesztői nézetből (currentEditMonthUser) egy másik felhasználóét is.
 function getArchivedMonth(monthKey) {
-  const closedMonths = globalData[currentUser].closedMonths || {};
+  const targetUser = currentEditMonthUser || currentUser;
+  const closedMonths = (globalData[targetUser] && globalData[targetUser].closedMonths) || {};
   return closedMonths[monthKey] || { duty: [], off: [], reports: {}, commandsByDay: {}, reportLog: [], adminActions: [] };
 }
 
@@ -1951,6 +2207,37 @@ function renderMonthEdit() {
   const oList = arc.off || [];
   const reps = arc.reports || {};
 
+  const totalDutyMin = dList.reduce((s, x) => s + (Number(x.perc) || 0), 0);
+  const totalOffMin = oList.reduce((s, x) => s + (Number(x.perc) || 0), 0);
+  const totalReports = Object.values(reps).reduce((s, v) => s + (Number(v) || 0), 0);
+  const cmdsByDayForSum = arc.commandsByDay || {};
+  const cmdTotals = { fixveh: 0, asegit: 0, agyogyit: 0, adminjail: 0, kick: 0, ban: 0 };
+  Object.values(cmdsByDayForSum).forEach(c => {
+    cmdTotals.fixveh += Number(c.fixveh) || 0;
+    cmdTotals.asegit += Number(c.asegit) || 0;
+    cmdTotals.agyogyit += Number(c.agyogyit) || 0;
+    cmdTotals.adminjail += Number(c.adminjail) || 0;
+    cmdTotals.kick += Number(c.kick) || 0;
+    cmdTotals.ban += Number(c.ban) || 0;
+  });
+  const totalReportLog = (arc.reportLog || []).length;
+  const totalAdminActions = (arc.adminActions || []).length;
+
+  document.getElementById('monthEditSummary').innerHTML = `
+    <div class="stats-card-mini"><div class="label">Duty idő</div><div class="val" style="color:var(--see-gold);">${totalDutyMin} p</div></div>
+    <div class="stats-card-mini"><div class="label">Off Duty idő</div><div class="val" style="color:#fff;">${totalOffMin} p</div></div>
+    <div class="stats-card-mini"><div class="label">Összesen</div><div class="val" style="color:var(--see-gold);">${totalDutyMin + totalOffMin} p</div></div>
+    <div class="stats-card-mini"><div class="label">Reportok</div><div class="val" style="color:var(--see-success);">${totalReports} db</div></div>
+    <div class="stats-card-mini"><div class="label">Feldolgozott reportok</div><div class="val" style="color:var(--see-success);">${totalReportLog} db</div></div>
+    <div class="stats-card-mini"><div class="label">Fixveh</div><div class="val" style="color:#fff;">${cmdTotals.fixveh} db</div></div>
+    <div class="stats-card-mini"><div class="label">Asegit</div><div class="val" style="color:#fff;">${cmdTotals.asegit} db</div></div>
+    <div class="stats-card-mini"><div class="label">Agyogyit</div><div class="val" style="color:#fff;">${cmdTotals.agyogyit} db</div></div>
+    <div class="stats-card-mini"><div class="label">AdminJail</div><div class="val" style="color:var(--see-gold);">${cmdTotals.adminjail} db</div></div>
+    <div class="stats-card-mini"><div class="label">Kick</div><div class="val" style="color:var(--see-danger);">${cmdTotals.kick} db</div></div>
+    <div class="stats-card-mini"><div class="label">Ban</div><div class="val" style="color:#f472b6;">${cmdTotals.ban} db</div></div>
+    <div class="stats-card-mini"><div class="label">Adminjail/Kick/Ban sorok</div><div class="val" style="color:var(--see-danger);">${totalAdminActions} db</div></div>
+  `;
+
   document.getElementById('monthEditDuty').innerHTML = dList.map((x, i) => {
     return `
       <div class="see-list-item">
@@ -1959,10 +2246,6 @@ function renderMonthEdit() {
           <span style="font-size:11px; color:var(--see-text-muted); font-family:'Roboto Mono', monospace; margin-left:6px;">(${x.on} - ${x.off})</span>
         </div>
         <span class="see-item-value" style="color:var(--see-gold)">${x.perc} perc</span>
-        <div class="see-item-actions">
-          <button class="see-action-btn" onclick="editMonthDutyItem(${i})">✏</button>
-          <button class="see-action-btn del" onclick="delMonthDutyItem(${i})">✕</button>
-        </div>
       </div>`;
   }).join('').trim() || '<div style="font-size:11px;color:var(--see-text-muted);">Nincs adat erre a hónapra</div>';
 
@@ -1974,10 +2257,6 @@ function renderMonthEdit() {
           <span style="font-size:11px; color:var(--see-text-muted); font-family:'Roboto Mono', monospace; margin-left:6px;">(${x.on} - ${x.off})</span>
         </div>
         <span class="see-item-value" style="color:#fff">${x.perc} perc</span>
-        <div class="see-item-actions">
-          <button class="see-action-btn" onclick="editMonthOffItem(${i})">✏</button>
-          <button class="see-action-btn del" onclick="delMonthOffItem(${i})">✕</button>
-        </div>
       </div>`;
   }).join('').trim() || '<div style="font-size:11px;color:var(--see-text-muted);">Nincs adat erre a hónapra</div>';
 
@@ -1986,10 +2265,6 @@ function renderMonthEdit() {
       <div class="see-list-item">
         <span class="see-item-date">${d}</span>
         <span class="see-item-value" style="color:var(--see-success)">${reps[d]} db</span>
-        <div class="see-item-actions">
-          <button class="see-action-btn" onclick="editMonthReport('${d}')">✏</button>
-          <button class="see-action-btn del" onclick="delMonthReport('${d}')">✕</button>
-        </div>
       </div>`;
   }).join('').trim() || '<div style="font-size:11px;color:var(--see-text-muted);">Nincs adat erre a hónapra</div>';
 
@@ -1997,9 +2272,9 @@ function renderMonthEdit() {
   document.getElementById('monthEditCommands').innerHTML = Object.keys(cmdsByDay).sort().map(d => {
     const c = cmdsByDay[d];
     return `
-      <div class="see-list-item">
+      <div class="see-list-item" style="flex-direction:column; align-items:flex-start; gap:6px;">
         <span class="see-item-date">${d}</span>
-        <span class="see-item-value" style="font-size:11px; display:flex; gap:10px; color:var(--see-text-muted);">
+        <span style="font-size:11px; display:flex; flex-wrap:wrap; gap:10px; color:var(--see-text-muted);">
           <span>fixveh <strong style="color:#fff;">${c.fixveh || 0}</strong></span>
           <span>asegit <strong style="color:#fff;">${c.asegit || 0}</strong></span>
           <span>agyogyit <strong style="color:#fff;">${c.agyogyit || 0}</strong></span>
@@ -2007,10 +2282,6 @@ function renderMonthEdit() {
           <span>kick <strong style="color:#fff;">${c.kick || 0}</strong></span>
           <span>ban <strong style="color:#fff;">${c.ban || 0}</strong></span>
         </span>
-        <div class="see-item-actions">
-          <button class="see-action-btn" onclick="editMonthCommandDay('${d}')">✏</button>
-          <button class="see-action-btn del" onclick="delMonthCommandDay('${d}')">✕</button>
-        </div>
       </div>`;
   }).join('').trim() || '<div style="font-size:11px;color:var(--see-text-muted);">Nincs adat erre a hónapra</div>';
 
@@ -2022,9 +2293,6 @@ function renderMonthEdit() {
           <span style="font-size:11px; color:var(--see-text-muted); font-family:'Roboto Mono', monospace; margin-left:6px;">${ev.time}</span>
         </div>
         <span class="see-item-value" style="color:var(--see-success); font-family:'Roboto Mono', monospace;">#${ev.id}</span>
-        <div class="see-item-actions">
-          <button class="see-action-btn del" onclick="delMonthReportLogEntry('${ev.id}')">✕</button>
-        </div>
       </div>`).join('').trim() || '<div style="font-size:11px;color:var(--see-text-muted);">Nincs adat erre a hónapra</div>';
 
   const arcAdminActions = arc.adminActions || [];
@@ -2036,7 +2304,6 @@ function renderMonthEdit() {
     const color = isJail ? 'var(--see-gold)' : (isBan ? '#f472b6' : 'var(--see-danger)');
     const detail = isJail ? `${ev.minutes} perc` : (isBan && ev.expiry ? ev.expiry : '');
     const reasonHtml = ev.reason ? `<div style="font-size:10px; color:var(--see-text-muted); margin-top:2px;">Indok: ${ev.reason}</div>` : '';
-    const evKey = `${ev.date}|${ev.time}|${ev.type}|${ev.target}`;
     return `
       <div class="see-list-item" style="align-items:flex-start;">
         <div>
@@ -2049,9 +2316,6 @@ function renderMonthEdit() {
           ${reasonHtml}
         </div>
         <span class="see-item-value" style="color:#fff;">${detail}</span>
-        <div class="see-item-actions">
-          <button class="see-action-btn del" onclick="delMonthAdminActionEntry('${evKey.replace(/'/g, "\\'")}')">✕</button>
-        </div>
       </div>`;
   }).join('').trim() || '<div style="font-size:11px;color:var(--see-text-muted);">Nincs adat erre a hónapra</div>';
 }
