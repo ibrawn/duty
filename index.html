@@ -1546,7 +1546,10 @@ async function initAuth() {
   setupDropdownCloseListener();
   const authUser = firebase.auth().currentUser;
   if (!authUser || !currentUser) { currentUser = ''; toggleAuthMode(false); return; }
-  if (authUser.uid === DEVELOPER_UID) usersDB = await fbFetch('users') || {};
+  if (authUser.uid === DEVELOPER_UID) {
+    await migrateLegacyFirebaseAccounts();
+    usersDB = await fbFetch('users') || {};
+  }
   else {
     const ownProfile = await fbFetch(`users/${currentUser}`);
     usersDB = ownProfile && ownProfile.uid === authUser.uid ? { [currentUser]: ownProfile } : {};
@@ -1842,7 +1845,16 @@ async function handleAuth() {
       console.error(e);
       await firebase.auth().signOut().catch(() => {});
       sessionStorage.removeItem('adminCurrentSessionUser'); currentUser = '';
-      alert("Hibás felhasználónév vagy jelszó!");
+      const code = e && e.code ? e.code : '';
+      let message = e && e.message ? e.message : 'Ismeretlen belépési hiba.';
+      if (code === 'auth/user-not-found' || code === 'auth/invalid-credential' || code === 'auth/wrong-password') {
+        message = 'Ehhez a felhasználóhoz még nem készült el a Firebase-belépés, vagy a jelszó nem egyezik. Lépjen be egyszer a fejlesztő, hogy az automatikus migráció lefusson.';
+      } else if (code === 'auth/operation-not-allowed') {
+        message = 'A Firebase Email/Password bejelentkezés nincs bekapcsolva az Authentication beállításokban.';
+      } else if (String(message).includes('PERMISSION_DENIED') || String(message).includes('adatbázis')) {
+        message = 'Az adatbázis-szabály megtagadta a hozzáférést. Ellenőrizni kell, hogy a felhasználó UID-je bekerült-e a users profiljába.';
+      }
+      alert(`Belépési hiba:\n\n${message}${code ? `\n\nHibakód: ${code}` : ''}`);
     }
   }
 }
