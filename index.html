@@ -586,6 +586,36 @@ input[type="file"] { display: none; }
 .see-checkbox { width: 16px; height: 16px; accent-color: var(--see-gold); cursor: pointer; flex-shrink: 0; }
 .see-item-date { font-size: 12px; color: var(--see-text-muted); font-weight: 600; }
 .see-item-value { font-size: 13px; font-weight: 700; font-family: var(--font-mono); white-space: nowrap; }
+.see-time-range {
+  display: inline-flex;
+  align-items: center;
+  padding: 4px 8px;
+  border: 1px solid rgba(148,163,184,0.22);
+  border-radius: 7px;
+  background: rgba(148,163,184,0.10);
+  color: #e2e8f0;
+  font-family: var(--font-mono);
+  font-size: 12px;
+  font-weight: 700;
+  line-height: 1;
+  letter-spacing: 0.15px;
+  white-space: nowrap;
+}
+.month-time-item .see-item-left {
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 6px;
+}
+.month-time-item .see-item-date { white-space: nowrap; }
+.month-time-item .see-time-range {
+  padding: 4px 7px;
+  font-size: 11px;
+}
+.month-time-item .see-item-value {
+  align-self: center;
+  flex-shrink: 0;
+  margin-left: 4px;
+}
 
 .see-item-actions { display: flex; gap: 5px; flex-shrink: 0; }
 .see-action-btn {
@@ -1942,12 +1972,12 @@ function renderStatsDashboard(username) {
   
   document.getElementById("miniDutyStream").innerHTML = dList.map(x => {
     totalDutyMin += x.perc;
-    return `<div class="see-list-item" style="padding: 8px 10px;"><span class="see-item-date">${x.date} <span style="color:var(--see-text-muted); font-size:10px;">(${x.on} - ${x.off})</span></span><span class="see-item-value" style="color:var(--see-gold)">${x.perc} p</span></div>`;
+    return `<div class="see-list-item month-time-item" style="padding: 8px 10px;"><div class="see-item-left"><span class="see-item-date">${x.date}</span><span class="see-time-range">${x.on} – ${x.off}</span></div><span class="see-item-value" style="color:var(--see-gold)">${x.perc} p</span></div>`;
   }).join('') || '<div style="font-size:11px;color:var(--see-text-muted);">Nincs adat</div>';
   
   document.getElementById("miniOffStream").innerHTML = oList.map(x => {
     totalOffMin += x.perc;
-    return `<div class="see-list-item" style="padding: 8px 10px;"><span class="see-item-date">${x.date} <span style="color:var(--see-text-muted); font-size:10px;">(${x.on} - ${x.off})</span></span><span class="see-item-value" style="color:#fff">${x.perc} p</span></div>`;
+    return `<div class="see-list-item month-time-item" style="padding: 8px 10px;"><div class="see-item-left"><span class="see-item-date">${x.date}</span><span class="see-time-range">${x.on} – ${x.off}</span></div><span class="see-item-value" style="color:#fff">${x.perc} p</span></div>`;
   }).join('') || '<div style="font-size:11px;color:var(--see-text-muted);">Nincs adat</div>';
   
   document.getElementById("miniReportsStream").innerHTML = Object.keys(reps).sort().map(d => {
@@ -2423,10 +2453,10 @@ function renderMonthEdit() {
 
   document.getElementById('monthEditDuty').innerHTML = dList.map((x, i) => {
     return `
-      <div class="see-list-item">
-        <div>
+      <div class="see-list-item month-time-item">
+        <div class="see-item-left">
           <span class="see-item-date">${x.date}</span>
-          <span style="font-size:11px; color:var(--see-text-muted); font-family:'Roboto Mono', monospace; margin-left:6px;">(${x.on} - ${x.off})</span>
+          <span class="see-time-range">${x.on} – ${x.off}</span>
         </div>
         <span class="see-item-value" style="color:var(--see-gold)">${x.perc} perc</span>
       </div>`;
@@ -2434,10 +2464,10 @@ function renderMonthEdit() {
 
   document.getElementById('monthEditOff').innerHTML = oList.map((x, i) => {
     return `
-      <div class="see-list-item">
-        <div>
+      <div class="see-list-item month-time-item">
+        <div class="see-item-left">
           <span class="see-item-date">${x.date}</span>
-          <span style="font-size:11px; color:var(--see-text-muted); font-family:'Roboto Mono', monospace; margin-left:6px;">(${x.on} - ${x.off})</span>
+          <span class="see-time-range">${x.on} – ${x.off}</span>
         </div>
         <span class="see-item-value" style="color:#fff">${x.perc} perc</span>
       </div>`;
@@ -3565,7 +3595,7 @@ function render() {
         <div class="see-item-left">
           <input type="checkbox" id="cb-duty-${i}" class="see-checkbox" onchange="handleCheckboxChange('duty', ${i})" ${isChecked}>
           <span class="see-item-date">${x.date}</span>
-          <span style="font-size:11px; color:var(--see-text-muted); font-family:'Roboto Mono', monospace;">(${x.on} - ${x.off})</span>
+          <span class="see-time-range">${x.on} – ${x.off}</span>
           ${x.auto ? '<span style="font-size:9px; font-weight:700; color:var(--see-gold); background:rgba(99,102,241,0.12); padding:1px 6px; border-radius:5px; text-transform:uppercase; letter-spacing:0.3px;">Log</span>' : ''}
         </div>
         <span class="see-item-value" style="color:var(--see-gold)">${x.perc} perc</span>
@@ -3582,7 +3612,7 @@ function render() {
         <div class="see-item-left">
           <input type="checkbox" id="cb-off-${i}" class="see-checkbox" onchange="handleCheckboxChange('off', ${i})" ${isChecked}>
           <span class="see-item-date">${x.date}</span>
-          <span style="font-size:11px; color:var(--see-text-muted); font-family:'Roboto Mono', monospace;">(${x.on} - ${x.off})</span>
+          <span class="see-time-range">${x.on} – ${x.off}</span>
           ${x.auto ? '<span style="font-size:9px; font-weight:700; color:var(--see-gold); background:rgba(99,102,241,0.12); padding:1px 6px; border-radius:5px; text-transform:uppercase; letter-spacing:0.3px;">Log</span>' : ''}
         </div>
         <span class="see-item-value" style="color:#fff">${x.perc} perc</span>
