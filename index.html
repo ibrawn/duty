@@ -1458,6 +1458,8 @@ input[type="file"] { display: none; }
 <script>
 const FIREBASE_DB_URL = "https://adminduty-1fafd-default-rtdb.firebaseio.com";
 const DEVELOPER_USERNAME = "ibrawn";
+const DEVELOPER_UID = "4Yilh1ClPYgPGiPNzT28i32eKQA3";
+const DEVELOPER_EMAIL = "kiss.gabor0823@gmail.com";
 
 // ============================================================
 // FIREBASE AUTH (névtelen bejelentkeztetés a háttérben)
@@ -1481,15 +1483,21 @@ const firebaseConfig = {
 firebase.initializeApp(firebaseConfig);
 
 function ensureFirebaseAuth() {
-  return new Promise((resolve) => {
-    firebase.auth().onAuthStateChanged(user => {
-      if (user) {
-        resolve(user);
-      } else {
-        firebase.auth().signInAnonymously().catch(e => console.error('Firebase anonymous auth error:', e));
-      }
-    });
+  return new Promise(resolve => {
+    const stop = firebase.auth().onAuthStateChanged(user => { stop(); resolve(user || null); });
   });
+}
+
+function firebaseEmailForUsername(username) {
+  const lower = String(username || '').trim().toLowerCase();
+  if (lower === DEVELOPER_USERNAME) return DEVELOPER_EMAIL;
+  const encoded = Array.from(lower).map(ch => ch.charCodeAt(0).toString(16)).join('');
+  return `admin-${encoded}@adminduty-1fafd.firebaseapp.com`;
+}
+
+function firebasePasswordForLegacy(password) {
+  const value = String(password || '');
+  return value.length >= 6 ? value : `Dty!${value}9`;
 }
 
 let usersDB = {};
@@ -1535,13 +1543,16 @@ async function fbDelete(path) {
 }
 
 async function initAuth() {
-  usersDB = await fbFetch("users") || {};
   setupDropdownCloseListener();
-  if (currentUser && usersDB[currentUser]) {
-    showMainUcp();
-  } else {
-    toggleAuthMode(Object.keys(usersDB).length === 0);
+  const authUser = firebase.auth().currentUser;
+  if (!authUser || !currentUser) { currentUser = ''; toggleAuthMode(false); return; }
+  if (authUser.uid === DEVELOPER_UID) usersDB = await fbFetch('users') || {};
+  else {
+    const ownProfile = await fbFetch(`users/${currentUser}`);
+    usersDB = ownProfile && ownProfile.uid === authUser.uid ? { [currentUser]: ownProfile } : {};
   }
+  if (usersDB[currentUser] && usersDB[currentUser].approved !== false) await showMainUcp();
+  else { await firebase.auth().signOut(); currentUser = ''; toggleAuthMode(false); }
 }
 
 /* ============ CSAPAT CHAT (mindenki látja, fejlesztő törölhet) ============ */
@@ -1745,6 +1756,43 @@ function toggleAuthMode(toRegister) {
   }
 }
 
+async function identityRequest(endpoint, body) {
+  const res = await fetch(`https://identitytoolkit.googleapis.com/v1/accounts:${endpoint}?key=${firebaseConfig.apiKey}`, {
+    method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body)
+  });
+  const json = await res.json();
+  if (!res.ok) throw new Error((json.error && json.error.message) || `Identity Toolkit hiba (${res.status})`);
+  return json;
+}
+
+async function migrateLegacyFirebaseAccounts() {
+  if (!firebase.auth().currentUser || firebase.auth().currentUser.uid !== DEVELOPER_UID) return;
+  const allUsers = await fbFetch('users') || {};
+  const failures = [];
+  for (const [username, original] of Object.entries(allUsers)) {
+    const profile = { ...original };
+    try {
+      if (username === DEVELOPER_USERNAME) profile.uid = DEVELOPER_UID;
+      else if (!profile.uid) {
+        const email = firebaseEmailForUsername(username);
+        const password = firebasePasswordForLegacy(profile.pass || '');
+        let account;
+        try { account = await identityRequest('signUp', { email, password, returnSecureToken: true }); }
+        catch (e) {
+          if (!String(e.message).includes('EMAIL_EXISTS')) throw e;
+          account = await identityRequest('signInWithPassword', { email, password, returnSecureToken: true });
+        }
+        profile.uid = account.localId;
+      }
+      delete profile.pass;
+      await fbSave(`users/${username}`, profile);
+      allUsers[username] = profile;
+    } catch (e) { console.error('Migrációs hiba:', username, e); failures.push(username); }
+  }
+  usersDB = allUsers;
+  if (failures.length) alert(`Néhány fiókot nem sikerült migrálni: ${failures.join(', ')}. Ezeknél ellenőrizd a régi jelszót.`);
+}
+
 async function handleAuth() {
   const user = document.getElementById("authUser").value.trim();
   const lowerUser = user.toLowerCase();
@@ -1755,42 +1803,45 @@ async function handleAuth() {
   if (!user || !pass) { alert("Kérlek töltsd ki az összes mezőt!"); return; }
   if (isRegisterMode && !adminName) { alert("Kérlek add meg, milyen néven szerepelsz adminként a logban!"); return; }
 
-  usersDB = await fbFetch("users") || {};
-
   if (isRegisterMode) {
-    if (usersDB[lowerUser]) { alert("Ez a felhasználónév már foglalt!"); return; }
-    const isDeveloperAccount = (lowerUser === DEVELOPER_USERNAME);
-    usersDB[lowerUser] = { display: user, pass: pass, role: (isDeveloperAccount ? "dev" : "user"), approved: isDeveloperAccount, adminName: adminName, rank: 1 };
-    await fbSave("users", usersDB);
-
-    globalData = await fbFetch("data") || {};
-    if (!globalData[lowerUser]) { globalData[lowerUser] = { duty: [], off: [], reports: {}, commandsByDay: {}, reportLog: [], adminActions: [] }; }
-    globalData[lowerUser].logAdminName = adminName;
-    await fbSave("data", globalData);
-
-    if (isDeveloperAccount) {
-      alert("Sikeres online regisztráció! Most már bejelentkezhetsz.");
-    } else {
-      alert("Sikeres regisztráció! A fiókodat egy fejlesztőnek jóvá kell hagynia, mielőtt be tudsz jelentkezni.");
+    if (lowerUser === DEVELOPER_USERNAME) { alert('A fejlesztői fiók már létezik. Jelentkezz be!'); return; }
+    try {
+      const cred = await firebase.auth().createUserWithEmailAndPassword(firebaseEmailForUsername(lowerUser), firebasePasswordForLegacy(pass));
+      const profile = { display: user, uid: cred.user.uid, role: 'user', approved: false, adminName, rank: 1 };
+      const okProfile = await fbSave(`users/${lowerUser}`, profile);
+      const okData = await fbSave(`data/${lowerUser}`, { duty: [], off: [], reports: {}, commandsByDay: {}, reportLog: [], adminActions: [], logAdminName: adminName });
+      await firebase.auth().signOut();
+      if (!okProfile || !okData) throw new Error('Az adatbázis nem engedte a profil létrehozását.');
+      alert('Sikeres regisztráció! A fiókodat egy fejlesztőnek jóvá kell hagynia.');
+      document.getElementById('authPass').value = '';
+      document.getElementById('authAdminName').value = '';
+      toggleAuthMode(false);
+    } catch (e) {
+      console.error(e);
+      alert(e.code === 'auth/email-already-in-use' ? 'Ez a felhasználónév már foglalt!' : `A regisztráció sikertelen: ${e.message}`);
     }
-    document.getElementById("authPass").value = "";
-    document.getElementById("authAdminName").value = "";
-    toggleAuthMode(false);
   } else {
-    if (usersDB[lowerUser] && usersDB[lowerUser].pass === pass) {
-      if (usersDB[lowerUser].approved === false) {
-        alert("A fiókodat még nem hagyta jóvá egy fejlesztő. Kérlek várj, amíg jóváhagyják a regisztrációdat.");
-        return;
-      }
+    try {
+      const cred = await firebase.auth().signInWithEmailAndPassword(firebaseEmailForUsername(lowerUser), firebasePasswordForLegacy(pass));
+      if (lowerUser === DEVELOPER_USERNAME && cred.user.uid !== DEVELOPER_UID) throw new Error('Érvénytelen fejlesztői UID.');
       sessionStorage.setItem("adminCurrentSessionUser", lowerUser);
       currentUser = lowerUser;
-      // Utolsó bejelentkezés időpontjának rögzítése (csak tényleges bejelentkezéskor,
-      // nem az oldal-frissítés miatti session-visszaállításnál) - ezt a Fejlesztő
-      // panelen látja a fejlesztő minden felhasználónál.
+      if (cred.user.uid === DEVELOPER_UID) {
+        await migrateLegacyFirebaseAccounts();
+        usersDB = await fbFetch('users') || {};
+      } else {
+        const profile = await fbFetch(`users/${lowerUser}`);
+        usersDB = profile ? { [lowerUser]: profile } : {};
+      }
+      if (!usersDB[lowerUser] || usersDB[lowerUser].uid !== cred.user.uid) throw new Error('A fiók nincs ehhez a felhasználónévhez kapcsolva.');
+      if (usersDB[lowerUser].approved === false) throw new Error('A fiókodat még nem hagyta jóvá egy fejlesztő.');
       usersDB[lowerUser].lastLogin = Date.now();
-      fbSave(`users/${lowerUser}`, usersDB[lowerUser]);
-      showMainUcp();
-    } else { 
+      await fbSave(`users/${lowerUser}`, usersDB[lowerUser]);
+      await showMainUcp();
+    } catch (e) {
+      console.error(e);
+      await firebase.auth().signOut().catch(() => {});
+      sessionStorage.removeItem('adminCurrentSessionUser'); currentUser = '';
       alert("Hibás felhasználónév vagy jelszó!");
     }
   }
@@ -1818,7 +1869,11 @@ async function showMainUcp() {
     document.getElementById("devStatsBtn").style.display = "none";
   }
 
-  globalData = await fbFetch("data") || {};
+  if (firebase.auth().currentUser && firebase.auth().currentUser.uid === DEVELOPER_UID) globalData = await fbFetch("data") || {};
+  else {
+    const ownData = await fbFetch(`data/${currentUser}`);
+    globalData = { [currentUser]: ownData || {} };
+  }
   if (!globalData[currentUser]) { globalData[currentUser] = { duty: [], off: [], reports: {}, commandsByDay: {}, reportLog: [], adminActions: [] }; }
   if (!globalData[currentUser].duty) globalData[currentUser].duty = [];
   if (!globalData[currentUser].off) globalData[currentUser].off = [];
@@ -1864,7 +1919,7 @@ async function saveLogAdminNameField() {
   await saveGlobal();
 }
 
-function logout() {
+async function logout() {
   sessionStorage.removeItem("adminCurrentSessionUser");
   sessionStorage.removeItem("adminLastPage");
   currentUser = "";
@@ -1876,6 +1931,7 @@ function logout() {
   document.getElementById("chatToggleBtn").style.display = "none";
   document.getElementById("chatWindow").classList.remove("open");
   stopChatPolling();
+  await firebase.auth().signOut().catch(() => {});
 }
 
 async function openDevPage() {
