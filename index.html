@@ -1516,7 +1516,8 @@ async function getIdToken() {
 async function fbFetch(path) {
   try {
     const token = await getIdToken();
-    const url = `${FIREBASE_DB_URL}/${path}.json` + (token ? `?auth=${token}` : '');
+    if (!token) { console.error('fbFetch blocked: nincs Firebase hitelesítés', path); return null; }
+    const url = `${FIREBASE_DB_URL}/${path}.json?auth=${token}`;
     const res = await fetch(url);
     return await res.json();
   } catch(e) { console.error(e); return null; }
@@ -1525,7 +1526,8 @@ async function fbFetch(path) {
 async function fbSave(path, data) {
   try {
     const token = await getIdToken();
-    const url = `${FIREBASE_DB_URL}/${path}.json` + (token ? `?auth=${token}` : '');
+    if (!token) { console.error('fbSave blocked: nincs Firebase hitelesítés', path); return false; }
+    const url = `${FIREBASE_DB_URL}/${path}.json?auth=${token}`;
     const res = await fetch(url, { method: 'PUT', body: JSON.stringify(data) });
     if (!res.ok) { console.error('fbSave failed', path, res.status); return false; }
     return true;
@@ -1535,7 +1537,8 @@ async function fbSave(path, data) {
 async function fbDelete(path) {
   try {
     const token = await getIdToken();
-    const url = `${FIREBASE_DB_URL}/${path}.json` + (token ? `?auth=${token}` : '');
+    if (!token) { console.error('fbDelete blocked: nincs Firebase hitelesítés', path); return false; }
+    const url = `${FIREBASE_DB_URL}/${path}.json?auth=${token}`;
     const res = await fetch(url, { method: 'DELETE' });
     if (!res.ok) { console.error('fbDelete failed', path, res.status); return false; }
     return true;
@@ -1566,7 +1569,8 @@ let chatUnreadCount = 0;
 let chatMessagesCache = {};
 
 function isDevCurrentUser() {
-  return !!(usersDB[currentUser] && usersDB[currentUser].role === "dev");
+  const authUser = firebase.auth().currentUser;
+  return !!(authUser && authUser.uid === DEVELOPER_UID);
 }
 
 function toggleChatWindow() {
@@ -1789,6 +1793,7 @@ async function migrateLegacyFirebaseAccounts() {
       }
       delete profile.pass;
       await fbSave(`users/${username}`, profile);
+      if (profile.uid) await fbSave(`access/${profile.uid}`, profile.approved !== false);
       allUsers[username] = profile;
     } catch (e) { console.error('Migrációs hiba:', username, e); failures.push(username); }
   }
@@ -1812,9 +1817,10 @@ async function handleAuth() {
       const cred = await firebase.auth().createUserWithEmailAndPassword(firebaseEmailForUsername(lowerUser), firebasePasswordForLegacy(pass));
       const profile = { display: user, uid: cred.user.uid, role: 'user', approved: false, adminName, rank: 1 };
       const okProfile = await fbSave(`users/${lowerUser}`, profile);
+      const okAccess = await fbSave(`access/${cred.user.uid}`, false);
       const okData = await fbSave(`data/${lowerUser}`, { duty: [], off: [], reports: {}, commandsByDay: {}, reportLog: [], adminActions: [], logAdminName: adminName });
       await firebase.auth().signOut();
-      if (!okProfile || !okData) throw new Error('Az adatbázis nem engedte a profil létrehozását.');
+      if (!okProfile || !okAccess || !okData) throw new Error('Az adatbázis nem engedte a profil létrehozását.');
       alert('Sikeres regisztráció! A fiókodat egy fejlesztőnek jóvá kell hagynia.');
       document.getElementById('authPass').value = '';
       document.getElementById('authAdminName').value = '';
@@ -1947,6 +1953,7 @@ async function logout() {
 }
 
 async function openDevPage() {
+  if (!isDevCurrentUser()) return;
   switchPage('dev');
   usersDB = await fbFetch("users") || {};
   renderDevUsers();
@@ -1956,6 +1963,7 @@ let selectedStatsUser = null;
 let statsRefreshInterval = null;
 
 async function openDevStatsPage() {
+  if (!isDevCurrentUser()) return;
   switchPage('devstats');
   selectedStatsUser = null;
   if (statsRefreshInterval) { clearInterval(statsRefreshInterval); statsRefreshInterval = null; }
@@ -2164,35 +2172,35 @@ function renderDevUsers() {
 }
 
 async function devApproveUser(username) {
+  if (!isDevCurrentUser()) return;
   if (!usersDB[username]) return;
   usersDB[username].approved = true;
   await fbSave(`users/${username}`, usersDB[username]);
+  if (usersDB[username].uid) await fbSave(`access/${usersDB[username].uid}`, true);
   const adminNamePart = usersDB[username].adminName ? ` (admin név a logban: ${usersDB[username].adminName})` : '';
   alert(`${usersDB[username].display} regisztrációja jóváhagyva${adminNamePart}! Mostantól be tud jelentkezni.`);
   renderDevUsers();
 }
 
 async function devRejectUser(username) {
+  if (!isDevCurrentUser()) return;
   if (!usersDB[username]) return;
   if (confirm(`Biztosan elutasítod és törlöd ${usersDB[username].display} jóváhagyásra váró regisztrációját?`)) {
     await fbDelete(`users/${username}`);
     await fbDelete(`data/${username}`);
+    if (usersDB[username].uid) await fbDelete(`access/${usersDB[username].uid}`);
     delete usersDB[username];
     renderDevUsers();
   }
 }
 
 async function devEditUser(username) {
-  const newPass = prompt(`Adj meg egy új jelszót neki: ${usersDB[username].display}`);
-  if (newPass && newPass.trim() !== "") {
-    usersDB[username].pass = newPass;
-    await fbSave(`users/${username}`, usersDB[username]);
-    alert("Jelszó módosítva!");
-    renderDevUsers();
-  }
+  if (!isDevCurrentUser()) return;
+  alert('Más felhasználó jelszava biztonsági okból nem módosítható a böngészőből. Használd a Firebase Console-t vagy egy védett Admin SDK backendet.');
 }
 
 async function devEditAdminName(username) {
+  if (!isDevCurrentUser()) return;
   const current = usersDB[username].adminName || "";
   const newAdminName = prompt(`Add meg / módosítsd ${usersDB[username].display} admin nickjét (ezzel a névvel szerepel a logokban):`, current);
   if (newAdminName === null) return; // megszakítva
@@ -2203,6 +2211,7 @@ async function devEditAdminName(username) {
 }
 
 async function devSetRank(username, newRank) {
+  if (!isDevCurrentUser()) return;
   if (!usersDB[username]) return;
   usersDB[username].rank = parseInt(newRank, 10) || 1;
   await fbSave(`users/${username}`, usersDB[username]);
@@ -2210,9 +2219,11 @@ async function devSetRank(username, newRank) {
 }
 
 async function devDeleteUser(username) {
+  if (!isDevCurrentUser()) return;
   if (confirm(`Biztosan törlöd ${usersDB[username].display} fiókját?`)) {
     await fbDelete(`users/${username}`);
     await fbDelete(`data/${username}`);
+    if (usersDB[username].uid) await fbDelete(`access/${usersDB[username].uid}`);
     delete usersDB[username];
     renderDevUsers();
   }
