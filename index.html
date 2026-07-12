@@ -3027,7 +3027,7 @@ function escapeRegexLiteral(s) {
 }
 
 function parseLogTimestamp(dateStr, timeStr) {
-  return new Date(`${dateStr}T${timeStr}:00`).getTime();
+  return new Date(`${dateStr}T${timeStr.length === 5 ? timeStr + ':00' : timeStr}`).getTime();
 }
 
 // Ha egy nyitott duty szakaszon belül ennyi percnél hosszabb ideig nincs
@@ -3046,10 +3046,9 @@ function extractDutyEventsFromLogText(text, adminName) {
   if (!name) return events;
 
   const esc = escapeRegexLiteral(name);
-  const tsRe = /^\[(\d{4}-\d{2}-\d{2})\s(\d{2}:\d{2}):\d{2}\]/;
-  const startRe = new RegExp(`^\\[(\\d{4}-\\d{2}-\\d{2})\\s(\\d{2}:\\d{2}):\\d{2}\\]\\s\\[CHAT\\]\\s.*\\b${esc}\\sadminszolgálatba lépett\\.`);
-  const endRe = new RegExp(`^\\[(\\d{4}-\\d{2}-\\d{2})\\s(\\d{2}:\\d{2}):\\d{2}\\]\\s\\[CHAT\\]\\s.*\\b${esc}\\skilépett az adminszolgálatból\\.`);
-  const activityRe = new RegExp(`\\[(CHAT|OOC)\\].*\\b${esc}\\b`, 'i');
+  const tsRe = /^\[(\d{4}-\d{2}-\d{2})\s(\d{2}:\d{2}:\d{2})\]/;
+  const startRe = new RegExp(`^\\[(\\d{4}-\\d{2}-\\d{2})\\s(\\d{2}:\\d{2}:\\d{2})\\]\\s\\[CHAT\\]\\s.*\\b${esc}\\sadminszolgálatba lépett\\.`);
+  const endRe = new RegExp(`^\\[(\\d{4}-\\d{2}-\\d{2})\\s(\\d{2}:\\d{2}:\\d{2})\\]\\s\\[CHAT\\]\\s.*\\b${esc}\\skilépett az adminszolgálatból\\.`);
 
   const lines = text.split(/\r?\n/).filter(l => l.trim() !== '');
   for (const line of lines) {
@@ -3058,7 +3057,6 @@ function extractDutyEventsFromLogText(text, adminName) {
     const date = tm[1], time = tm[2], ts = parseLogTimestamp(date, time);
     if (startRe.test(line)) { events.push({ date, time, ts, kind: 'start' }); continue; }
     if (endRe.test(line)) { events.push({ date, time, ts, kind: 'end' }); continue; }
-    if (activityRe.test(line)) { events.push({ date, time, ts, kind: 'activity' }); }
   }
   return events;
 }
@@ -3068,73 +3066,43 @@ function extractDutyEventsFromLogText(text, adminName) {
 // duty szakaszokat. Lásd a fenti blokk elején lévő magyarázatot a pontos
 // szabályokról. Minden duty-n kívüli pillanat (a szakaszok közötti idő)
 // off duty-ként számolódik, felső határ nélkül.
-function runDutyStateMachine(events) {
+function runDutyStateMachine(events, connectWindows) {
   const dutyPeriods = [];
   const offPeriods = [];
+  const sortedEvents = events.slice().sort((a, b) => a.ts - b.ts);
+  const windows = mergeConnectWindows(connectWindows || []);
 
-  function pushDuty(a, b) {
-    const perc = Math.max(0, Math.round((b.ts - a.ts) / 60000));
-    if (perc > 0) dutyPeriods.push({ date: a.date, on: a.time, off: b.time, perc });
-  }
-  function pushOff(a, b) {
-    const perc = Math.max(0, Math.round((b.ts - a.ts) / 60000));
-    if (perc > 0) offPeriods.push({ date: a.date, on: a.time, off: b.time, perc, startTs: a.ts, endTs: b.ts });
-  }
-
-  const idleMs = IDLE_LIMIT_MINUTES * 60000;
-  let state = 'off';               // 'on' = admin dutyban, 'off' = nincs dutyban
-  let sessionStart = null;         // a jelenlegi (nyitott) duty szakasz kezdete
-  let lastActivity = null;         // az utolsó ismert bizonyíték, hogy még aktív volt
-  let offCursor = null;            // a legutóbbi duty-lezárás időpontja (innentől off duty)
-
-  // Lezárja a nyitott duty szakaszt `endPoint`-nál, és megnyitja az off duty
-  // szakaszt onnantól - ezt hívjuk meg MINDEN lezáráskor (explicit kilépés
-  // ÉS idle-alapú megszakadás esetén is), hogy egyetlen szünet se maradjon ki.
-  function closeDutyAt(endPoint) {
-    pushDuty(sessionStart, endPoint);
-    offCursor = endPoint;
-    state = 'off';
-  }
-  // Megnyit egy új duty szakaszt `startPoint`-nál - ha volt nyitott off duty
-  // szakasz, azt itt zárja le (a teljes szünet, felső határ nélkül, off duty).
-  function openDutyAt(startPoint) {
-    if (state === 'off' && offCursor) pushOff(offCursor, startPoint);
-    sessionStart = startPoint;
-    lastActivity = startPoint;
-    state = 'on';
-  }
-
-  const sorted = events.slice().sort((a, b) => a.ts - b.ts);
-
-  for (const ev of sorted) {
-    if (ev.kind === 'start') {
-      if (state === 'on') closeDutyAt(lastActivity); // kilépés nélküli relogin - implicit lezárás
-      openDutyAt(ev);
-      continue;
-    }
-    if (ev.kind === 'end') {
-      if (state === 'on') closeDutyAt(ev);
-      // "off" állapotban lévő kilépés-sor inkonzisztens log sor, figyelmen kívül hagyjuk.
-      continue;
-    }
-    // ev.kind === 'activity'
-    if (state === 'on') {
-      if (ev.ts - lastActivity.ts > idleMs) {
-        // Túl nagy csönd volt - a session az utolsó ismert aktivitásig zárul,
-        // majd az off duty szünet után a mostani eseménnyel újranyílik.
-        closeDutyAt(lastActivity);
-        openDutyAt(ev);
-      } else {
-        lastActivity = ev;
+  function pushSplit(target, startTs, endTs) {
+    let cursor = startTs;
+    while (cursor < endTs) {
+      const d = new Date(cursor);
+      const nextMidnight = new Date(d.getFullYear(), d.getMonth(), d.getDate() + 1).getTime();
+      const partEnd = Math.min(endTs, nextMidnight);
+      const perc = Math.round((partEnd - cursor) / 60000);
+      if (perc > 0) {
+        const a = tsToDateTime(cursor), b = tsToDateTime(partEnd);
+        target.push({ date: a.date, on: a.time, off: b.time, perc,
+          startTs: cursor, endTs: partEnd });
       }
+      cursor = partEnd;
     }
-    // "off" állapotban lévő puszta aktivitás-sor (pl. valaki más ír róla,
-    // vagy éppen nem admin dutyban tesz valamit) nem indít új duty szakaszt -
-    // ahhoz mindig kifejezett "adminszolgálatba lépett" sor kell.
   }
 
-  if (state === 'on' && sessionStart && lastActivity) pushDuty(sessionStart, lastActivity);
-
+  windows.forEach(w => {
+    const sessionEvents = sortedEvents.filter(e => e.ts >= w.start && e.ts <= w.end);
+    let state = 'off';
+    let cursor = w.start;
+    sessionEvents.forEach(ev => {
+      if (ev.kind === 'start' && state === 'off') {
+        pushSplit(offPeriods, cursor, ev.ts);
+        state = 'on'; cursor = ev.ts;
+      } else if (ev.kind === 'end' && state === 'on') {
+        pushSplit(dutyPeriods, cursor, ev.ts);
+        state = 'off'; cursor = ev.ts;
+      }
+    });
+    pushSplit(state === 'on' ? dutyPeriods : offPeriods, cursor, w.end);
+  });
   return { dutyPeriods, offPeriods };
 }
 
@@ -3147,9 +3115,8 @@ function runDutyStateMachine(events) {
 // számítsák be ugyanazt az időszakot.
 function extractDutyPeriodsFromLogText(text, adminName) {
   const events = extractDutyEventsFromLogText(text, adminName);
-  const { dutyPeriods, offPeriods } = runDutyStateMachine(events);
   const connectWindows = extractConnectWindowsFromLogText(text);
-  return { dutyPeriods, offPeriods: clipOffPeriodsToConnectWindows(offPeriods, connectWindows) };
+  return runDutyStateMachine(events, connectWindows);
 }
 
 // ============================================================
@@ -3169,7 +3136,7 @@ function extractDutyPeriodsFromLogText(text, adminName) {
 // számít jelenlétnek, tehát off dutynak sem.
 function extractConnectWindowsFromLogText(text) {
   const windows = [];
-  const tsRe = /^\[(\d{4}-\d{2}-\d{2})\s(\d{2}:\d{2}):\d{2}\]/;
+  const tsRe = /^\[(\d{4}-\d{2}-\d{2})\s(\d{2}:\d{2}:\d{2})\]/;
   const lines = text.split(/\r?\n/).filter(l => l.trim() !== '');
   let current = null;
   for (const line of lines) {
@@ -3329,13 +3296,12 @@ async function buildLogFileResults(files, opts) {
     const dayCounts = extractDayCountsFromLogText(text);
     const cmdCounts = extractCommandCountsFromLogText(text);
     const dutyEvents = extractDutyEventsFromLogText(text, adminName);
-    const { dutyPeriods, offPeriods: offPeriodsRaw } = runDutyStateMachine(dutyEvents);
     const connectWindows = extractConnectWindowsFromLogText(text);
+    const { dutyPeriods, offPeriods } = runDutyStateMachine(dutyEvents, connectWindows);
     // Előnézetben is csak a ténylegesen szerveren töltött off duty időt mutatjuk
     // (ehhez a fájlhoz tartozó csatlakozási ablakok alapján) - a végleges,
     // mentéskor elszámolt érték az ÖSSZES ismert log-forrás egyesített
     // csatlakozási ablakaival számol (lásd confirmLogBreakdown).
-    const offPeriods = clipOffPeriodsToConnectWindows(offPeriodsRaw, connectWindows);
     const reportEvents = extractReportEventsFromLogText(text);
     const adminActionEvents = extractAdminActionEventsFromLogText(text, adminName);
     const key = sanitizeFirebaseKey(file.name);
@@ -3440,16 +3406,25 @@ async function confirmLogBreakdown(silent) {
   //    Ha egy fájlt (azonos névvel) újra feltöltünk, az ő RÉGI napjait is újraszámoljuk,
   //    nehogy egy már megszűnt (a fájlból időközben eltűnt) nap értéke "beragadjon".
   const touchedDates = new Set();
+  const addTouchedWindowDates = (w) => {
+    if (!w || typeof w.start !== 'number' || typeof w.end !== 'number') return;
+    let cursor = w.start;
+    while (cursor <= w.end) {
+      touchedDates.add(tsToDateTime(cursor).date);
+      const d = new Date(cursor);
+      cursor = new Date(d.getFullYear(), d.getMonth(), d.getDate() + 1).getTime();
+    }
+  };
   fileResults.forEach(fr => {
     const oldContribution = latestUserData.logSources[fr.key];
     if (oldContribution && oldContribution.days) Object.keys(oldContribution.days).forEach(d => touchedDates.add(d));
     if (oldContribution && oldContribution.cmdCounts) Object.keys(oldContribution.cmdCounts).forEach(d => touchedDates.add(d));
     if (oldContribution && oldContribution.dutyEvents) oldContribution.dutyEvents.forEach(e => touchedDates.add(e.date));
-    if (oldContribution && oldContribution.connectWindows) oldContribution.connectWindows.forEach(w => touchedDates.add(tsToDateTime(w.start).date));
+    if (oldContribution && oldContribution.connectWindows) oldContribution.connectWindows.forEach(addTouchedWindowDates);
     Object.keys(fr.dayCounts).forEach(d => touchedDates.add(d));
     Object.keys(fr.cmdCounts).forEach(d => touchedDates.add(d));
     (fr.dutyEvents || []).forEach(e => touchedDates.add(e.date));
-    (fr.connectWindows || []).forEach(w => touchedDates.add(tsToDateTime(w.start).date));
+    (fr.connectWindows || []).forEach(addTouchedWindowDates);
     latestUserData.logSources[fr.key] = { filename: fr.filename, days: fr.dayCounts, cmdCounts: fr.cmdCounts, dutyEvents: fr.dutyEvents || [], connectWindows: fr.connectWindows || [], reportEvents: fr.reportEvents || [], adminActionEvents: fr.adminActionEvents || [] };
   });
 
@@ -3531,11 +3506,9 @@ async function confirmLogBreakdown(silent) {
     if (src && src.dutyEvents) allEvents = allEvents.concat(src.dutyEvents);
     if (src && src.connectWindows) allConnectWindows = allConnectWindows.concat(src.connectWindows);
   });
-  const { dutyPeriods, offPeriods: offPeriodsRaw } = runDutyStateMachine(allEvents);
-  // Az off duty időt csak arra az időre vágjuk rá, amikor ISMERTEN fent voltál a
-  // szerveren (bármelyik feltöltött log alapján) - a szerveren kívül töltött idő
-  // (pl. nem játszottál aznap) sosem számít bele sem duty-ba, sem off dutyba.
-  const offPeriods = clipOffPeriodsToConnectWindows(offPeriodsRaw, allConnectWindows);
+  // Minden ismert szerver-jelenléti ablakot pontosan egyszer osztunk fel Duty és
+  // Off Duty részekre. A szerveren kívül töltött idő egyik összegbe sem kerül.
+  const { dutyPeriods, offPeriods } = runDutyStateMachine(allEvents, allConnectWindows);
   dutyPeriods.filter(p => touchedDates.has(p.date)).forEach(p => {
     const mk = p.date.substring(0, 7);
     if (latestUserData.closedMonths[mk]) {
