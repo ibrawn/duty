@@ -1550,6 +1550,28 @@ async function fbDelete(path) {
   } catch(e) { console.error(e); return false; }
 }
 
+async function fbMultiUpdate(updates) {
+  try {
+    const token = await getIdToken();
+    if (!token) throw new Error('Nincs Firebase-hitelesítés.');
+    const url = `${FIREBASE_DB_URL}/.json?auth=${token}`;
+    const res = await fetch(url, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(updates)
+    });
+    if (!res.ok) {
+      let details = '';
+      try { details = await res.text(); } catch (_) {}
+      throw new Error(`Firebase ${res.status}${details ? `: ${details}` : ''}`);
+    }
+    return true;
+  } catch (e) {
+    console.error('fbMultiUpdate failed', e, updates);
+    throw e;
+  }
+}
+
 async function initAuth() {
   setupDropdownCloseListener();
   const authUser = firebase.auth().currentUser;
@@ -2244,23 +2266,34 @@ async function devToggleDeveloper(username) {
   if (!isDevCurrentUser()) return;
   const profile = usersDB[username];
   if (!profile || !profile.uid || username === DEVELOPER_USERNAME) return;
+
   const makeDev = profile.role !== 'dev';
   const action = makeDev ? 'fejlesztői rangot adsz' : 'visszavonod a fejlesztői rangját';
   if (!confirm(`Biztosan ${action} ${profile.display} felhasználónak?`)) return;
 
   const updated = { ...profile, role: makeDev ? 'dev' : 'user' };
-  const roleSaved = await fbSave(`users/${username}`, updated);
-  const accessSaved = makeDev
-    ? await fbSave(`developerUids/${profile.uid}`, true)
-    : await fbDelete(`developerUids/${profile.uid}`);
+  const updates = {};
+  updates[`users/${username}`] = updated;
+  updates[`developerUids/${profile.uid}`] = makeDev ? true : null;
 
-  if (!roleSaved || !accessSaved) {
-    alert('A Firebase nem engedte a jogosultság módosítását. Ellenőrizd, hogy a csomagban lévő database.rules.json szabályok vannak-e közzétéve.');
-    return;
+  try {
+    // A profilrang és a Firebase-hozzáférés egyetlen atomikus PATCH-ben változik.
+    // Így nem maradhat félkész állapotban, hogy az egyik módosítás sikerült,
+    // a másik pedig nem.
+    await fbMultiUpdate(updates);
+    usersDB[username] = updated;
+    alert(makeDev
+      ? `${profile.display} mostantól teljes fejlesztői hozzáféréssel rendelkezik.`
+      : `${profile.display} fejlesztői hozzáférése sikeresen visszavonva.`);
+    renderDevUsers();
+  } catch (e) {
+    const msg = String(e && e.message ? e.message : e);
+    alert(`A Firebase nem engedte a jogosultság módosítását.
+
+${msg}
+
+Tedd közzé a csomagban lévő legújabb database.rules.json szabályt a Realtime Database → Rules oldalon.`);
   }
-  usersDB[username] = updated;
-  alert(makeDev ? `${profile.display} mostantól teljes fejlesztői hozzáféréssel rendelkezik.` : `${profile.display} fejlesztői hozzáférése visszavonva.`);
-  renderDevUsers();
 }
 
 async function devEditUser(username) {
