@@ -1549,13 +1549,17 @@ async function initAuth() {
   setupDropdownCloseListener();
   const authUser = firebase.auth().currentUser;
   if (!authUser || !currentUser) { currentUser = ''; toggleAuthMode(false); return; }
-  if (authUser.uid === DEVELOPER_UID) {
-    await migrateLegacyFirebaseAccounts();
-    usersDB = await fbFetch('users') || {};
-  }
-  else {
-    const ownProfile = await fbFetch(`users/${currentUser}`);
-    usersDB = ownProfile && ownProfile.uid === authUser.uid ? { [currentUser]: ownProfile } : {};
+  const ownProfile = await fbFetch(`users/${currentUser}`);
+  if (!ownProfile || ownProfile.uid !== authUser.uid) {
+    usersDB = {};
+  } else if (ownProfile.role === 'dev') {
+    // Minden fejlesztői rangú felhasználó megkapja a fejlesztői felülethez
+    // szükséges teljes felhasználólistát. A régi fiókok migrációját továbbra
+    // is csak az eredeti fő fejlesztő futtatja.
+    if (authUser.uid === DEVELOPER_UID) await migrateLegacyFirebaseAccounts();
+    usersDB = await fbFetch('users') || { [currentUser]: ownProfile };
+  } else {
+    usersDB = { [currentUser]: ownProfile };
   }
   if (usersDB[currentUser] && usersDB[currentUser].approved !== false) await showMainUcp();
   else { await firebase.auth().signOut(); currentUser = ''; toggleAuthMode(false); }
@@ -1570,7 +1574,8 @@ let chatMessagesCache = {};
 
 function isDevCurrentUser() {
   const authUser = firebase.auth().currentUser;
-  return !!(authUser && authUser.uid === DEVELOPER_UID);
+  const profile = usersDB[currentUser];
+  return !!(authUser && profile && profile.uid === authUser.uid && profile.role === "dev");
 }
 
 function toggleChatWindow() {
@@ -1835,11 +1840,11 @@ async function handleAuth() {
       if (lowerUser === DEVELOPER_USERNAME && cred.user.uid !== DEVELOPER_UID) throw new Error('Érvénytelen fejlesztői UID.');
       sessionStorage.setItem("adminCurrentSessionUser", lowerUser);
       currentUser = lowerUser;
-      if (cred.user.uid === DEVELOPER_UID) {
-        await migrateLegacyFirebaseAccounts();
-        usersDB = await fbFetch('users') || {};
+      const profile = await fbFetch(`users/${lowerUser}`);
+      if (profile && profile.uid === cred.user.uid && profile.role === 'dev') {
+        if (cred.user.uid === DEVELOPER_UID) await migrateLegacyFirebaseAccounts();
+        usersDB = await fbFetch('users') || { [lowerUser]: profile };
       } else {
-        const profile = await fbFetch(`users/${lowerUser}`);
         usersDB = profile ? { [lowerUser]: profile } : {};
       }
       if (!usersDB[lowerUser] || usersDB[lowerUser].uid !== cred.user.uid) throw new Error('A fiók nincs ehhez a felhasználónévhez kapcsolva.');
@@ -1887,7 +1892,7 @@ async function showMainUcp() {
     document.getElementById("devStatsBtn").style.display = "none";
   }
 
-  if (firebase.auth().currentUser && firebase.auth().currentUser.uid === DEVELOPER_UID) globalData = await fbFetch("data") || {};
+  if (isDevCurrentUser()) globalData = await fbFetch("data") || {};
   else {
     const ownData = await fbFetch(`data/${currentUser}`);
     globalData = { [currentUser]: ownData || {} };
