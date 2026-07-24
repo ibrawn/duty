@@ -1519,7 +1519,12 @@ async function fbFetch(path) {
     if (!token) { console.error('fbFetch blocked: nincs Firebase hitelesítés', path); return null; }
     const url = `${FIREBASE_DB_URL}/${path}.json?auth=${token}`;
     const res = await fetch(url);
-    return await res.json();
+    const data = await res.json().catch(() => null);
+    if (!res.ok || (data && typeof data === 'object' && data.error)) {
+      console.error('fbFetch failed', path, res.status, data && data.error ? data.error : data);
+      return null;
+    }
+    return data;
   } catch(e) { console.error(e); return null; }
 }
 
@@ -1557,7 +1562,8 @@ async function initAuth() {
     // szükséges teljes felhasználólistát. A régi fiókok migrációját továbbra
     // is csak az eredeti fő fejlesztő futtatja.
     if (authUser.uid === DEVELOPER_UID) await migrateLegacyFirebaseAccounts();
-    usersDB = await fbFetch('users') || { [currentUser]: ownProfile };
+    const allUsers = await fbFetch('users');
+    usersDB = (allUsers && allUsers[currentUser]) ? allUsers : { [currentUser]: ownProfile };
   } else {
     usersDB = { [currentUser]: ownProfile };
   }
@@ -1576,6 +1582,22 @@ function isDevCurrentUser() {
   const authUser = firebase.auth().currentUser;
   const profile = usersDB[currentUser];
   return !!(authUser && profile && profile.uid === authUser.uid && profile.role === "dev");
+}
+
+async function syncDeveloperUidAccess() {
+  if (!isDevCurrentUser()) return false;
+  const authUser = firebase.auth().currentUser;
+  if (!authUser) return false;
+  return await fbSave(`developerUids/${authUser.uid}`, true);
+}
+
+async function syncAllDeveloperUidAccess() {
+  if (!isDevCurrentUser()) return;
+  for (const profile of Object.values(usersDB || {})) {
+    if (profile && profile.role === 'dev' && profile.uid) {
+      await fbSave(`developerUids/${profile.uid}`, true);
+    }
+  }
 }
 
 function toggleChatWindow() {
@@ -1843,7 +1865,8 @@ async function handleAuth() {
       const profile = await fbFetch(`users/${lowerUser}`);
       if (profile && profile.uid === cred.user.uid && profile.role === 'dev') {
         if (cred.user.uid === DEVELOPER_UID) await migrateLegacyFirebaseAccounts();
-        usersDB = await fbFetch('users') || { [lowerUser]: profile };
+        const allUsers = await fbFetch('users');
+        usersDB = (allUsers && allUsers[lowerUser]) ? allUsers : { [lowerUser]: profile };
       } else {
         usersDB = profile ? { [lowerUser]: profile } : {};
       }
@@ -1959,8 +1982,15 @@ async function logout() {
 
 async function openDevPage() {
   if (!isDevCurrentUser()) return;
+  await syncDeveloperUidAccess();
   switchPage('dev');
-  usersDB = await fbFetch("users") || {};
+  const loadedUsers = await fbFetch("users");
+  if (!loadedUsers) {
+    alert("A Firebase még nem engedi a fejlesztői hozzáférést. Töltsd fel a csomagban lévő database.rules.json szabályokat, majd jelentkezz be újra.");
+    return;
+  }
+  usersDB = loadedUsers;
+  await syncAllDeveloperUidAccess();
   renderDevUsers();
 }
 
@@ -1969,6 +1999,7 @@ let statsRefreshInterval = null;
 
 async function openDevStatsPage() {
   if (!isDevCurrentUser()) return;
+  await syncDeveloperUidAccess();
   switchPage('devstats');
   selectedStatsUser = null;
   if (statsRefreshInterval) { clearInterval(statsRefreshInterval); statsRefreshInterval = null; }
@@ -2157,19 +2188,26 @@ function renderDevUsers() {
       </div>`;
     const lastLoginHtml = `<span style="font-size:10px; color:var(--see-text-muted); display:block; margin-top:2px;"><i class="fa-solid fa-clock-rotate-left"></i> Utolsó bejelentkezés: <span style="color:var(--see-text);">${formatLastLogin(u.lastLogin)}</span></span>`;
     return `
-       <div class="see-list-item">
-         <div>
-           <span class="see-item-date" style="color:${isDev ? 'var(--see-dev)' : '#fff'}; font-weight:700;">${u.display}</span>
-           <span style="font-size:11px; color:var(--see-text-muted); margin-left:10px;">Rang: ${isDev ? 'Fejlesztő' : 'Admin ' + (u.rank || 1)}</span>
-           ${rankSelectHtml}
-           ${adminNameHtml}
-           ${lastLoginHtml}
+       <div class="see-list-item" style="display:block; padding:14px 4px;">
+         <div style="display:flex; justify-content:space-between; align-items:flex-start; gap:12px;">
+           <div style="min-width:0; flex:1;">
+             <span class="see-item-date" style="color:${isDev ? 'var(--see-dev)' : '#fff'}; font-weight:700;">${u.display}</span>
+             <span style="font-size:11px; color:var(--see-text-muted); margin-left:10px;">Rang: ${isDev ? 'Fejlesztő' : 'Admin ' + (u.rank || 1)}</span>
+             ${rankSelectHtml}
+             ${adminNameHtml}
+             ${lastLoginHtml}
+           </div>
+           <div class="see-item-actions">
+             <button class="see-action-btn" onclick="devEditUser('${username}')" title="Jelszó módosítása">✏</button>
+             <button class="see-action-btn" style="color:var(--see-admin-yellow);" onclick="devEditAdminName('${username}')" title="Admin nick beállítása / módosítása"><i class="fa-solid fa-user-tag"></i></button>
+             ${isDev ? '' : `<button class="see-action-btn del" onclick="devDeleteUser('${username}')" title="Kirúgás / Felhasználó törlése">✕</button>`}
+           </div>
          </div>
-         <div class="see-item-actions">
-           <button class="see-action-btn" onclick="devEditUser('${username}')" title="Jelszó módosítása">✏</button>
-           <button class="see-action-btn" style="color:var(--see-admin-yellow);" onclick="devEditAdminName('${username}')" title="Admin nick beállítása / módosítása"><i class="fa-solid fa-user-tag"></i></button>
-           ${isDev ? '' : `<button class="see-action-btn del" onclick="devDeleteUser('${username}')" title="Kirúgás / Felhasználó törlése">✕</button>`}
-         </div>
+         ${username === DEVELOPER_USERNAME ? `<div style="margin-top:10px; font-size:11px; color:var(--see-text-muted);"><i class="fa-solid fa-shield-halved"></i> Ez az elsődleges fejlesztői fiók.</div>` : `
+         <button class="see-btn" style="margin:12px 0 0; background:${isDev ? 'rgba(251,113,133,0.16)' : 'linear-gradient(135deg,var(--see-dev),#7c3aed)'}; color:${isDev ? 'var(--see-danger)' : '#fff'}; box-shadow:none;" onclick="devToggleDeveloper('${username}')">
+           <i class="fa-solid ${isDev ? 'fa-user-minus' : 'fa-code'}"></i>
+           ${isDev ? 'Fejlesztői jog visszavonása' : 'Fejlesztővé tesz'}
+         </button>`}
        </div>`;
   }).join('');
 
@@ -2193,10 +2231,36 @@ async function devRejectUser(username) {
   if (confirm(`Biztosan elutasítod és törlöd ${usersDB[username].display} jóváhagyásra váró regisztrációját?`)) {
     await fbDelete(`users/${username}`);
     await fbDelete(`data/${username}`);
-    if (usersDB[username].uid) await fbDelete(`access/${usersDB[username].uid}`);
+    if (usersDB[username].uid) {
+      await fbDelete(`access/${usersDB[username].uid}`);
+      await fbDelete(`developerUids/${usersDB[username].uid}`);
+    }
     delete usersDB[username];
     renderDevUsers();
   }
+}
+
+async function devToggleDeveloper(username) {
+  if (!isDevCurrentUser()) return;
+  const profile = usersDB[username];
+  if (!profile || !profile.uid || username === DEVELOPER_USERNAME) return;
+  const makeDev = profile.role !== 'dev';
+  const action = makeDev ? 'fejlesztői rangot adsz' : 'visszavonod a fejlesztői rangját';
+  if (!confirm(`Biztosan ${action} ${profile.display} felhasználónak?`)) return;
+
+  const updated = { ...profile, role: makeDev ? 'dev' : 'user' };
+  const roleSaved = await fbSave(`users/${username}`, updated);
+  const accessSaved = makeDev
+    ? await fbSave(`developerUids/${profile.uid}`, true)
+    : await fbDelete(`developerUids/${profile.uid}`);
+
+  if (!roleSaved || !accessSaved) {
+    alert('A Firebase nem engedte a jogosultság módosítását. Ellenőrizd, hogy a csomagban lévő database.rules.json szabályok vannak-e közzétéve.');
+    return;
+  }
+  usersDB[username] = updated;
+  alert(makeDev ? `${profile.display} mostantól teljes fejlesztői hozzáféréssel rendelkezik.` : `${profile.display} fejlesztői hozzáférése visszavonva.`);
+  renderDevUsers();
 }
 
 async function devEditUser(username) {
@@ -2228,7 +2292,10 @@ async function devDeleteUser(username) {
   if (confirm(`Biztosan törlöd ${usersDB[username].display} fiókját?`)) {
     await fbDelete(`users/${username}`);
     await fbDelete(`data/${username}`);
-    if (usersDB[username].uid) await fbDelete(`access/${usersDB[username].uid}`);
+    if (usersDB[username].uid) {
+      await fbDelete(`access/${usersDB[username].uid}`);
+      await fbDelete(`developerUids/${usersDB[username].uid}`);
+    }
     delete usersDB[username];
     renderDevUsers();
   }
