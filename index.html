@@ -2281,18 +2281,18 @@ async function devToggleDeveloper(username) {
       const accessOk = await fbSave(`developerUids/${profile.uid}`, true);
       if (!accessOk) throw new Error('A developerUids bejegyzés létrehozását megtagadta a Firebase.');
 
-      const profileOk = await fbSave(`users/${username}`, updated);
+      const profileOk = await fbSave(`users/${username}/role`, 'dev');
       if (!profileOk) {
         await fbDelete(`developerUids/${profile.uid}`);
         throw new Error('A felhasználói rang módosítását megtagadta a Firebase.');
       }
     } else {
-      const profileOk = await fbSave(`users/${username}`, updated);
+      const profileOk = await fbSave(`users/${username}/role`, 'user');
       if (!profileOk) throw new Error('A felhasználói rang módosítását megtagadta a Firebase.');
 
       const accessOk = await fbDelete(`developerUids/${profile.uid}`);
       if (!accessOk) {
-        await fbSave(`users/${username}`, oldProfile);
+        await fbSave(`users/${username}/role`, oldProfile.role || 'dev');
         throw new Error('A developerUids bejegyzés törlését megtagadta a Firebase.');
       }
     }
