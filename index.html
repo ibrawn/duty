@@ -2271,28 +2271,45 @@ async function devToggleDeveloper(username) {
   const action = makeDev ? 'fejlesztői rangot adsz' : 'visszavonod a fejlesztői rangját';
   if (!confirm(`Biztosan ${action} ${profile.display} felhasználónak?`)) return;
 
+  const oldProfile = { ...profile };
   const updated = { ...profile, role: makeDev ? 'dev' : 'user' };
-  const updates = {};
-  updates[`users/${username}`] = updated;
-  updates[`developerUids/${profile.uid}`] = makeDev ? true : null;
 
   try {
-    // A profilrang és a Firebase-hozzáférés egyetlen atomikus PATCH-ben változik.
-    // Így nem maradhat félkész állapotban, hogy az egyik módosítás sikerült,
-    // a másik pedig nem.
-    await fbMultiUpdate(updates);
+    // Nem a gyökérútvonalon végzünk PATCH-et. A Firebase minden módosítást
+    // a saját engedélyezett gyermekútvonalán ellenőriz.
+    if (makeDev) {
+      const accessOk = await fbSave(`developerUids/${profile.uid}`, true);
+      if (!accessOk) throw new Error('A developerUids bejegyzés létrehozását megtagadta a Firebase.');
+
+      const profileOk = await fbSave(`users/${username}`, updated);
+      if (!profileOk) {
+        await fbDelete(`developerUids/${profile.uid}`);
+        throw new Error('A felhasználói rang módosítását megtagadta a Firebase.');
+      }
+    } else {
+      const profileOk = await fbSave(`users/${username}`, updated);
+      if (!profileOk) throw new Error('A felhasználói rang módosítását megtagadta a Firebase.');
+
+      const accessOk = await fbDelete(`developerUids/${profile.uid}`);
+      if (!accessOk) {
+        await fbSave(`users/${username}`, oldProfile);
+        throw new Error('A developerUids bejegyzés törlését megtagadta a Firebase.');
+      }
+    }
+
     usersDB[username] = updated;
     alert(makeDev
       ? `${profile.display} mostantól teljes fejlesztői hozzáféréssel rendelkezik.`
       : `${profile.display} fejlesztői hozzáférése sikeresen visszavonva.`);
     renderDevUsers();
   } catch (e) {
-    const msg = String(e && e.message ? e.message : e);
+    const authUid = firebase.auth().currentUser ? firebase.auth().currentUser.uid : 'nincs bejelentkezett UID';
     alert(`A Firebase nem engedte a jogosultság módosítását.
 
-${msg}
+${e.message || e}
 
-Tedd közzé a csomagban lévő legújabb database.rules.json szabályt a Realtime Database → Rules oldalon.`);
+Bejelentkezett Firebase UID: ${authUid}
+Elvárt fő fejlesztői UID: ${DEVELOPER_UID}`);
   }
 }
 
