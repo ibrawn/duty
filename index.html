@@ -1519,7 +1519,12 @@ async function fbFetch(path) {
     if (!token) { console.error('fbFetch blocked: nincs Firebase hitelesítés', path); return null; }
     const url = `${FIREBASE_DB_URL}/${path}.json?auth=${token}`;
     const res = await fetch(url);
-    return await res.json();
+    const data = await res.json().catch(() => null);
+    if (!res.ok || (data && typeof data === 'object' && data.error)) {
+      console.error('fbFetch failed', path, res.status, data && data.error ? data.error : data);
+      return null;
+    }
+    return data;
   } catch(e) { console.error(e); return null; }
 }
 
@@ -1557,7 +1562,8 @@ async function initAuth() {
     // szükséges teljes felhasználólistát. A régi fiókok migrációját továbbra
     // is csak az eredeti fő fejlesztő futtatja.
     if (authUser.uid === DEVELOPER_UID) await migrateLegacyFirebaseAccounts();
-    usersDB = await fbFetch('users') || { [currentUser]: ownProfile };
+    const allUsers = await fbFetch('users');
+    usersDB = (allUsers && allUsers[currentUser]) ? allUsers : { [currentUser]: ownProfile };
   } else {
     usersDB = { [currentUser]: ownProfile };
   }
@@ -1843,7 +1849,8 @@ async function handleAuth() {
       const profile = await fbFetch(`users/${lowerUser}`);
       if (profile && profile.uid === cred.user.uid && profile.role === 'dev') {
         if (cred.user.uid === DEVELOPER_UID) await migrateLegacyFirebaseAccounts();
-        usersDB = await fbFetch('users') || { [lowerUser]: profile };
+        const allUsers = await fbFetch('users');
+        usersDB = (allUsers && allUsers[lowerUser]) ? allUsers : { [lowerUser]: profile };
       } else {
         usersDB = profile ? { [lowerUser]: profile } : {};
       }
