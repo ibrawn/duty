@@ -1869,8 +1869,9 @@ async function handleAuth() {
       const okAccess = await fbSave(`access/${cred.user.uid}`, false);
       const okData = await fbSave(`data/${lowerUser}`, { duty: [], off: [], reports: {}, commandsByDay: {}, reportLog: [], adminActions: [], logAdminName: adminName });
       await firebase.auth().signOut();
-      if (!okProfile || !okAccess || !okData) throw new Error('Az adatbázis nem engedte a profil létrehozását.');
-      alert('Sikeres regisztráció! A fiókodat egy fejlesztőnek jóvá kell hagynia.');
+      if (!okProfile) throw new Error('A Firebase-fiók létrejött, de a jóváhagyási profil mentése nem sikerült. Ne regisztrálj újra; kérd a fejlesztő segítségét.');
+      if (!okAccess || !okData) console.warn('A regisztrációs profil létrejött, de az access vagy data alapadat mentése nem sikerült.', { okAccess, okData });
+      alert('Sikeres fióklétrehozás! A regisztrációd fejlesztői jóváhagyásra vár. Kérjük, ne regisztrálj újra.');
       document.getElementById('authPass').value = '';
       document.getElementById('authAdminName').value = '';
       toggleAuthMode(false);
@@ -2714,7 +2715,7 @@ function renderMonthEdit() {
     const isJail = ev.type === 'adminjail';
     const isBan = ev.type === 'ban';
     const icon = isJail ? 'fa-jail' : (isBan ? 'fa-ban' : 'fa-boot');
-    const label = isJail ? 'AdminJail' : (isBan ? 'Ban' : 'Kick');
+    const label = isJail ? (ev.offline ? 'AdminJail · Offline' : 'AdminJail') : (isBan ? 'Ban' : 'Kick');
     const color = isJail ? 'var(--see-gold)' : (isBan ? '#f472b6' : 'var(--see-danger)');
     const detail = isJail ? `${ev.minutes} perc` : (isBan && ev.expiry ? ev.expiry : '');
     const reasonHtml = ev.reason ? `<div style="font-size:10px; color:var(--see-text-muted); margin-top:2px;">Indok: ${ev.reason}</div>` : '';
@@ -2982,25 +2983,26 @@ function extractDayCountsFromLogText(text) {
 // nem térnek vissza a nyitott munkaterületre, csak ha ténylegesen újra feltöltik a logot.
 function emptyCommandCounts() { return { fixveh: 0, asegit: 0, agyogyit: 0, adminjail: 0, kick: 0, ban: 0 }; }
 
-function extractCommandCountsFromLogText(text) {
+function extractCommandCountsFromLogText(text, adminName) {
   const byDay = {};
   const lines = text.split(/\r?\n/);
-  // FONTOS: a szerver logjában az AdminJail parancs ténylegesen "/ajail" néven fut le
-  // (NEM "/adminjail"-ként) - ezt korábban tévesen kerestük, ezért az adminjail
-  // számláló mindig 0-t mutatott, függetlenül attól, hogy a "Havi/Nyitott" nézetben
-  // (extractAdminActionEventsFromLogText alapján, ami a [CHAT] visszaigazoló sorból
-  // dolgozik) helyesen jelent meg legalább 1 esemény. A belső "adminjail" kulcsnevet
-  // (statisztikákban, tárolásban) NEM módosítjuk, csak a felismert parancs alakját.
-  const re = /^\[(\d{4}-\d{2}-\d{2})\s\d{2}:\d{2}:\d{2}\]\s\[INPUT\]\s\/(fixveh|asegit|agyogyit|ajail|kick)\b/;
+  // A fixveh csak a szerver sikeres javítást visszaigazoló chat soraiból számít.
+  const re = /^\[(\d{4}-\d{2}-\d{2})\s\d{2}:\d{2}:\d{2}\]\s\[INPUT\]\s\/(asegit|agyogyit|ajail|kick)\b/;
+  const fixvehSuccessRe = /^\[(\d{4}-\d{2}-\d{2})\s\d{2}:\d{2}:\d{2}\]\s\[CHAT\]\sSikeresen megjavítottad .+ játékos járművét\.$/;
   for (const line of lines) {
     const m = line.match(re);
-    if (m) {
-      const logDate = m[1];
-      const cmd = m[2] === 'ajail' ? 'adminjail' : m[2];
-      if (!byDay[logDate]) byDay[logDate] = emptyCommandCounts();
-      byDay[logDate][cmd]++;
-    }
+    const fixvehSuccess = line.match(fixvehSuccessRe);
+    if (!m && !fixvehSuccess) continue;
+    const date = m ? m[1] : fixvehSuccess[1];
+    const cmd = m ? (m[2] === 'ajail' ? 'adminjail' : m[2]) : 'fixveh';
+    if (!byDay[date]) byDay[date] = emptyCommandCounts();
+    byDay[date][cmd]++;
   }
+  // Offline jailnél nincs /ajail INPUT sor, ezért az adminnévhez kötött chat eseményt adjuk hozzá.
+  extractAdminActionEventsFromLogText(text, adminName).filter(ev => ev.type === 'adminjail' && ev.offline).forEach(ev => {
+    if (!byDay[ev.date]) byDay[ev.date] = emptyCommandCounts();
+    byDay[ev.date].adminjail++;
+  });
   return byDay;
 }
 
@@ -3044,6 +3046,7 @@ function extractAdminActionEventsFromLogText(text, adminName) {
   const indokContinuationRe = /^Indok:\s*(.*)$/;
 
   const jailRe = /^\[(\d{4}-\d{2}-\d{2})\s(\d{2}:\d{2}):\d{2}\]\s\[CHAT\]\s(.+?)\sAdminJailbe tette\s(.+?)\sjátékost\s(\d+)\spercre\.\s*(?:Indok:\s*(.*))?$/;
+  const offlineJailRe = /^\[(\d{4}-\d{2}-\d{2})\s(\d{2}:\d{2}):\d{2}\]\s\[CHAT\]\s(.+?)\sbebörtönözte\s(.+?)\soffline játékost\s(\d+)\spercre\.\s*(?:Indok:\s*(.*))?$/;
   const kickRe = /^\[(\d{4}-\d{2}-\d{2})\s(\d{2}:\d{2}):\d{2}\]\s\[CHAT\]\s(.+?)\ski lett rúgva a szerverről\s(.+?)\sáltal\.\s*(?:Indok:\s*(.*))?$/;
   // A tényleges kitiltás (ban) a szerveren NEM egy /ban konzolparancson keresztül
   // történik (ezért nincs is [INPUT] sora), hanem egy külső admin-felületről - a
@@ -3067,7 +3070,18 @@ function extractAdminActionEventsFromLogText(text, adminName) {
         const cont = lines[i + 1].match(indokContinuationRe);
         if (cont) reason = cont[1].trim();
       }
-      events.push({ type: 'adminjail', date: m[1], time: m[2], admin: m[3].trim(), target: m[4].trim(), minutes: parseInt(m[5], 10), reason });
+      events.push({ type: 'adminjail', date: m[1], time: m[2], admin: m[3].trim(), target: m[4].trim(), minutes: parseInt(m[5], 10), reason, offline: false });
+      continue;
+    }
+
+    m = line.match(offlineJailRe);
+    if (m && nameEndRe.test(m[3].trim())) {
+      let reason = (m[6] || '').trim();
+      if (!reason && i + 1 < lines.length && !timestampRe.test(lines[i + 1])) {
+        const cont = lines[i + 1].match(indokContinuationRe);
+        if (cont) reason = cont[1].trim();
+      }
+      events.push({ type: 'adminjail', date: m[1], time: m[2], admin: m[3].trim(), target: m[4].trim(), minutes: parseInt(m[5], 10), reason, offline: true });
       continue;
     }
 
@@ -3427,7 +3441,7 @@ async function buildLogFileResults(files, opts) {
   for (const file of files) {
     const text = await file.text();
     const dayCounts = extractDayCountsFromLogText(text);
-    const cmdCounts = extractCommandCountsFromLogText(text);
+    const cmdCounts = extractCommandCountsFromLogText(text, adminName);
     const dutyEvents = extractDutyEventsFromLogText(text, adminName);
     const connectWindows = extractConnectWindowsFromLogText(text);
     const { dutyPeriods, offPeriods } = runDutyStateMachine(dutyEvents, connectWindows);
@@ -3504,7 +3518,7 @@ function renderLogBreakdownModal(fileResults, latestUserData) {
     const adminActionRow = (fr.adminActionEvents && fr.adminActionEvents.length > 0)
       ? `<div style="font-size:11px; color:var(--see-text-muted); padding-top:8px; margin-top:6px; border-top:1px solid var(--see-border);">
           <div style="font-weight:700; margin-bottom:6px;"><i class="fa-solid fa-clock-rotate-left" style="color:var(--see-gold);"></i> Adminjail/Kick/Ban események ebből a fájlból: <strong style="color:#fff;">${fr.adminActionEvents.length} db</strong></div>
-          ${fr.adminActionEvents.map(ev => `<div style="display:flex; justify-content:space-between; padding:3px 0;"><span>${ev.date} ${ev.time} · ${ev.type === 'adminjail' ? 'AdminJail' : (ev.type === 'ban' ? 'Ban' : 'Kick')} · ${ev.target}</span></div>`).join('')}
+          ${fr.adminActionEvents.map(ev => `<div style="display:flex; justify-content:space-between; padding:3px 0;"><span>${ev.date} ${ev.time} · ${ev.type === 'adminjail' ? (ev.offline ? 'AdminJail (offline)' : 'AdminJail') : (ev.type === 'ban' ? 'Ban' : 'Kick')} · ${ev.target}</span></div>`).join('')}
         </div>`
       : '';
     return `
@@ -3741,7 +3755,7 @@ async function confirmLogBreakdown(silent) {
   const ok = await saveGlobal();
   render();
   closeLogBreakdownModal();
-  const successMsg = 'Logok feldolgozva! Az érintett napok report-száma, a fixveh / asegit / agyogyit parancshasználat, a Duty / Off Duty idő, valamint a Report napló és az Adminjail/Kick előzmények is frissültek az összes ismert log fájl adatai alapján.';
+  const successMsg = 'Logok feldolgozva! Az érintett napok report-száma, a sikeres fixveh javítások, az adminparancsok, a Duty / Off Duty idő, valamint a Report napló és az offline jailt is tartalmazó adminjail / Kick előzmények frissültek.';
   const errorMsg = 'Hiba történt a mentés közben — az adatok NEM kerültek elmentve a szerverre. Próbáld újra, és ellenőrizd a hálózati kapcsolatot.';
   // A részletes bontást megmutató modal (és az ott megnyomott "Adatok mentése" gomb) már
   // maga az elsődleges megerősítés - ezután nincs szükség egy második, blokkoló alert()-re.
@@ -3871,7 +3885,7 @@ function render() {
     const isJail = ev.type === 'adminjail';
     const isBan = ev.type === 'ban';
     const icon = isJail ? 'fa-jail' : (isBan ? 'fa-ban' : 'fa-boot');
-    const label = isJail ? 'AdminJail' : (isBan ? 'Ban' : 'Kick');
+    const label = isJail ? (ev.offline ? 'AdminJail · Offline' : 'AdminJail') : (isBan ? 'Ban' : 'Kick');
     const color = isJail ? 'var(--see-gold)' : (isBan ? '#f472b6' : 'var(--see-danger)');
     const detail = isJail ? `${ev.minutes} perc` : (isBan && ev.expiry ? ev.expiry : '');
     const reasonHtml = ev.reason ? `<span style="font-size:11px; color:var(--see-text-muted);"> · Indok: ${ev.reason}</span>` : '';
