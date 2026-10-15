@@ -1596,9 +1596,31 @@ async function initAuth() {
 /* ============ CSAPAT CHAT (mindenki látja, fejlesztő törölhet) ============ */
 let chatPollInterval = null;
 let chatIsOpen = false;
-let chatLastMsgCount = 0;
 let chatUnreadCount = 0;
 let chatMessagesCache = {};
+
+// Az olvasási pozíció a felhasználó adataihoz mentődik, így az offline érkezett
+// üzenetek a következő bejelentkezéskor is olvasatlanként jelennek meg.
+function getChatReadCursor() {
+  if (!currentUser) return '';
+  const remoteCursor = (globalData[currentUser] && globalData[currentUser].chatReadCursor) || '';
+  const localCursor = localStorage.getItem('chatReadCursor:' + currentUser) || '';
+  return remoteCursor > localCursor ? remoteCursor : localCursor;
+}
+
+async function markChatReadThrough(key) {
+  if (!currentUser || !key || key <= getChatReadCursor()) return;
+  localStorage.setItem('chatReadCursor:' + currentUser, key);
+  if (!globalData[currentUser]) globalData[currentUser] = {};
+  const previous = globalData[currentUser].chatReadCursor || '';
+  globalData[currentUser].chatReadCursor = key;
+  const saved = await saveGlobal();
+  if (!saved) {
+    console.warn('A chat olvasási pozícióját nem sikerült a szerverre menteni.');
+    // Helyi mentés megmarad; a felhasználó ezen az eszközön nem kapja vissza a már elolvasott jelzést.
+    globalData[currentUser].chatReadCursor = previous;
+  }
+}
 
 function isDevCurrentUser() {
   const authUser = firebase.auth().currentUser;
@@ -1646,15 +1668,28 @@ function stopChatPolling() {
 async function loadChatMessages(forceScroll) {
   const data = await fbFetch("chat");
   chatMessagesCache = data || {};
-  const keys = Object.keys(chatMessagesCache);
+  const keys = Object.keys(chatMessagesCache).filter(key => !!chatMessagesCache[key]).sort();
+  const latestKey = keys.length ? keys[keys.length - 1] : '';
 
-  if (keys.length > chatLastMsgCount && chatLastMsgCount !== 0 && !chatIsOpen) {
-    chatUnreadCount += (keys.length - chatLastMsgCount);
+  if (chatIsOpen) {
+    chatUnreadCount = 0;
+    updateChatBadge();
+    if (latestKey) await markChatReadThrough(latestKey);
+    renderChatMessages(forceScroll);
+  } else {
+    let cursor = getChatReadCursor();
+    // Régebbi fiókoknál még nincs mentett olvasási pozíció: az előző belépésig
+    // tartó üzeneteket alapállapotként olvasottnak vesszük, az azóta érkezetteket jelezzük.
+    const previousLoginTs = Number(sessionStorage.getItem('chatPreviousLoginTs')) || 0;
+    if (!cursor && previousLoginTs > 0) {
+      const readBeforeLogin = keys.filter(key => Number(key.split('_')[0]) <= previousLoginTs);
+      const baseline = readBeforeLogin.length ? readBeforeLogin[readBeforeLogin.length - 1] : String(previousLoginTs);
+      await markChatReadThrough(baseline);
+      cursor = getChatReadCursor();
+    }
+    chatUnreadCount = keys.filter(key => key > cursor && chatMessagesCache[key].user !== currentUser).length;
     updateChatBadge();
   }
-  chatLastMsgCount = keys.length;
-
-  if (chatIsOpen) renderChatMessages(forceScroll);
 }
 
 function updateChatBadge() {
@@ -1867,7 +1902,7 @@ async function handleAuth() {
       const profile = { display: user, uid: cred.user.uid, role: 'user', approved: false, adminName, rank: 1 };
       const okProfile = await fbSave(`users/${lowerUser}`, profile);
       const okAccess = await fbSave(`access/${cred.user.uid}`, false);
-      const okData = await fbSave(`data/${lowerUser}`, { duty: [], off: [], reports: {}, commandsByDay: {}, reportLog: [], adminActions: [], logAdminName: adminName });
+      const okData = await fbSave(`data/${lowerUser}`, { duty: [], off: [], reports: {}, commandsByDay: {}, reportLog: [], adminActions: [], logAdminName: adminName, chatReadCursor: String(Date.now()) });
       await firebase.auth().signOut();
       if (!okProfile) throw new Error('A Firebase-fiók létrejött, de a jóváhagyási profil mentése nem sikerült. Ne regisztrálj újra; kérd a fejlesztő segítségét.');
       if (!okAccess || !okData) console.warn('A regisztrációs profil létrejött, de az access vagy data alapadat mentése nem sikerült.', { okAccess, okData });
@@ -1895,6 +1930,7 @@ async function handleAuth() {
       }
       if (!usersDB[lowerUser] || usersDB[lowerUser].uid !== cred.user.uid) throw new Error('A fiók nincs ehhez a felhasználónévhez kapcsolva.');
       if (usersDB[lowerUser].approved === false) throw new Error('A fiókodat még nem hagyta jóvá egy fejlesztő.');
+      sessionStorage.setItem('chatPreviousLoginTs', String(Number(usersDB[lowerUser].lastLogin) || 0));
       usersDB[lowerUser].lastLogin = Date.now();
       await fbSave(`users/${lowerUser}`, usersDB[lowerUser]);
       await showMainUcp();
@@ -1991,6 +2027,7 @@ async function saveLogAdminNameField() {
 async function logout() {
   sessionStorage.removeItem("adminCurrentSessionUser");
   sessionStorage.removeItem("adminLastPage");
+  sessionStorage.removeItem("chatPreviousLoginTs");
   currentUser = "";
   document.getElementById("mainUcpSection").style.display = "none";
   document.getElementById("authSection").style.display = "flex";
