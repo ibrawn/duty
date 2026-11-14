@@ -1090,6 +1090,7 @@ input[type="file"] { display: none; }
   <div class="auth-card">
     <div class="auth-logo"><div class="logo-mark"><i class="fa-solid fa-shield-halved"></i></div></div>
     <div class="auth-title" id="authTitle"><span>SeeRPG</span> - Belépés</div>
+    <div id="authMainForm">
     <div class="auth-form-group">
       <label>Felhasználónév</label>
       <div class="input-icon-wrap">
@@ -1114,6 +1115,36 @@ input[type="file"] { display: none; }
     <button class="see-btn" id="authBtn" onclick="handleAuth()">Bejelentkezés</button>
     <div class="auth-switch" id="authSwitchRow">
       Nincs még fiókod? <span onclick="toggleAuthMode(true)">Regisztráció</span>
+    </div>
+    <div class="auth-switch" id="authForgotLinkRow" style="margin-top:10px;">
+      Elfelejtetted a jelszavad? <span onclick="showForgotMode()">Jelszó-visszaállítás kérése</span>
+    </div>
+    </div>
+    <div id="authForgotForm" style="display:none;">
+      <div class="auth-form-group">
+        <label>Felhasználónév</label>
+        <div class="input-icon-wrap">
+          <i class="fa-solid fa-user"></i>
+          <input type="text" id="forgotUser" placeholder="Karakter / Felhasználónév" onkeydown="if(event.key==='Enter'){ event.preventDefault(); handleForgotPassword(); }">
+        </div>
+      </div>
+      <div class="auth-form-group">
+        <label>Új jelszó</label>
+        <div class="input-icon-wrap">
+          <i class="fa-solid fa-lock"></i>
+          <input type="password" id="forgotPass1" placeholder="••••••••" onkeydown="if(event.key==='Enter'){ event.preventDefault(); handleForgotPassword(); }">
+        </div>
+      </div>
+      <div class="auth-form-group">
+        <label>Új jelszó mégegyszer</label>
+        <div class="input-icon-wrap">
+          <i class="fa-solid fa-lock"></i>
+          <input type="password" id="forgotPass2" placeholder="••••••••" onkeydown="if(event.key==='Enter'){ event.preventDefault(); handleForgotPassword(); }">
+        </div>
+      </div>
+      <button class="see-btn" onclick="handleForgotPassword()">Kérés elküldése</button>
+      <div style="font-size:11px; color:var(--see-text-muted); text-align:center; margin-bottom:6px;">Az új jelszó csak egy fejlesztő jóváhagyása után lép életbe.</div>
+      <div class="auth-switch"><span onclick="toggleAuthMode(false)">Vissza a bejelentkezéshez</span></div>
     </div>
   </div>
 </div>
@@ -1308,6 +1339,17 @@ input[type="file"] { display: none; }
       </div>
 
       <aside class="dashboard-aside">
+        <div class="widget-card" id="monthlyGoalCard">
+          <div class="widget-card-title"><i class="fa-solid fa-bullseye"></i> Havi kötelező idő <span class="qcount" id="goalMonthLabel">–</span></div>
+          <div class="ratio-bar-track"><div class="ratio-bar-fill" id="goalBarFill" style="background:linear-gradient(90deg,#6366f1,#818cf8);"></div></div>
+          <div style="display:flex; justify-content:space-between; font-size:11px; color:var(--see-text-muted); margin:8px 0 10px; font-weight:600;">
+            <span id="goalDoneText">0 / 5000 p</span><span id="goalPctText">0%</span>
+          </div>
+          <div class="widget-row"><span class="wlabel">Eddig teljesítve<small>Duty + Off Duty</small></span><span class="wval" id="goalDone" style="color:#fff;">0 p</span></div>
+          <div class="widget-row"><span class="wlabel">Hátralévő</span><span class="wval" id="goalRemaining" style="color:var(--see-gold);">5000 p</span></div>
+          <div class="widget-row"><span class="wlabel">Hátralévő napok<small>a mai napot is beleértve</small></span><span class="wval" id="goalDaysLeft" style="color:#fff;">0 nap</span></div>
+          <div class="widget-row"><span class="wlabel">Napi szükséges idő<small id="goalPerDayHint">a hátralévő napokra elosztva</small></span><span class="wval" id="goalPerDay" style="color:var(--see-success);">–</span></div>
+        </div>
         <div class="widget-card">
           <div class="widget-card-title"><i class="fa-solid fa-calendar-check"></i> Lezárt hónapok <span class="qcount" id="widgetClosedMonthsCount">0</span></div>
           <div id="widgetClosedMonths"><div class="widget-empty">Még nincs lezárt hónap.</div></div>
@@ -1488,11 +1530,23 @@ function ensureFirebaseAuth() {
   });
 }
 
-function firebaseEmailForUsername(username) {
+function firebaseEmailForUsername(username, suffix) {
   const lower = String(username || '').trim().toLowerCase();
   if (lower === DEVELOPER_USERNAME) return DEVELOPER_EMAIL;
   const encoded = Array.from(lower).map(ch => ch.charCodeAt(0).toString(16)).join('');
-  return `admin-${encoded}@adminduty-1fafd.firebaseapp.com`;
+  return `admin-${encoded}${suffix || ''}@adminduty-1fafd.firebaseapp.com`;
+}
+
+// Jelszó-visszaállítás: egy jóváhagyott kérés után a felhasználó egy ÚJ Firebase-fiókkal
+// (más e-mail-utótaggal) lép be. Az aktuális utótagot a nyilvánosan olvasható
+// authVersions/<felhasználónév> csomópont tartalmazza (bejelentkezés előtt, token nélkül olvasható).
+async function fetchAuthSuffix(username) {
+  try {
+    const res = await fetch(`${FIREBASE_DB_URL}/authVersions/${encodeURIComponent(username)}.json`);
+    if (!res.ok) return '';
+    const v = await res.json();
+    return (typeof v === 'string' && /^-r[a-z0-9]{6,12}$/.test(v)) ? v : '';
+  } catch (e) { return ''; }
 }
 
 function firebasePasswordForLegacy(password) {
@@ -1501,6 +1555,7 @@ function firebasePasswordForLegacy(password) {
 }
 
 let usersDB = {};
+let passwordResetsDB = {};
 let globalData = {};
 let currentUser = sessionStorage.getItem("adminCurrentSessionUser") || "";
 let editType = null, editIndex = null;
@@ -1845,6 +1900,12 @@ function setupDropdownCloseListener() {
 
 function toggleAuthMode(toRegister) {
   isRegisterMode = toRegister;
+  const mainForm = document.getElementById("authMainForm");
+  const forgotForm = document.getElementById("authForgotForm");
+  const forgotLink = document.getElementById("authForgotLinkRow");
+  if (mainForm) mainForm.style.display = "block";
+  if (forgotForm) forgotForm.style.display = "none";
+  if (forgotLink) forgotLink.style.display = toRegister ? "none" : "block";
   const title = document.getElementById("authTitle");
   const btn = document.getElementById("authBtn");
   const switchRow = document.getElementById("authSwitchRow");
@@ -1860,6 +1921,48 @@ function toggleAuthMode(toRegister) {
     switchRow.innerHTML = 'Nincs még fiókod? <span onclick="toggleAuthMode(true)">Regisztráció</span>';
     adminNameGroup.style.display = "none";
     document.getElementById("authAdminName").value = "";
+  }
+}
+
+function showForgotMode() {
+  isRegisterMode = false;
+  document.getElementById("authMainForm").style.display = "none";
+  document.getElementById("authForgotForm").style.display = "block";
+  document.getElementById("authTitle").innerHTML = "<span>SeeRPG</span> - Jelszó-visszaállítás";
+  document.getElementById("forgotUser").value = document.getElementById("authUser").value.trim();
+  document.getElementById("forgotPass1").value = "";
+  document.getElementById("forgotPass2").value = "";
+}
+
+async function handleForgotPassword() {
+  const user = document.getElementById("forgotUser").value.trim();
+  const lowerUser = user.toLowerCase();
+  const p1 = document.getElementById("forgotPass1").value;
+  const p2 = document.getElementById("forgotPass2").value;
+  if (!user || !p1 || !p2) { alert("Kérlek töltsd ki az összes mezőt!"); return; }
+  if (p1 !== p2) { alert("A két jelszó nem egyezik!"); return; }
+  if (lowerUser === DEVELOPER_USERNAME) { alert("Az elsődleges fejlesztői fiók jelszava ezen az úton nem állítható vissza."); return; }
+
+  const suffix = '-r' + (Math.random().toString(36) + '00000000').slice(2, 10);
+  let cred = null;
+  try {
+    // Az új jelszóval egy új Firebase-fiók jön létre; ez csak akkor lép életbe,
+    // ha egy fejlesztő jóváhagyja a kérést (ekkor kapcsoljuk át a profilt erre a fiókra).
+    cred = await firebase.auth().createUserWithEmailAndPassword(firebaseEmailForUsername(lowerUser, suffix), firebasePasswordForLegacy(p1));
+    const ok = await fbSave(`passwordResets/${lowerUser}`, { uid: cred.user.uid, suffix, requestedAt: Date.now() });
+    if (!ok) {
+      await cred.user.delete().catch(() => {});
+      throw new Error('Nincs ilyen felhasználónév, vagy ehhez már van függőben lévő jelszó-visszaállítási kérés.');
+    }
+    await firebase.auth().signOut();
+    alert('A kérés elküldve! Egy fejlesztő jóváhagyása után az új jelszavaddal be tudsz lépni. Addig a régi jelszó marad érvényben.');
+    document.getElementById("forgotPass1").value = "";
+    document.getElementById("forgotPass2").value = "";
+    toggleAuthMode(false);
+  } catch (e) {
+    console.error(e);
+    await firebase.auth().signOut().catch(() => {});
+    alert(`A kérés sikertelen: ${e.message}`);
   }
 }
 
@@ -1932,7 +2035,8 @@ async function handleAuth() {
     }
   } else {
     try {
-      const cred = await firebase.auth().signInWithEmailAndPassword(firebaseEmailForUsername(lowerUser), firebasePasswordForLegacy(pass));
+      const authSuffix = await fetchAuthSuffix(lowerUser);
+      const cred = await firebase.auth().signInWithEmailAndPassword(firebaseEmailForUsername(lowerUser, authSuffix), firebasePasswordForLegacy(pass));
       if (lowerUser === DEVELOPER_USERNAME && cred.user.uid !== DEVELOPER_UID) throw new Error('Érvénytelen fejlesztői UID.');
       sessionStorage.setItem("adminCurrentSessionUser", lowerUser);
       currentUser = lowerUser;
@@ -2066,6 +2170,7 @@ async function openDevPage() {
     return;
   }
   usersDB = loadedUsers;
+  passwordResetsDB = await fbFetch("passwordResets") || {};
   await syncAllDeveloperUidAccess();
   renderDevUsers();
 }
@@ -2224,6 +2329,30 @@ function renderDevUsers() {
   const pending = usernames.filter(u => usersDB[u].approved === false);
   const approvedUsers = sortUsersByRank(usernames.filter(u => usersDB[u].approved !== false));
 
+  const resetNames = Object.keys(passwordResetsDB || {}).filter(u => usersDB[u]);
+  const resetHtml = resetNames.length ? `
+    <div style="font-size:11px; font-weight:700; text-transform:uppercase; color:var(--see-admin-yellow); margin:4px 0 10px;">
+      <i class="fa-solid fa-key"></i> Jelszó-visszaállítási kérések (${resetNames.length})
+    </div>
+    ${resetNames.map(username => {
+      const u = usersDB[username];
+      const r = passwordResetsDB[username] || {};
+      return `
+       <div class="see-list-item" style="border-color: rgba(250,204,21,0.35);">
+         <div>
+           <span class="see-item-date" style="color:#fff; font-weight:700;">${u.display}</span>
+           <span style="font-size:10px; font-weight:700; color:var(--see-admin-yellow); background:rgba(250,204,21,0.12); padding:1px 7px; border-radius:5px; text-transform:uppercase; margin-left:10px;">Új jelszót kér</span>
+           <span style="font-size:10px; color:var(--see-text-muted); display:block; margin-top:2px;"><i class="fa-solid fa-clock"></i> Kérés ideje: ${formatLastLogin(r.requestedAt)}</span>
+         </div>
+         <div class="see-item-actions">
+           <button class="see-action-btn" style="color:var(--see-success);" onclick="devApprovePasswordReset('${username}')" title="Jóváhagyás"><i class="fa-solid fa-check"></i></button>
+           <button class="see-action-btn del" onclick="devRejectPasswordReset('${username}')" title="Elutasítás">✕</button>
+         </div>
+       </div>`;
+    }).join('')}
+    <div style="height:8px;"></div>
+  ` : '';
+
   const pendingHtml = pending.length ? `
     <div style="font-size:11px; font-weight:700; text-transform:uppercase; color:var(--see-danger); margin:4px 0 10px;">
       <i class="fa-solid fa-clock"></i> Jóváhagyásra váró regisztrációk (${pending.length})
@@ -2287,7 +2416,7 @@ function renderDevUsers() {
        </div>`;
   }).join('');
 
-  container.innerHTML = pendingHtml + approvedHtml || '<div style="font-size:13px;color:var(--see-text-muted);">Nincs regisztrált felhasználó.</div>';
+  container.innerHTML = resetHtml + pendingHtml + approvedHtml || '<div style="font-size:13px;color:var(--see-text-muted);">Nincs regisztrált felhasználó.</div>';
 }
 
 async function devApproveUser(username) {
@@ -2298,6 +2427,47 @@ async function devApproveUser(username) {
   if (usersDB[username].uid) await fbSave(`access/${usersDB[username].uid}`, true);
   const adminNamePart = usersDB[username].adminName ? ` (admin név a logban: ${usersDB[username].adminName})` : '';
   alert(`${usersDB[username].display} regisztrációja jóváhagyva${adminNamePart}! Mostantól be tud jelentkezni.`);
+  renderDevUsers();
+}
+
+async function devApprovePasswordReset(username) {
+  if (!isDevCurrentUser()) return;
+  const profile = usersDB[username];
+  const req = passwordResetsDB[username];
+  if (!profile || !req || !req.uid || !req.suffix) return;
+  if (username === DEVELOPER_USERNAME) return;
+  if (!confirm(`Biztosan jóváhagyod ${profile.display} jelszó-visszaállítási kérését?\n\nA régi jelszava érvénytelen lesz, az új jelszóval tud majd belépni.`)) return;
+
+  const oldUid = profile.uid;
+  try {
+    // 1) az új fiók megkapja a hozzáféréseket
+    if (!await fbSave(`access/${req.uid}`, profile.approved !== false)) throw new Error('access mentése sikertelen');
+    if (profile.role === 'dev' && !await fbSave(`developerUids/${req.uid}`, true)) throw new Error('developerUids mentése sikertelen');
+    // 2) a profil átkapcsolása az új fiókra, majd a bejelentkezési utótag közzététele
+    if (!await fbSave(`users/${username}/uid`, req.uid)) throw new Error('a profil uid átállítása sikertelen');
+    if (!await fbSave(`authVersions/${username}`, req.suffix)) throw new Error('az authVersions mentése sikertelen');
+    // 3) takarítás: a régi fiók hozzáférése és a kérés törlése
+    if (oldUid && oldUid !== req.uid) {
+      await fbDelete(`access/${oldUid}`);
+      if (profile.role === 'dev') await fbDelete(`developerUids/${oldUid}`);
+    }
+    await fbDelete(`passwordResets/${username}`);
+    usersDB[username].uid = req.uid;
+    delete passwordResetsDB[username];
+    alert(`${profile.display} új jelszava jóváhagyva. Mostantól az új jelszóval tud belépni.`);
+    renderDevUsers();
+  } catch (e) {
+    console.error(e);
+    alert(`A jóváhagyás nem sikerült: ${e.message || e}\nPróbáld újra; ha a hiba marad, ellenőrizd, hogy feltöltötted-e a frissített database.rules.json szabályokat.`);
+  }
+}
+
+async function devRejectPasswordReset(username) {
+  if (!isDevCurrentUser()) return;
+  if (!passwordResetsDB[username]) return;
+  if (!confirm(`Elutasítod ${usersDB[username] ? usersDB[username].display : username} jelszó-visszaállítási kérését?`)) return;
+  await fbDelete(`passwordResets/${username}`);
+  delete passwordResetsDB[username];
   renderDevUsers();
 }
 
@@ -2396,6 +2566,8 @@ async function devDeleteUser(username) {
   if (confirm(`Biztosan törlöd ${usersDB[username].display} fiókját?`)) {
     await fbDelete(`users/${username}`);
     await fbDelete(`data/${username}`);
+    await fbDelete(`passwordResets/${username}`);
+    await fbDelete(`authVersions/${username}`);
     if (usersDB[username].uid) {
       await fbDelete(`access/${usersDB[username].uid}`);
       await fbDelete(`developerUids/${usersDB[username].uid}`);
@@ -4072,6 +4244,68 @@ const _originalRenderFn2 = render;
 render = function() {
   _originalRenderFn2();
   try { renderSidebarWidgets(); } catch (e) { console.error('Widget render error:', e); }
+};
+
+
+/* ============================================================
+   HAVI KÖTELEZŐ IDŐ (5000 perc): a nyitott hónap Duty + Off Duty perceiből
+   kiszámolja, mennyi van még hátra, és ezt elosztja a hónap hátralévő napjaira.
+   ============================================================ */
+const MONTHLY_GOAL_MIN = 5000;
+
+function fmtMinHM(min) {
+  const m = Math.max(0, Math.round(min));
+  const h = Math.floor(m / 60), r = m % 60;
+  return `${m} p <span style="color:var(--see-text-muted); font-weight:500;">(${h} ó ${r} p)</span>`;
+}
+
+function renderMonthlyGoal() {
+  if (!currentUser || !globalData[currentUser]) return;
+  const data = globalData[currentUser];
+  const now = new Date();
+  const curKey = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+  const monthKey = getCurrentOpenMonthKey() || curKey;
+
+  const inMonth = x => x && x.date && x.date.substring(0, 7) === monthKey;
+  const done = (data.duty || []).filter(inMonth).reduce((s, x) => s + (Number(x.perc) || 0), 0)
+             + (data.off || []).filter(inMonth).reduce((s, x) => s + (Number(x.perc) || 0), 0);
+  const remaining = Math.max(0, MONTHLY_GOAL_MIN - done);
+  const pct = Math.min(100, Math.round((done / MONTHLY_GOAL_MIN) * 100));
+
+  // Hátralévő napok: csak ha a nyitott hónap a jelenlegi naptári hónap (a mai nappal együtt).
+  let daysLeft = 0;
+  if (monthKey === curKey) {
+    const dim = new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate();
+    daysLeft = dim - now.getDate() + 1;
+  }
+
+  const set = (id, html) => { const el = document.getElementById(id); if (el) el.innerHTML = html; };
+  set('goalMonthLabel', monthKey);
+  const bar = document.getElementById('goalBarFill');
+  if (bar) bar.style.width = pct + '%';
+  set('goalDoneText', `${done} / ${MONTHLY_GOAL_MIN} p`);
+  set('goalPctText', pct + '%');
+  set('goalDone', fmtMinHM(done));
+  set('goalRemaining', remaining === 0 ? 'Teljesítve ✓' : fmtMinHM(remaining));
+  set('goalDaysLeft', daysLeft + ' nap');
+
+  let perDayHtml, hint = 'a hátralévő napokra elosztva';
+  if (remaining === 0) {
+    perDayHtml = '0 p'; hint = 'a havi kötelező idő megvan';
+  } else if (daysLeft > 0) {
+    const perDay = Math.ceil(remaining / daysLeft);
+    perDayHtml = fmtMinHM(perDay);
+  } else {
+    perDayHtml = '–'; hint = 'ez a hónap már lejárt, a hiány nem osztható szét';
+  }
+  set('goalPerDay', perDayHtml);
+  set('goalPerDayHint', hint);
+}
+
+const _originalRenderFn3 = render;
+render = function() {
+  _originalRenderFn3();
+  try { renderMonthlyGoal(); } catch (e) { console.error('Monthly goal render error:', e); }
 };
 
 window.onload = async function() {
