@@ -824,6 +824,12 @@ input[type="file"] { display: none; }
 .widget-row.clickable { cursor: pointer; border-radius: var(--radius-sm); margin: 0 -8px; padding: 9px 8px; }
 .widget-row.clickable:hover { background: rgba(99,102,241,0.08); }
 .widget-empty { font-size: 11.5px; color: var(--see-text-muted); text-align: center; padding: 10px 0; }
+details.widget-card > summary { list-style: none; cursor: pointer; }
+details.widget-card > summary::-webkit-details-marker { display: none; }
+details.widget-card > summary .widget-card-title { margin-bottom: 10px; }
+details.widget-card > summary .tier-chevron { color: var(--see-text-muted); font-size: 10px; transition: transform 0.2s; margin-left: 8px; }
+details.widget-card[open] > summary .tier-chevron { transform: rotate(180deg); }
+details.widget-card .tier-more { margin-top: 12px; border-top: 1px solid var(--see-border); padding-top: 4px; }
 @media (max-width: 1180px) {
   .dashboard-grid { grid-template-columns: 1fr; }
   .dashboard-aside { position: static; flex-direction: row; flex-wrap: wrap; }
@@ -1350,6 +1356,29 @@ input[type="file"] { display: none; }
           <div class="widget-row"><span class="wlabel">Hátralévő napok<small>a mai napot is beleértve</small></span><span class="wval" id="goalDaysLeft" style="color:#fff;">0 nap</span></div>
           <div class="widget-row"><span class="wlabel">Napi szükséges idő<small id="goalPerDayHint">a hátralévő napokra elosztva</small></span><span class="wval" id="goalPerDay" style="color:var(--see-success);">–</span></div>
         </div>
+        <details class="widget-card" id="reportTierCard">
+          <summary>
+            <div class="widget-card-title"><i class="fa-solid fa-sack-dollar"></i> Havi report fizetés <span class="qcount" id="tierMonthLabel">–</span><i class="fa-solid fa-chevron-down tier-chevron"></i></div>
+            <div style="display:flex; justify-content:space-between; align-items:baseline; margin-bottom:8px;">
+              <span class="wval" id="tierReports" style="color:#fff; font-size:20px;">0 db</span>
+              <span style="font-family:var(--font-mono); font-size:12px; font-weight:700;"><span id="tierCurrentPay" style="color:var(--see-success);">–</span> · <span id="tierCurrentSP" style="color:var(--see-gold);">–</span></span>
+            </div>
+            <div class="ratio-bar-track"><div class="ratio-bar-fill" id="tierBarFill" style="background:linear-gradient(90deg,#4ade80,#22c55e);"></div></div>
+            <div style="display:flex; justify-content:space-between; font-size:11px; color:var(--see-text-muted); margin-top:8px; font-weight:600;">
+              <span id="tierDoneText">0 report</span><span id="tierNextText">–</span>
+            </div>
+          </summary>
+          <div class="tier-more">
+          <div class="widget-row"><span class="wlabel">Jelenlegi sáv</span><span class="wval" id="tierCurrentBand" style="color:#fff;">–</span></div>
+          <div class="widget-row" style="flex-direction:column; align-items:stretch; gap:4px;">
+            <span class="wlabel" style="flex-direction:row; justify-content:space-between; align-items:baseline;">Következő sáv<small id="tierNextHint" style="text-align:right;">–</small></span>
+            <span class="wval" id="tierNextBand" style="color:#fff; white-space:normal; text-align:left; font-size:11.5px;">–</span>
+          </div>
+          <div class="widget-row"><span class="wlabel">Hátralévő reportok<small>a következő sávig</small></span><span class="wval" id="tierRemaining" style="color:var(--see-gold);">–</span></div>
+          <div class="widget-row"><span class="wlabel">Napi szükséges report<small id="tierPerDayHint">a hátralévő napokra elosztva</small></span><span class="wval" id="tierPerDay" style="color:var(--see-success);">–</span></div>
+          <div style="margin-top:10px; border-top:1px solid var(--see-border); padding-top:8px;" id="tierTable"></div>
+          </div>
+        </details>
         <div class="widget-card">
           <div class="widget-card-title"><i class="fa-solid fa-calendar-check"></i> Lezárt hónapok <span class="qcount" id="widgetClosedMonthsCount">0</span></div>
           <div id="widgetClosedMonths"><div class="widget-empty">Még nincs lezárt hónap.</div></div>
@@ -4306,6 +4335,97 @@ const _originalRenderFn3 = render;
 render = function() {
   _originalRenderFn3();
   try { renderMonthlyGoal(); } catch (e) { console.error('Monthly goal render error:', e); }
+};
+
+/* ============================================================
+   HAVI REPORT FIZETÉS: a nyitott hónap reportszáma alapján megmutatja a
+   jelenlegi sávot (fizetés + SP), a következő sávot és a hátralévő reportokat.
+   ============================================================ */
+const REPORT_TIERS = [
+  { min: 600, pay: 350000, sp: 50 },
+  { min: 500, pay: 325000, sp: 50 },
+  { min: 400, pay: 300000, sp: 50 },
+  { min: 350, pay: 275000, sp: 50 },
+  { min: 300, pay: 250000, sp: 50 },
+  { min: 250, pay: 225000, sp: 40 },
+  { min: 200, pay: 200000, sp: 40 },
+  { min: 0,   pay: 100000, sp: 20 }   // 200 alatt
+];
+
+function fmtFt(n) { return Number(n).toLocaleString('hu-HU').replace(/\u00a0/g, ' ') + ' Ft'; }
+function tierLabel(t) { return t.min === 0 ? '200 alatt' : t.min + '+'; }
+
+function renderReportTiers() {
+  if (!currentUser || !globalData[currentUser]) return;
+  const data = globalData[currentUser];
+  const now = new Date();
+  const curKey = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+  const monthKey = getCurrentOpenMonthKey() || curKey;
+
+  const reps = data.reports || {};
+  let count = 0;
+  Object.keys(reps).forEach(d => { if (d.substring(0, 7) === monthKey) count += Number(reps[d]) || 0; });
+
+  const current = REPORT_TIERS.find(t => count >= t.min);
+  const idx = REPORT_TIERS.indexOf(current);
+  const next = idx > 0 ? REPORT_TIERS[idx - 1] : null;
+
+  let daysLeft = 0;
+  if (monthKey === curKey) {
+    const dim = new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate();
+    daysLeft = dim - now.getDate() + 1;
+  }
+
+  const set = (id, html) => { const el = document.getElementById(id); if (el) el.innerHTML = html; };
+  set('tierMonthLabel', monthKey);
+  set('tierReports', count + ' db');
+  set('tierCurrentBand', tierLabel(current));
+  set('tierCurrentPay', fmtFt(current.pay));
+  set('tierCurrentSP', current.sp + ' SP');
+  set('tierDoneText', count + (next ? ` / ${next.min} report` : ' report'));
+
+  const bar = document.getElementById('tierBarFill');
+  if (next) {
+    const base = current.min === 0 ? 0 : current.min;
+    const pct = Math.max(0, Math.min(100, Math.round(((count - base) / (next.min - base)) * 100)));
+    if (bar) bar.style.width = pct + '%';
+    set('tierNextText', `még ${next.min - count} db → ${tierLabel(next)}`);
+    set('tierNextBand', `${tierLabel(next)} · ${fmtFt(next.pay)} · ${next.sp} SP`);
+    set('tierNextHint', `+${fmtFt(next.pay - current.pay)}${next.sp !== current.sp ? ' · SP: ' + current.sp + ' → ' + next.sp : ''}`);
+    const need = next.min - count;
+    set('tierRemaining', need + ' db');
+    if (daysLeft > 0) {
+      set('tierPerDay', (Math.ceil((need / daysLeft) * 10) / 10) + ' db/nap');
+      set('tierPerDayHint', `${daysLeft} hátralévő napra elosztva`);
+    } else {
+      set('tierPerDay', '–');
+      set('tierPerDayHint', 'ez a hónap már lejárt');
+    }
+  } else {
+    if (bar) bar.style.width = '100%';
+    set('tierNextText', 'Maximum sáv ✓');
+    set('tierNextBand', 'Elérted a legmagasabb sávot');
+    set('tierNextHint', '–');
+    set('tierRemaining', '0 db');
+    set('tierPerDay', '0 db/nap');
+    set('tierPerDayHint', 'a legmagasabb sáv megvan');
+  }
+
+  set('tierTable', REPORT_TIERS.map(t => {
+    const active = t === current;
+    const c = active ? '#fff' : 'var(--see-text-muted)';
+    return `<div style="display:grid; grid-template-columns:62px 1fr 44px; gap:6px; align-items:center; padding:5px 8px; font-size:11px; border-radius:8px; ${active ? 'background:rgba(74,222,128,0.12);' : ''}">
+      <span style="color:${c}; font-weight:${active ? 800 : 600};">${tierLabel(t)}</span>
+      <span style="font-family:var(--font-mono); text-align:right; color:${active ? 'var(--see-success)' : c}; white-space:nowrap;">${fmtFt(t.pay)}</span>
+      <span style="font-family:var(--font-mono); text-align:right; color:${active ? 'var(--see-gold-hover)' : c}; white-space:nowrap;">${t.sp} SP</span>
+    </div>`;
+  }).join(''));
+}
+
+const _originalRenderFn4 = render;
+render = function() {
+  _originalRenderFn4();
+  try { renderReportTiers(); } catch (e) { console.error('Report tier render error:', e); }
 };
 
 window.onload = async function() {
